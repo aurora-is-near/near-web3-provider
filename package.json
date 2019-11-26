@@ -1,0 +1,17 @@
+{
+  "name": "web3-near-provider",
+  "version": "0.1.0",
+  "description": "NEAR Web3 integration",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest test"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "jest": "^24.9.0",
+    "nearlib": "^0.17.2",
+    "web3": "^1.2.4",
+    "web3-provider-engine": "^15.0.4"
+  }
+}
