@@ -18,6 +18,10 @@ class NearProvider {
                 const status = await this.provider.status();
                 return '0x' + status["sync_info"]["latest_block_height"].toString(16);
             }
+            case "eth_gasPrice": {
+                // TODO: query gas price.
+                return '0x100';
+            }
         }
         return "unknown";
     }
