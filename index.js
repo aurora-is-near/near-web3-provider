@@ -28,29 +28,27 @@ class NearProvider {
     constructor(url) {
         this.evm_contract = "evm";
         this.url = url;
-        this.provider = new nearlib.providers.JsonRpcProvider(url);
+        this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
         const keyStore = new nearlib.keyStores.InMemoryKeyStore();
         keyStore.setKey("default", "test.near", nearlib.utils.KeyPair.fromString('ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw')).then(() => {
             this.signer = new nearlib.InMemorySigner(keyStore);
-            const connection = new nearlib.Connection("default", this.provider, this.signer);
+            const connection = new nearlib.Connection("default", this.nearProvider, this.signer);
             this.account = new nearlib.Account(connection, "test.near");
         });
-        // keyStore.setKey("default", "illia.china", nearlib.KeyPair.fromString(""))
     }
 
     // Maps ethereum RPC into NEAR RPC requests and remaps back the responses.
     async ethNearRpc(method, params) {
-        // console.warn(method, params);
         switch (method) {
             case "net_listening": {
-                const status = await this.provider.status();
+                const status = await this.nearProvider.status();
                 return true;
             }
             case "net_version": {
                 return NEAR_NET_VERSION;
             }
             case "eth_blockNumber": {
-                const status = await this.provider.status();
+                const status = await this.nearProvider.status();
                 return '0x' + status["sync_info"]["latest_block_height"].toString(16);
             }
             case "eth_gasPrice": {
@@ -63,12 +61,12 @@ class NearProvider {
             case "eth_getBlockByNumber": {
                 let blockHeight = params[0];
                 if (blockHeight === "latest") {
-                    const status = await this.provider.status();
+                    const status = await this.nearProvider.status();
                     blockHeight = status["sync_info"]["latest_block_height"];
                 } else {
                     blockHeight = hexToDec(blockHeight);
                 }
-                const block = await this.provider.block(blockHeight);
+                const block = await this.nearProvider.block(blockHeight);
                 // console.warn(JSON.stringify(block.header));
                 return {
                     number: '0x' + block.header.height.toString(16),
@@ -102,34 +100,28 @@ class NearProvider {
             case "eth_sendTransaction": {
                 if (params[0].to === undefined) {
                     // If contract deployment.
-                    // console.warn(params);
-                    // console.warn("Send tx", params[0]);
                     let outcome = await this.account.functionCall(
                         this.evm_contract,
                         "deploy_code",
                         { "bytecode": params[0].data.slice(2) },
                         new BN(params[0].gas.slice(2), 16),
                         "100000");
-                    // console.warn(outcome);
                     return outcome.transaction.id;
                 } else {
-                    // console.warn("sendTransaction: ", params);
                     let outcome = await this.account.functionCall(
                         this.evm_contract,
                         "run_command",
                         { contract_address: params[0].to.slice(2), encoded_input: params[0].data.slice(2) },
                         "10000000", 0
                     )
-                    // console.warn(outcome);
                     return outcome.transaction.id;
-                    // TODO: ???
                 }
                 return;
             }
             case "eth_getTransactionByHash": {
-                let status = await this.provider.status();
+                let status = await this.nearProvider.status();
                 // let outcome = await this.provider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
-                // console.warn(JSON.stringify(outcome));
+                // TODO: this is hardcoded ATM.
                 return {
                     hash: params[0],
                     transactionIndex: '0x1',
@@ -148,10 +140,8 @@ class NearProvider {
                 };
             }
             case "eth_getTransactionReceipt": {
-                let status = await this.provider.status();
-                // console.warn("TX REceipt: ", params);
-                let outcome = await this.provider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
-                // console.warn(JSON.stringify(outcome.status));
+                let status = await this.nearProvider.status();
+                let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
                 const responseHash = base64ToString(outcome.status.SuccessValue);
                 // TODO: compute proper tx status: accumulate logs and gas.
                 const result = {
@@ -164,24 +154,18 @@ class NearProvider {
                     logs: outcome.transaction.outcome.logs,
                     status: '0x1',
                 };
-                // console.warn(result);
                 return result;
             }
             case "eth_call": {
-                // console.warn(JSON.stringify(params));
                 let result = await this.account.viewFunction("evm", "view_call", { contract_address: "de5f4b90790d48e0c00348eb55c6d763a47a9443", encoded_input: params[0].data.slice(2) });
-                // console.warn("eth_call: ", JSON.stringify(result));
                 return "0x" + result;
             }
         }
-        console.warn(method, params);
-        return "unknown";
+        throw new Error(`NearProvider: Unknown method: ${method} with params ${params}`);
     }
 
     sendAsync(payload, cb) {
         this.ethNearRpc(payload["method"], payload["params"]).then((result) => {
-            // console.warn("Result", result);
-            // TODO: handle errors and all the jazz here.
             cb(null, {
                 id: payload["id"],
                 jsonrpc: "2.0",
@@ -189,12 +173,11 @@ class NearProvider {
             });
         }, (err) => {
             console.error(err);
+            new Error(`NearProvider: ${err}`);
         });
     }
 
     send(payload, cb) {
-        // console.warn("Sync");
-        // console.warn(arguments);
         this.ethNearRpc(payload["method"], payload["params"]).then((result) => {
             cb(null, {
                 id: payload["id"],
@@ -203,16 +186,27 @@ class NearProvider {
             });
         }, (err) => {
             console.error(err);
+            throw new Error(`NearProvider: ${err}`);
         });
     }
 
+    disconnect() {
+        // NO OP.
+    }
+
     getAddress(idx) {
+        // TODO: return proper addresses.
         console.warn("getAddress");
         console.warn(idx);
     }
 
     getAddresses() {
+        // TODO: return proper addresses.
         return [];
+    }
+
+    supportsSubscriptions() {
+        return false;
     }
 }
 
