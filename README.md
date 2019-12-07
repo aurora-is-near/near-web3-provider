@@ -18,9 +18,28 @@ Node > 11.0
 You can use this provider wherever a Web3 provider is needed.
 
 ```javascript
-const NEARProvider = require("near-web3-provider");
+const NearProvider = require("near-web3-provider");
 
 const web = new Web3();
-web.setProvider(new NEARProvider("<url to NEAR RPC>"));
+web.setProvider(new NearProvider("<url to NEAR RPC>"));
 web.eth.net.isListening();
+```
+
+## Using in Truffle
+
+Add to your `truffle-config.json`:
+
+```javascript
+const NearProvider = require("near-web3-provider");
+
+module.exports = {
+  networks: {
+    near: {
+        network_id: "99",
+        provider: function() {
+            return new NearProvider("https://rpc.nearprotocol.com")
+        },
+    }
+  }
+}
 ```

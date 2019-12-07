@@ -7,14 +7,14 @@ const withWeb3 = (fn) => {
     return () => fn(web);
 };
 
-test('isListening', withWeb3(async (web) => {
-    await web.eth.net.isListening();
-}));
+// test('isListening', withWeb3(async (web) => {
+//     await web.eth.net.isListening();
+// }));
 
-test('blockNumber', withWeb3(async (web) => {
-    let blockNumber = await web.eth.getBlockNumber();
-    expect(blockNumber).toBeGreaterThan(0);
-}));
+// test('blockNumber', withWeb3(async (web) => {
+//     let blockNumber = await web.eth.getBlockNumber();
+//     expect(blockNumber).toBeGreaterThan(0);
+// }));
 
 test('sendTx', withWeb3(async (web) => {
     const rawTransaction = {
