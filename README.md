@@ -1,3 +1,5 @@
+# *NOTE: DO NOT USE THIS CURRENTLY*
+
 # near-web3-provider
 
 NEAR Protocol Web3 provider.
