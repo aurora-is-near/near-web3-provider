@@ -40,9 +40,17 @@ class NearProvider {
     // Maps ethereum RPC into NEAR RPC requests and remaps back the responses.
     async ethNearRpc(method, params) {
         switch (method) {
+            /**
+             * Returns true if client is actively listening for network
+             * connections
+             * @returns {boolean}
+             */
             case "net_listening": {
                 const status = await this.nearProvider.status();
-                return true;
+                if (status) {
+                    return true;
+                }
+                return false;
             }
             case "net_version": {
                 return NEAR_NET_VERSION;
@@ -136,7 +144,7 @@ class NearProvider {
                     input: '0x',
                     v: "0x25", // 37
                     r: "0x1b5e176d927f8e9ab405058b2d2457392da3e20f328b16ddabcebc33eaac5fea",
-                    s: "0x4ba69724e8f69de52f0125ad8b3c5c2cef33019bac3249e2c0a2192766d1721c"                    
+                    s: "0x4ba69724e8f69de52f0125ad8b3c5c2cef33019bac3249e2c0a2192766d1721c"
                 };
             }
             case "eth_getTransactionReceipt": {
