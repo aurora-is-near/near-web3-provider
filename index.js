@@ -2,7 +2,7 @@ const bs58 = require('bs58');
 const nearlib = require("nearlib");
 const BN = require("bn.js");
 
-const NEAR_NET_VERSION = 99;
+const NEAR_NET_VERSION = "99";
 
 function decToHex(value) {
     return '0x' + value.toString(16);
@@ -52,6 +52,10 @@ class NearProvider {
                 }
                 return false;
             }
+            /**
+             * Returns the current network id
+             * @returns {string}
+             */
             case "net_version": {
                 return NEAR_NET_VERSION;
             }
