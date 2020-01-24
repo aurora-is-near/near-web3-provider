@@ -59,13 +59,19 @@ class NearProvider {
             case "net_version": {
                 return NEAR_NET_VERSION;
             }
+            /**
+             * Returns the current price per gas in wei
+             * @returns {Quantity} integer of the current gas price in wei
+             */
+            case "eth_gasPrice": {
+                // TODO: query gas price.
+                // Is this ETH gas price or NEAR gas price?
+                // https://docs.nearprotocol.com/docs/roles/integrator/faq#fees
+                return '0x100';
+            }
             case "eth_blockNumber": {
                 const status = await this.nearProvider.status();
                 return '0x' + status["sync_info"]["latest_block_height"].toString(16);
-            }
-            case "eth_gasPrice": {
-                // TODO: query gas price.
-                return '0x100';
             }
             case "eth_accounts": {
                 return ['0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368'];
