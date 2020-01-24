@@ -29,11 +29,11 @@ class NearProvider {
         this.evm_contract = "evm";
         this.url = url;
         this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
-        const keyStore = new nearlib.keyStores.InMemoryKeyStore();
-        keyStore.setKey("default", "test.near", nearlib.utils.KeyPair.fromString('ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw')).then(() => {
-            this.signer = new nearlib.InMemorySigner(keyStore);
-            const connection = new nearlib.Connection("default", this.nearProvider, this.signer);
-            this.account = new nearlib.Account(connection, "test.near");
+        this.keyStore = new nearlib.keyStores.InMemoryKeyStore();
+        this.keyStore.setKey("default", "test.near", nearlib.utils.KeyPair.fromString('ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw')).then(() => {
+            this.signer = new nearlib.InMemorySigner(this.keyStore);
+            this.connection = new nearlib.Connection("default", this.nearProvider, this.signer);
+            this.account = new nearlib.Account(this.connection, "test.near");
         });
     }
 
@@ -61,7 +61,7 @@ class NearProvider {
             }
             /**
              * Returns the current price per gas in wei
-             * @returns {Quantity} integer of the current gas price in wei
+             * @returns {Hex} integer of the current gas price in wei as hex
              */
             case "eth_gasPrice": {
                 // TODO: query gas price.
@@ -69,12 +69,19 @@ class NearProvider {
                 // https://docs.nearprotocol.com/docs/roles/integrator/faq#fees
                 return '0x100';
             }
+            /**
+             * Returns a list of addresses owned by client.
+             * @returns {string[]} array of addresses
+             */
+            case "eth_accounts": {
+                const networkId = this.connection.networkId;
+                const accounts = await this.keyStore.getAccounts(networkId);
+                return accounts;
+                // return ['0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368'];
+            }
             case "eth_blockNumber": {
                 const status = await this.nearProvider.status();
                 return '0x' + status["sync_info"]["latest_block_height"].toString(16);
-            }
-            case "eth_accounts": {
-                return ['0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368'];
             }
             case "eth_getBlockByNumber": {
                 let blockHeight = params[0];
