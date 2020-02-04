@@ -1,11 +1,11 @@
 const bs58 = require('bs58');
 const nearlib = require("nearlib");
 const BN = require("bn.js");
+const assert = require('bsert');
 
 const NEAR_NET_VERSION = "99";
 
 const utils = require('./utils');
-
 const nearToEth = require('./near_to_eth_objects');
 
 // DELETE LATER
@@ -129,7 +129,7 @@ class NearProvider {
             /**
              * Returns a list of addresses owned by client/accounts the node
              * controls
-             * @returns {Data[]} array of 20 byte addresses
+             * @returns {String[]} array of 20 byte addresses
              */
             case "eth_accounts": {
                 // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
@@ -194,7 +194,7 @@ class NearProvider {
                 console.log({params})
                 const address = params[0];
                 const block = params[1];
-
+                // TODO: Convert hex address to NEAR account ID
                 // I think we need to do an in between check
                 try {
                     const state = await this.nearProvider.query(`account/bobblehead`, '');
@@ -229,9 +229,13 @@ class NearProvider {
              * @param {Quantity} block (optional)
              */
             case "eth_getCode": {
-                // TODO: I don't think this contract_address bit is correct
+                const address = utils.remove0x(params[0]);
+
                 try {
-                    let result = await this.account.viewFunction("evm", "code_at", { contract_address: params[0].slice(2) });
+                    let result = await this.account.viewFunction(
+                        this.evm_contract,
+                        'code_at',
+                        { contract_address: address });
                     // console.warn(result);
                     return "0x" + result;
                 } catch (e) {
@@ -337,6 +341,7 @@ class NearProvider {
                     blockHeight = utils.hexToDec(blockHeight);
                 }
 
+                // TODO: Are chunks the same as transactions?
                 try {
                     const block = await this.nearProvider.block(blockHeight);
                     const transactionCount = block.header.chunks_included;
@@ -356,14 +361,38 @@ class NearProvider {
                 const txHash = utils.hexToBase58(params[0]);
 
                 const block = await this.nearProvider.block(1221180);
+                // TODO: Can you not get a tx status without knowing the account id?
                 // let outcome = await this.provider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
 
                 // TODO: this is hardcoded ATM.
                 return nearToEth.transactionObj(block.chunks[0], block.header.hash);
             }
 
+            /**
+             * Returns a transaction based on a block hash and the transactions
+             * index position
+             * web3.eth.getTransactionFromBlock accepts either a hash, number,
+             * or string.
+             * Hash params are handled here
+             * @param {String} blockHash 32-byte block hash
+             * @param {Number} txIndex transaction's index position
+             * @returns {Object} returns transaction object
+             */
             case "eth_getTransactionByBlockHashAndIndex": {
+                const blockHash = utils.hexToBase58(params[0]);
+                const txIndex = utils.hexToDec(params[1]);
 
+                assert(blockHash, 'Must pass in block hash as first argument');
+                assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
+
+                try {
+                    const block = await this.nearProvider.block(blockHash);
+                    const tx = nearToEth.transactionObj(block.chunks[txIndex], block.header.hash);
+
+                    return tx;
+                } catch (e) {
+                    return e;
+                }
             }
 
             case "eth_getTransactionByBlockNumberAndIndex": {
