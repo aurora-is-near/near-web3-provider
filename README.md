@@ -406,6 +406,8 @@ Querying call/evm/utils.near_account_id_to_evm_address} failed: wasm execution f
   {"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":"txStatus"},"id":"whatever"}
   ```
 
+  - When mapping to an ETH transaction object, is the `blockHash` the same as `chunk.height_created`, `chunk.height_included`, or should it be the `block.header.hash` of the block where the chunk is included? Is `chunk.height_included` equal to `block.header.hash`?
+
 #### Method Questions
 
 `eth_syncing`
