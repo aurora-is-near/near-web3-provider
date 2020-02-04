@@ -362,6 +362,32 @@ class NearProvider {
                 return nearToEth.transactionObj(block.chunks[0], block.header.hash);
             }
 
+            case "eth_getTransactionByBlockHashAndIndex": {
+
+            }
+
+            case "eth_getTransactionByBlockNumberAndIndex": {
+
+            }
+
+            case "eth_getTransactionReceipt": {
+                let status = await this.nearProvider.status();
+                let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
+                const responseHash = utils.base64ToString(outcome.status.SuccessValue);
+                // TODO: compute proper tx status: accumulate logs and gas.
+                const result = {
+                    transactionHash: params[0],
+                    transactionIndex: '0x1',
+                    blockNumber: '0x' + status["sync_info"]["latest_block_height"].toString(16),
+                    blockHash: utils.base58ToHex(status["sync_info"]["latest_block_hash"]),
+                    contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
+                    gasUsed: utils.decToHex(outcome.transaction.outcome.gas_burnt),
+                    logs: outcome.transaction.outcome.logs,
+                    status: '0x1',
+                };
+                return result;
+            }
+
             /**
              * Returns the number of transactions SENT from an address
              * @param {String} address 20-byte address
@@ -389,9 +415,9 @@ class NearProvider {
                 }
             }
 
-            case "eth_estimateGas": {
-                return "0x00";
-            }
+            /**
+             * web3.eth.sendTransaction and web3.eth.sendSignedTransaction
+             */
             case "eth_sendTransaction": {
                 if (params[0].to === undefined) {
                     // If contract deployment.
@@ -411,29 +437,26 @@ class NearProvider {
                     )
                     return outcome.transaction.id;
                 }
-                return;
             }
 
-            case "eth_getTransactionReceipt": {
-                let status = await this.nearProvider.status();
-                let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
-                const responseHash = utils.base64ToString(outcome.status.SuccessValue);
-                // TODO: compute proper tx status: accumulate logs and gas.
-                const result = {
-                    transactionHash: params[0],
-                    transactionIndex: '0x1',
-                    blockNumber: '0x' + status["sync_info"]["latest_block_height"].toString(16),
-                    blockHash: utils.base58ToHex(status["sync_info"]["latest_block_hash"]),
-                    contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
-                    gasUsed: utils.decToHex(outcome.transaction.outcome.gas_burnt),
-                    logs: outcome.transaction.outcome.logs,
-                    status: '0x1',
-                };
-                return result;
+            /**
+             * web3.eth.sign and web3.eth.signTransaction
+             */
+            case "eth_sign": {
+
             }
+
             case "eth_call": {
                 let result = await this.account.viewFunction("evm", "view_call", { contract_address: "de5f4b90790d48e0c00348eb55c6d763a47a9443", encoded_input: params[0].data.slice(2) });
                 return "0x" + result;
+            }
+
+            case "eth_estimateGas": {
+                return "0x00";
+            }
+
+            case "eth_getPastLogs": {
+
             }
         }
         throw new Error(`NearProvider: Unknown method: ${method} with params ${params}`);
