@@ -10,6 +10,16 @@ const withWeb3 = (fn) => {
 };
 
 const TEST_NEAR_ACCOUNT = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
+// NB: This is the hex equivalent of NEAR block hash
+// '9TWEeS11Up9nR9AobKWdKfzmF9j1TriB8TLbRCZqznia' which is block number
+// 1221180, from 2020-02-03T23:18:52.817928262Z
+const blockHash = '0x7da7a7223c6677bf0f2b775b60f76832fab71441280ba94eb98af68dd17a8367';
+const blockNumber = 1221180;
+// NB: txHash is hex equivalent of
+// 'CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK' found at index 0 of
+// blockNumber 1221180
+const txHash = '0xace957e24fedb5254dcd04f90c74706b9ea239333f9c6d98b8e4a50575e4dff8';
+const txIndex = 0;
 
 describe('#web3.eth', () => {
     describe('isSyncing | eth_syncing', () => {
@@ -94,12 +104,6 @@ describe('#web3.eth', () => {
     });
 
     describe('getBlock | eth_getBlockByHash, eth_getBlockByNumber', () => {
-        // NB: This is the hex equivalent of NEAR block hash
-        // '9TWEeS11Up9nR9AobKWdKfzmF9j1TriB8TLbRCZqznia' which is block number
-        // 1221180, from 2020-02-03T23:18:52.817928262Z
-        const blockHash = '0x7da7a7223c6677bf0f2b775b60f76832fab71441280ba94eb98af68dd17a8367';
-        const blockNumber = 1221180;
-
         test('gets block by hash', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash);
             expect(block.hash).toEqual(blockHash);
@@ -147,11 +151,6 @@ describe('#web3.eth', () => {
     });
 
     describe('getBlockTransactionCount | eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber', () => {
-        // NB: This is the hex equivalent of NEAR block hash
-        // '9TWEeS11Up9nR9AobKWdKfzmF9j1TriB8TLbRCZqznia' which is block number
-        // 1221180, from 2020-02-03T23:18:52.817928262Z
-        const blockHash = '0x7da7a7223c6677bf0f2b775b60f76832fab71441280ba94eb98af68dd17a8367';
-        const blockNumber = 1221180;
 
         test('gets block transaction count by hash', withWeb3(async (web) => {
             const count = await web.eth.getBlockTransactionCount(blockHash);
@@ -166,11 +165,7 @@ describe('#web3.eth', () => {
         }));
     });
 
-    describe.only('getTransaction | eth_getTransactionByHash', () => {
-        // NB: txHash is hex equivalent of
-        // 'CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK'
-        const txHash = '0xace957e24fedb5254dcd04f90c74706b9ea239333f9c6d98b8e4a50575e4dff8';
-
+    describe('getTransaction | eth_getTransactionByHash', () => {
         test('gets transaction by hash', withWeb3(async(web) => {
             const tx = await web.eth.getTransaction(txHash);
             expect(typeof tx === 'object').toBe(true);
@@ -187,6 +182,14 @@ describe('#web3.eth', () => {
             expect(txCount).toBeGreaterThanOrEqual(0);
         }));
 
+    });
+
+    describe.only('getTransactionFromBlock | eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex', () => {
+        test('returns transaction from block hash', withWeb3(async (web) => {
+            const tx = await web.eth.getTransactionFromBlock(blockHash, txIndex);
+            expect(typeof tx).toBe('object');
+            expect(tx.hash).toEqual(txHash);
+        }));
     });
 });
 
