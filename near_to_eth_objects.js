@@ -1,7 +1,7 @@
 /**
  * NEAR chunks mapped to ETH objects and vice versa
  */
-
+const assert = require('bsert');
 const utils = require('./utils');
 
 const nearToEth = {};
@@ -36,14 +36,17 @@ nearToEth._formatChunksToTx = function(block, returnTxObjects) {
  * @returns {object} returns ETH transaction object
  * @example eth.transactionObject(chunk, blockHeaderHash)
  */
+// TODO: Verify what blockHash should be
 nearToEth.transactionObj = function(chunk, blockHeaderHash) {
+	assert(typeof chunk === 'object' && chunk.hasOwnProperty('chunk_hash'), 'nearToEth.transactionObj: must pass in chunk object');
+
 	return {
 		hash: utils.base58ToHex(chunk.chunk_hash),
-		nonce: '0x1',
 		blockHash: utils.base58ToHex(blockHeaderHash),
 		blockNumber: utils.decToHex(chunk.height_included),
 
 		// TODO: Don't know how to get these values
+		nonce: '0x1',
 		transactionIndex: '0x1',
 		from: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
 		to: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
