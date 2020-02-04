@@ -4,121 +4,391 @@ const BN = require("bn.js");
 
 const NEAR_NET_VERSION = "99";
 
-function decToHex(value) {
-    return '0x' + value.toString(16);
-}
+const utils = require('./utils');
 
-function hexToDec(value) {
-    return parseInt(value.slice(2), 16);
-}
+const nearToEth = require('./near_to_eth_objects');
 
-function base58ToHex(value) {
-    return '0x' + Buffer.from(bs58.decode(value)).toString('hex');
-}
-
-function base64ToHex(value) {
-    return '0x' + Buffer.from(value, 'base64').toString('hex');
-}
-
-function base64ToString(value) {
-    return Buffer.from(value, 'base64').toString();
-}
+// DELETE LATER
+const TEST_NEAR_ACCOUNT = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
+const TEST_ACCOUNT_TWO = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
 
 class NearProvider {
     constructor(url) {
-        this.evm_contract = "evm";
+        const networkId = 'default';
+        this.evm_contract = 'evm';
         this.url = url;
         this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
+
+        const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
+        const keyPair = nearlib.utils.KeyPair.fromString(keyPairString)
         this.keyStore = new nearlib.keyStores.InMemoryKeyStore();
-        this.keyStore.setKey("default", "test.near", nearlib.utils.KeyPair.fromString('ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw')).then(() => {
-            this.signer = new nearlib.InMemorySigner(this.keyStore);
-            this.connection = new nearlib.Connection("default", this.nearProvider, this.signer);
-            this.account = new nearlib.Account(this.connection, "test.near");
-        });
+        this.keyStore.setKey(networkId, TEST_NEAR_ACCOUNT, keyPair);
+
+        this.signer = new nearlib.InMemorySigner(this.keyStore);
+
+        this.connection = new nearlib.Connection(networkId, this.nearProvider, this.signer);
+        this.account = new nearlib.Account(this.connection, TEST_NEAR_ACCOUNT);
+    }
+
+    async _createNewAccount(accountId) {
+        // create keypair
+        const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+        await this.keyStore.setKey(this.networkId, accountId, keyPair)
+        this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
+        this.signer = new nearlib.InMemorySigner(this.keyStore);
+        this.connection = new nearlib.Connection('default', this.nearProvider, this.signer);
+    }
+
+    async _callEvmContract(method, params) {
+        const paramsType = typeof params;
+        const stringifyParams = paramsType === 'string'
+            ? params
+            : JSON.stringify(params)
+
+        try {
+            const result = await this.nearProvider.query(
+                `call/${this.evm_contract}/${method}}`,
+                stringifyParams
+            );
+            return result;
+        } catch (e) {
+            return e;
+        }
+    }
+
+    async _ethAddressToNearAddress(ethAddress) {
+        const method = 'utils.evm_account_to_internal_address';
+        try {
+            const nearAddress = await this._callEvmContract(method, ethAddress);
+            return nearAddress;
+        } catch (e) {
+            return e;
+        }
     }
 
     // Maps ethereum RPC into NEAR RPC requests and remaps back the responses.
     async ethNearRpc(method, params) {
         switch (method) {
+
+            /**
+             * Returns the current network id
+             * @returns {String}
+             */
+            case "net_version": {
+                return NEAR_NET_VERSION;
+            }
+
             /**
              * Returns true if client is actively listening for network
              * connections
              * @returns {boolean}
              */
             case "net_listening": {
-                const status = await this.nearProvider.status();
-                if (status) {
-                    return true;
+                try {
+                    const status = await this.nearProvider.status();
+                    if (status) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } catch (e) {
+                    return e;
                 }
-                return false;
             }
+
             /**
-             * Returns the current network id
-             * @returns {string}
+             * Checks if the node is currently syncing
+             * @returns {Object|boolean} a sync object when the node is
+             * currently syncing or 'false'
              */
-            case "net_version": {
-                return NEAR_NET_VERSION;
+            case "eth_syncing": {
+                try {
+                    const { sync_info } = await this.nearProvider.status();
+                    // TODO: Syncing always returns false even though values are updating
+                    if (!sync_info.syncing) {
+                        return false;
+                    } else {
+                        return nearToEth.syncObj(sync_info);
+                    }
+                } catch (e) {
+                    return e;
+                }
             }
+
             /**
              * Returns the current price per gas in wei
-             * @returns {Hex} integer of the current gas price in wei as hex
+             * @returns {Quantity} integer of the current gas price in wei as hex
              */
             case "eth_gasPrice": {
                 // TODO: query gas price.
-                // Is this ETH gas price or NEAR gas price?
+                // Is this ETH gas price or NEAR gas price? TBD
                 // https://docs.nearprotocol.com/docs/roles/integrator/faq#fees
                 return '0x100';
             }
+
             /**
-             * Returns a list of addresses owned by client.
-             * @returns {string[]} array of addresses
+             * Returns a list of addresses owned by client/accounts the node
+             * controls
+             * @returns {Data[]} array of 20 byte addresses
              */
             case "eth_accounts": {
+                // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
+
                 const networkId = this.connection.networkId;
                 const accounts = await this.keyStore.getAccounts(networkId);
-                return accounts;
-                // return ['0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368'];
+                console.log(accounts)
+
+                // call evm contract
+                // const evmMethod = 'utils.near_account_id_to_evm_address';
+
+                // const promises = [];
+
+                // const nearAccountIdToEvmAddress = (accountId) => {
+                //     return new Promise((resolve, reject) => {
+                //         this.nearProvider.query(
+                //             `call/${this.evm_contract}/${evmMethod}}`,
+                //             accountId
+                //         )
+                //             .then((id) => resolve(id))
+                //             .catch((err) => reject(err));
+                //     });
+                // }
+
+                // const promiseArray = accounts.map((accountId) => {
+                //     promises.push(nearAccountIdToEvmAddress(accountId));
+                // });
+
+                // Promise.all(promiseArray)
+                //     .then((res) => {
+                //         console.log({res});
+                //         return res;
+                //     })
+                //     .catch((err) => {
+                //         return new Error(err);
+                //     });
+
+                // console.log({ remappedAccounts})
+                // return remappedAccounts;
+                return ['0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368'];
             }
+
+            /**
+             * Returns the number of the most recent block
+             * @returns {Quantity} integer of the current block number the
+             * client is on
+             */
             case "eth_blockNumber": {
                 const status = await this.nearProvider.status();
-                return '0x' + status["sync_info"]["latest_block_height"].toString(16);
+                return utils.decToHex(status.sync_info.latest_block_height);
             }
-            case "eth_getBlockByNumber": {
-                let blockHeight = params[0];
-                if (blockHeight === "latest") {
-                    const status = await this.nearProvider.status();
-                    blockHeight = status["sync_info"]["latest_block_height"];
-                } else {
-                    blockHeight = hexToDec(blockHeight);
-                }
-                const block = await this.nearProvider.block(blockHeight);
-                // console.warn(JSON.stringify(block.header));
-                return {
-                    number: '0x' + block.header.height.toString(16),
-                    hash: base58ToHex(block.header.hash),
-                    parentHash: base58ToHex(block.header.prev_hash),
-                    nonce: null,
-                    transactionsRoot: base58ToHex(block.header.chunk_tx_root),
-                    // TODO: gas limit
-                    gasLimit: "0xffffffffff",
-                };
-            }
-            case "eth_getCode": {
-                let result = await this.account.viewFunction("evm", "get_code", { contract_address: params[0].slice(2) });
-                // console.warn(result);
-                return "0x" + result;
-            }
-            case "eth_getTransactionCount": {
-                // TODO: transaction count.
-                return "0x0";
-            }
+
+            /**
+             * Gets the balance of an address at a given block
+             * @param {String} address Address to check for balance
+             * @param {Quantity|Tag} block Optional. Integer block
+             * number, or the string "latest", "earliest", or "pending".
+             * Default is "latest"
+             * @returns {Quantity} integer of the current balance in wei
+             */
             case "eth_getBalance": {
-                // TODO: balance.
-                return "0x10000000000000000";
+                console.log({params})
+                const address = params[0];
+                const block = params[1];
+
+                // I think we need to do an in between check
+                try {
+                    const state = await this.nearProvider.query(`account/bobblehead`, '');
+                    // Are transactions in order?
+                    console.log({state})
+                    const block = await this.nearProvider.block(state.block_height)
+                    console.log({block})
+                    // TODO: Convert NEAR amount to wei
+                    return utils.decToHex(10000000000);
+                } catch (e) {
+                    return e;
+                }
             }
+            /**
+             * Returns the value from a storage position at a given address.
+             * @param {String} address 20-byte address of the storage
+             * @param {Quantity} position The index position of the storage
+             * @param {Quantity} block (optional) Block
+             * @returns {String} The value at this storage position
+             */
             case "eth_getStorageAt": {
+                const address = params[0];
+                const position = params[1];
+                const block = params[2];
+
                 return "0x";
             }
+
+            /**
+             * Gets the code at a specific address
+             * @param {String} address 20-byte address to get the code from
+             * @param {Quantity} block (optional)
+             */
+            case "eth_getCode": {
+                // TODO: I don't think this contract_address bit is correct
+                try {
+                    let result = await this.account.viewFunction("evm", "code_at", { contract_address: params[0].slice(2) });
+                    // console.warn(result);
+                    return "0x" + result;
+                } catch (e) {
+                    return e;
+                }
+            }
+
+            /**
+             * Returns block
+             * web3.eth.getBlock accepts either a hash or a number.
+             * Block hash params are handled here
+             * @param {String} blockHash block hash
+             * @param {Boolean} returnTxObjects (optional) default: false. if
+             * true returns the full transaction objects, else false.
+             * @returns {Object} returns block object
+             */
+            case "eth_getBlockByHash": {
+                let blockHash = params[0];
+                const returnTxObjects = params[1];
+
+                // TODO: blockHash being sent is an ETH block hash. How does this equate with NEAR blocks? Is the blockHash actually the base58 equivalent of a NEAR block? Or does the user actually want the ETH block for this ETH block hash? If following along with eth_getBlockByNumber, then the blockHash should reference a NEAR block, not an ETH block, and the blockHash should translate directly to a NEAR block hash
+                console.log('by hash')
+                blockHash = utils.hexToBase58(blockHash);
+
+                try {
+                    const block = await this.nearProvider.block(blockHash);
+                    return nearToEth.blockObj(block, returnTxObjects);
+                } catch (e) {
+                    return e;
+                }
+            }
+
+            /**
+             * Returns block object
+             * web3.eth.getBlock accepts either a hash, number, or string.
+             * Number and string params are handled here.
+             * @param {Quantity|Tag} height block height or enum string
+             * 'genesis', 'latest', 'earliest', or 'pending'
+             * @param {Boolean} returnTxObjects (optional) default: false. if
+             * true returns the full transaction objects, else false.
+             * @returns {Object} returns block object
+             */
+            // TODO: Handle other enum strings
+            case "eth_getBlockByNumber": {
+                let blockHeight = params[0];
+                const returnTxObjects = params[1];
+
+                try {
+                    if (blockHeight === 'latest') {
+                        const status = await this.nearProvider.status();
+                        blockHeight = status.sync_info.latest_block_height;
+                    } else {
+                        blockHeight = utils.hexToDec(blockHeight);
+                    }
+
+                    const block = await this.nearProvider.block(blockHeight);
+                    return nearToEth.blockObj(block, returnTxObjects);
+                } catch (e) {
+                    return e;
+                }
+            }
+
+            /**
+             * Returns the number of transactions in a block from a block
+             * matching the given block hash.
+             * web3.eth.getBlockTransactionCount accepts either a hash, number,
+             * or string.
+             * Hash params are handled here
+             * @param {String} blockHash 32-byte block hash
+             * @returns {Quantity} Integer of the number of txs in this block
+             */
+            case "eth_getBlockTransactionCountByHash": {
+                let blockHash = params[0];
+                blockHash = utils.hexToBase58(blockHash);
+
+                try {
+                    const block = await this.nearProvider.block(blockHash);
+                    const transactionCount = block.header.chunks_included;
+                    return utils.decToHex(transactionCount);
+                } catch (e) {
+                    return e;
+                }
+            }
+
+            /**
+            * Returns the number of transactions in a block from a block
+            * matching the given number or string
+            * web3.eth.getBlockTransactionCount accepts either a hash, number,
+            * or string.
+            * Number and string params are handled here
+            * @param {String} blockHash 32-byte block hash
+            * @returns {Quantity} Integer of the number of txs in this block
+            */
+            // TODO: Handle other enum strings
+            case "eth_getBlockTransactionCountByNumber": {
+                console.log('number')
+                let blockHeight = params[0];
+
+                if (blockHeight === 'latest') {
+                    const status = await this.nearProvider.status();
+                    blockHeight = status.sync_info.latest_block_height;
+                } else {
+                    blockHeight = utils.hexToDec(blockHeight);
+                }
+
+                try {
+                    const block = await this.nearProvider.block(blockHeight);
+                    const transactionCount = block.header.chunks_included;
+
+                    return utils.decToHex(transactionCount);
+                } catch (e) {
+                    return e;
+                }
+            }
+
+            /**
+             * Returns the transaction requested by a transaction hash
+             * @param {String} txHash transaction hash
+             * @returns {Object} returns transaction object
+             */
+            case "eth_getTransactionByHash": {
+                const txHash = utils.hexToBase58(params[0]);
+
+                const block = await this.nearProvider.block(1221180);
+                // let outcome = await this.provider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
+
+                // TODO: this is hardcoded ATM.
+                return nearToEth.transactionObj(block.chunks[0], block.header.hash);
+            }
+
+            /**
+             * Returns the number of transactions SENT from an address
+             * @param {String} address 20-byte address
+             * @param {Quantity|Tag} block (optional) block number, or the
+             * string "latest", "earliest", or "pending"
+             * @returns {Quantity} Integer of the number of transactions sent
+             * from this address
+             */
+            case "eth_getTransactionCount": {
+                const address = params[0];
+                const block = params[1];
+                // TODO: transaction count.
+
+                console.log({address, block})
+                // get other thing isntead
+                try {
+                    // const query = await this.nearProvider.query('account/evm', '')
+                    const account = new nearlib.Account(this.connection, 'liau')
+                    const details = await account.state();
+                    console.log(details);
+                    return "0x0";
+                } catch (e) {
+                    console.log({e})
+                    return '0x0';
+                }
+            }
+
             case "eth_estimateGas": {
                 return "0x00";
             }
@@ -143,39 +413,19 @@ class NearProvider {
                 }
                 return;
             }
-            case "eth_getTransactionByHash": {
-                let status = await this.nearProvider.status();
-                // let outcome = await this.provider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
-                // TODO: this is hardcoded ATM.
-                return {
-                    hash: params[0],
-                    transactionIndex: '0x1',
-                    blockNumber: '0x' + status["sync_info"]["latest_block_height"].toString(16),
-                    blockHash: base58ToHex(status["sync_info"]["latest_block_hash"]),
-                    from: "0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368",
-                    nonce: '0x1',
-                    gas: '0xffffffff',
-                    gasPrice: '0x4a817c800',
-                    to: null,
-                    value: '0x0',
-                    input: '0x',
-                    v: "0x25", // 37
-                    r: "0x1b5e176d927f8e9ab405058b2d2457392da3e20f328b16ddabcebc33eaac5fea",
-                    s: "0x4ba69724e8f69de52f0125ad8b3c5c2cef33019bac3249e2c0a2192766d1721c"
-                };
-            }
+
             case "eth_getTransactionReceipt": {
                 let status = await this.nearProvider.status();
                 let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
-                const responseHash = base64ToString(outcome.status.SuccessValue);
+                const responseHash = utils.base64ToString(outcome.status.SuccessValue);
                 // TODO: compute proper tx status: accumulate logs and gas.
                 const result = {
                     transactionHash: params[0],
                     transactionIndex: '0x1',
                     blockNumber: '0x' + status["sync_info"]["latest_block_height"].toString(16),
-                    blockHash: base58ToHex(status["sync_info"]["latest_block_hash"]),
+                    blockHash: utils.base58ToHex(status["sync_info"]["latest_block_hash"]),
                     contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
-                    gasUsed: decToHex(outcome.transaction.outcome.gas_burnt),
+                    gasUsed: utils.decToHex(outcome.transaction.outcome.gas_burnt),
                     logs: outcome.transaction.outcome.logs,
                     status: '0x1',
                 };
