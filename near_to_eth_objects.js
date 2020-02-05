@@ -7,6 +7,22 @@ const utils = require('./utils');
 const nearToEth = {};
 
 /**
+ * ETH Sync Object
+ */
+nearToEth.syncObj = function () {
+	return {
+		// TODO: Not sure how to get this
+		startingBlock: '0x0',
+		currentBlock: utils.decToHex(sync_info.latest_block_height),
+		// TODO: Not sure how to get this
+		highestBlock: '0x0',
+		// TODO: The following are not listed in the RPC docs but are expected in web3
+		knownStates: '0x0',
+		pulledStates: '0x0'
+	};
+}
+
+/**
  * Formats NEAR chunks to ETH transaction objects
  * @param {Array} block block
  * @param {Boolean} returnTxObjects (optional) default false. if true,
@@ -92,21 +108,5 @@ nearToEth.blockObj = function(block, returnTxObjects) {
 		uncles: ['']
 	};
 };
-
-/**
- * ETH Sync Object
- */
-nearToEth.syncObj = function() {
-	return {
-		// TODO: Not sure how to get this
-		startingBlock: '0x0',
-		currentBlock: utils.decToHex(sync_info.latest_block_height),
-		// TODO: Not sure how to get this
-		highestBlock: '0x0',
-		// TODO: The following are not listed in the RPC docs but are expected in web3
-		knownStates: '0x0',
-		pulledStates: '0x0'
-	};
-}
 
 module.exports = nearToEth;
