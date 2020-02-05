@@ -103,7 +103,9 @@ describe('#web3.eth', () => {
         }));
     });
 
-    describe('getBlock | eth_getBlockByHash, eth_getBlockByNumber', () => {
+    describe(`getBlock |
+        eth_getBlockByHash,
+        eth_getBlockByNumber`, () => {
         test('gets block by hash', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash);
             expect(block.hash).toEqual(blockHash);
@@ -150,8 +152,9 @@ describe('#web3.eth', () => {
         }));
     });
 
-    describe('getBlockTransactionCount | eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber', () => {
-
+    describe(`getBlockTransactionCount |
+        eth_getBlockTransactionCountByHash,
+        eth_getBlockTransactionCountByNumber`, () => {
         test('gets block transaction count by hash', withWeb3(async (web) => {
             const count = await web.eth.getBlockTransactionCount(blockHash);
             expect(typeof count === 'number');
@@ -184,11 +187,25 @@ describe('#web3.eth', () => {
 
     });
 
-    describe('getTransactionFromBlock | eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex', () => {
+    describe.only(`getTransactionFromBlock |
+        eth_getTransactionByBlockHashAndIndex,
+        eth_getTransactionByBlockNumberAndIndex`, () => {
         test('returns transaction from block hash', withWeb3(async (web) => {
             const tx = await web.eth.getTransactionFromBlock(blockHash, txIndex);
             expect(typeof tx).toBe('object');
             expect(tx.hash).toEqual(txHash);
+        }));
+
+        test('returns transaction from block number', withWeb3(async (web) => {
+            const tx = await web.eth.getTransactionFromBlock(blockNumber, txIndex);
+            expect(typeof tx).toBe('object');
+            expect(tx.hash).toEqual(txHash);
+        }));
+
+        test('returns transaction from string - latest', withWeb3(async (web) => {
+            const tx = await web.eth.getTransactionFromBlock('latest', txIndex);
+            expect(typeof tx).toBe('object');
+            expect(typeof tx.hash).toEqual('string');
         }));
     });
 });
