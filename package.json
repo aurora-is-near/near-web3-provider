@@ -13,7 +13,7 @@
     "bs58": "^4.0.0",
     "bsert": "0.0.10",
     "jest": "^24.9.0",
-    "nearlib": "nearprotocol/nearlib",
+    "nearlib": "github:nearprotocol/nearlib",
     "web3": "^1.2.4",
     "web3-provider-engine": "^15.0.4"
   }
