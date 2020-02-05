@@ -326,7 +326,7 @@ class NearProvider {
             * web3.eth.getBlockTransactionCount accepts either a hash, number,
             * or string.
             * Number and string params are handled here
-            * @param {String} blockHash 32-byte block hash
+            * @param {String} blockHeight 32-byte block hash
             * @returns {Quantity} Integer of the number of txs in this block
             */
             // TODO: Handle other enum strings
@@ -395,8 +395,39 @@ class NearProvider {
                 }
             }
 
+            /**
+            * Returns a transaction based on a block number or enum string and
+            * the transactions index position
+            * web3.eth.getTransactionFromBlock accepts either a hash, number,
+            * or string.
+            * Number and string params are handled here
+            * @param {String} blockHeight block number or enum string
+            * @param {Number} txIndex transaction's index position
+            * @returns {Object} returns transaction object
+            */
             case "eth_getTransactionByBlockNumberAndIndex": {
+                let blockHeight = params[0];
+                const txIndex = utils.hexToDec(params[1]);
 
+                assert(blockHeight, 'Must pass in block height as first argument');
+                assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
+
+                if (blockHeight === 'latest') {
+                    const status = await this.nearProvider.status();
+                    blockHeight = status.sync_info.latest_block_height;
+                } else {
+                    blockHeight = utils.hexToDec(blockHeight);
+                }
+
+                // TODO: Are chunks the same as transactions?
+                try {
+                    const block = await this.nearProvider.block(blockHeight);
+                    const tx = nearToEth.transactionObj(block.chunks[txIndex], block.header.hash);
+
+                    return tx;
+                } catch (e) {
+                    return e;
+                }
             }
 
             case "eth_getTransactionReceipt": {
