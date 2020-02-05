@@ -367,46 +367,58 @@ Querying call/evm/utils.near_account_id_to_evm_address} failed: wasm execution f
   }
   ```
 
-- Is a chunk a transaction?
+#### Chunks
 
-- Can you not look up a transaction without knowing the account it is connected to? Calling `near tx-status <CHUNK HASH>` requires passing in account id
-  ```sh
-  🦄  near tx-status CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK
-  [WARNING] Didn't find config at /Users/barbara/src/config, using default shell config
-  { networkId: 'default',
-    nodeUrl: 'https://rpc.nearprotocol.com',
-    contractName: 'near-hello-devnet',
-    walletUrl: 'https://wallet.nearprotocol.com' }
-  (node:66091) ExperimentalWarning: The fs.promises API is experimental
-  Error:  Error: Please specify account id, either as part of transaction hash or using --accountId flag.
-      at module.exports.handler.exitOnError (/Users/barbara/.nvm/versions/node/v11.12.0/lib/node_modules/near-shell/commands/tx-status.js:30:19)
-      at processTicksAndRejections (internal/process/next_tick.js:81:5)
-  ```
+Blocks contain chunks, and chunks contain transactions.
 
-- Calling `txStatus` using the JsonRpcProvider doesn't work
-  ```
-  POST /
-  Content-Type: application/json
-  cache-control: no-cache
-  Postman-Token: b6a53703-bdff-4ef1-8527-69a23958065f
-  User-Agent: PostmanRuntime/7.6.0
-  Accept: */*
-  Host: rpc.nearprotocol.com
-  accept-encoding: gzip, deflate
-  content-length: 124
-  { "jsonrpc": "2.0", "method": "txStatus", "id": "whatever", "params": ["CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK"] }
-  HTTP/1.1 200
-  status: 200
-  Server: nginx/1.14.0 (Ubuntu)
-  Date: Tue, 04 Feb 2020 01:51:41 GMT
-  Content-Type: application/json
-  Content-Length: 104
-  Via: 1.1 google
-  Alt-Svc: clear
-  {"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":"txStatus"},"id":"whatever"}
-  ```
+Transaction look-up requires both the hash and the account ID.
 
-  - When mapping to an ETH transaction object, is the `blockHash` the same as `chunk.height_created`, `chunk.height_included`, or should it be the `block.header.hash` of the block where the chunk is included? Is `chunk.height_included` equal to `block.header.hash`?
+`txStatus` for hash `8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy` and accountId: `dinoaroma"`
+
+```
+{
+	receipts_outcome:
+	[{
+		block_hash: 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN',
+		id: 'DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm',
+		outcome:
+		{
+			gas_burnt: 937144500000,
+			logs: [],
+			receipt_ids: [],
+			status: { SuccessValue: '' }
+		},
+		proof: []
+	}],
+		status: { SuccessValue: '' },
+	transaction:
+	{
+		actions: [{ Transfer: { deposit: '1000000000000000000000000' } }],
+			hash: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
+				nonce: 2,
+					public_key: 'ed25519:Cev7YwHpPHsH7mJDuUdcHxobvVSNzTHMBgpTYYYEUv26',
+						receiver_id: 'bobblehead',
+							signature:
+		'ed25519:5wQqUxSwhZgw75oamBrFdRCno4tixejWiHA64LyzLGAwjp7pJAR795VctkAHsa2sybk7AzUWQDs1bg7eCdh4hrUU',
+			signer_id: 'dinoaroma'
+	},
+	transaction_outcome:
+	{
+		block_hash: 'G5CCPBoQqPpqYf4e1SrQmJtymDsfnUCkFbKJAK1khbjp',
+			id: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
+				outcome:
+		{
+			gas_burnt: 937144500000,
+				logs: [],
+					receipt_ids: ['DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm'],
+						status:
+			{ SuccessReceiptId: 'DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm' }
+		},
+		proof: []
+	}
+}
+
+```
 
 #### Method Questions
 
