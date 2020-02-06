@@ -52,7 +52,7 @@ nearToEth._formatChunksToTx = function(block, returnTxObjects) {
  * @returns {object} returns ETH transaction object
  * @example eth.transactionObject(chunk, blockHeaderHash)
  */
-// TODO: Verify what blockHash should be
+// TODO: Verify what blockHeaderHash should be
 nearToEth.transactionObj = function(chunk, blockHeaderHash) {
 	assert(typeof chunk === 'object' && chunk.hasOwnProperty('chunk_hash'), 'nearToEth.transactionObj: must pass in chunk object');
 
@@ -107,6 +107,29 @@ nearToEth.blockObj = function(block, returnTxObjects) {
 		transactions: this._formatChunksToTx(block, returnTxObjects),
 		uncles: ['']
 	};
+};
+
+/**
+ * Maps NEAR transaction to ETH Transaction Receipt Object
+ * @param {Object} block NEAR block
+ * @param {Object} nearTxObj NEAR transaction object
+ * @returns {Object} returns ETH transaction receipt object
+ */
+nearToEth.transactionReceiptObj = function(block, nearTxObj) {
+	const responseHash = utils.base64ToString(nearTxObj.status.SuccessValue);
+	const { transaction } = nearTxObj;
+
+	return {
+		transactionHash: utils.base58ToHex(transaction.hash),
+		transactionIndex: '0x1',
+		blockNumber: utils.decToHex(block.number),
+		blockHash: utils.base58ToHex(block.hash),
+		contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
+		gasUsed: utils.decToHex(transaction.outcome.gas_burnt),
+		logs: transaction.outcome.logs,
+		status: '0x1',
+	};
+
 };
 
 module.exports = nearToEth;
