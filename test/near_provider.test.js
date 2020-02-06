@@ -18,7 +18,10 @@ const blockNumber = 1221180;
 // NB: txHash is hex equivalent of
 // 'CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK' found at index 0 of
 // blockNumber 1221180
-const txHash = '0xace957e24fedb5254dcd04f90c74706b9ea239333f9c6d98b8e4a50575e4dff8';
+
+// txHash is hex equivalent of '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy'
+// with accountId 'dinoaroma'
+const txHash = '0x6c409109338aa109c3b696ba855ff5543a70204ce127e5991fff45c9fd60051c';
 const txIndex = 0;
 
 describe('#web3.eth', () => {
@@ -72,10 +75,10 @@ describe('#web3.eth', () => {
         }));
     });
 
-    describe('getBalance | eth_getBalance', () => {
+    describe.only('getBalance | eth_getBalance', () => {
         test('returns balance', withWeb3(async (web) => {
             try {
-                const balance = await web.eth.getBalance(TEST_NEAR_ACCOUNT, 'latest');
+                const balance = await web.eth.getBalance('test', 'latest');
                 console.log({balance})
                 expect(typeof balance).toBe('string');
             } catch (e) {
@@ -170,7 +173,7 @@ describe('#web3.eth', () => {
 
     describe('getTransaction | eth_getTransactionByHash', () => {
         test('gets transaction by hash', withWeb3(async(web) => {
-            const tx = await web.eth.getTransaction(txHash);
+            const tx = await web.eth.getTransaction(txHash + ':dinoaroma');
             expect(typeof tx === 'object').toBe(true);
             expect(tx.hasOwnProperty('hash')).toBe(true);
         }));
@@ -187,7 +190,7 @@ describe('#web3.eth', () => {
 
     });
 
-    describe.only(`getTransactionFromBlock |
+    describe(`getTransactionFromBlock |
         eth_getTransactionByBlockHashAndIndex,
         eth_getTransactionByBlockNumberAndIndex`, () => {
         test('returns transaction from block hash', withWeb3(async (web) => {
