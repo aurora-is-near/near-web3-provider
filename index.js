@@ -354,14 +354,34 @@ class NearProvider {
 
             /**
              * Returns the transaction requested by a transaction hash
-             * @param {String} txHash transaction hash
+             * @param {String} txHashAndAccountId transaction hash + accountId, separated by ':'
              * @returns {Object} returns transaction object
              */
             case "eth_getTransactionByHash": {
-                const txHash = utils.hexToBase58(params[0]);
+                const txHashAndAccountId = params[0];
+                console.log('txHash', params[0])
+                // Split txHash
+                assert(txHashAndAccountId.includes(':'), 'Must pass in hash and accountId separated by ":" <txHash:accountId>');
 
-                const block = await this.nearProvider.block(1221180);
-                // TODO: Can you not get a tx status without knowing the account id?
+                let [txHash, accountId] = txHashAndAccountId.split(':');
+                txHash = utils.hexToBase58(txHash);
+                console.log({txHash})
+                // '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy'
+                console.log({txHash})
+                const outcome = await this.nearProvider.txStatus(txHash, accountId);
+
+                const blockHash = outcome.transaction_outcome.block_hash;
+                const block = await this.nearProvider.block(blockHash);
+
+                function base_encode (value) {
+                    if (typeof (value) === 'string') {
+                        value = Buffer.from(value, 'utf8');
+                    }
+                    return bs58.encode(Buffer.from(value));
+                }
+                console.log({outcome})
+
+                // const block = await this.nearProvider.block(1221180);
                 // let outcome = await this.provider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
 
                 // TODO: this is hardcoded ATM.
@@ -430,21 +450,17 @@ class NearProvider {
                 }
             }
 
+            /**
+             * Returns the receipt of a transaction by transaction hash
+             * @param {String} txHash transaction hash
+             * @returns {Object} returns transaction receipt object or null
+             */
             case "eth_getTransactionReceipt": {
                 let status = await this.nearProvider.status();
                 let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
-                const responseHash = utils.base64ToString(outcome.status.SuccessValue);
+
                 // TODO: compute proper tx status: accumulate logs and gas.
-                const result = {
-                    transactionHash: params[0],
-                    transactionIndex: '0x1',
-                    blockNumber: '0x' + status["sync_info"]["latest_block_height"].toString(16),
-                    blockHash: utils.base58ToHex(status["sync_info"]["latest_block_hash"]),
-                    contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
-                    gasUsed: utils.decToHex(outcome.transaction.outcome.gas_burnt),
-                    logs: outcome.transaction.outcome.logs,
-                    status: '0x1',
-                };
+                const result = nearToEth.transactionReceiptObj(status, outcome)
                 return result;
             }
 
