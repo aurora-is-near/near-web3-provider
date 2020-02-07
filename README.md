@@ -373,6 +373,8 @@ Blocks contain chunks, and chunks contain transactions.
 
 Transaction look-up requires both the hash and the account ID.
 
+> Note: Passing through an empty account ID can still return a transaction, but not always.
+
 `txStatus` for hash `8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy` and accountId: `dinoaroma"`
 
 ```
@@ -451,7 +453,9 @@ Transaction look-up requires both the hash and the account ID.
 
 #### ETH to NEAR and NEAR to ETH values
 
-What is the conversion of NEAR to ETH?
+No conversion. All inputs in nearlib are denominated in yoctoNEAR (1 NEAR = 10^24 yoctoNEAR)
+
+[NEAR divisibility is a yoctonear 10^24](https://docs.nearprotocol.com/docs/roles/developer/examples/nearlib/guides#send-yourself-money)
 
 #### Timestamp
 
