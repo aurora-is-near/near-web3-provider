@@ -27,7 +27,7 @@ class NearProvider {
         this.signer = new nearlib.InMemorySigner(this.keyStore);
 
         this.connection = new nearlib.Connection(networkId, this.nearProvider, this.signer);
-        this.account = new nearlib.Account(this.connection, TEST_NEAR_ACCOUNT);
+        this.account = new nearlib.Account(this.connection, 'liau');
     }
 
     async _createNewAccount(accountId) {
@@ -39,16 +39,17 @@ class NearProvider {
         this.connection = new nearlib.Connection('default', this.nearProvider, this.signer);
     }
 
-    async _callEvmContract(method, params) {
-        const paramsType = typeof params;
-        const stringifyParams = paramsType === 'string'
-            ? params
-            : JSON.stringify(params)
+    async _callEvmContract(method, methodArgs) {
+        // TODO: clarify methodArgs passed in should be { argName: arg }
+        // Step 3 in https://docs.nearprotocol.com/docs/roles/developer/examples/nearlib/guides#levels-of-abstraction
+        methodArgs = bs58.encode(Buffer.from(JSON.stringify(methodArgs)));
 
         try {
             const result = await this.nearProvider.query(
-                `call/${this.evm_contract}/${method}}`,
-                stringifyParams
+                `call/${this.evm_contract}/${method}`,
+                methodArgs
+                // 'call/evm/balance_of_near_account',
+                // "6x8V37bGexiqvZNMu397P2"
             );
             return result;
         } catch (e) {
@@ -56,7 +57,19 @@ class NearProvider {
         }
     }
 
-    async _ethAddressToNearAddress(ethAddress) {
+    async _nearAccountToEvmAddress(accountId) {
+        try {
+            const evmAddress = await this._callEvmContract(
+                'utils.near_account_id_to_evm_address',
+                { account_id: accountId }
+            )
+            return evmAddress
+        } catch (e) {
+            return e;
+        }
+    }
+
+    async _ethAddressToNearAccount(ethAddress) {
         const method = 'utils.evm_account_to_internal_address';
         try {
             const nearAddress = await this._callEvmContract(method, ethAddress);
@@ -141,8 +154,6 @@ class NearProvider {
                 // call evm contract
                 // const evmMethod = 'utils.near_account_id_to_evm_address';
 
-                // const promises = [];
-
                 // const nearAccountIdToEvmAddress = (accountId) => {
                 //     return new Promise((resolve, reject) => {
                 //         this.nearProvider.query(
@@ -155,7 +166,7 @@ class NearProvider {
                 // }
 
                 // const promiseArray = accounts.map((accountId) => {
-                //     promises.push(nearAccountIdToEvmAddress(accountId));
+                //    return nearAccountIdToEvmAddress(accountId);
                 // });
 
                 // Promise.all(promiseArray)
@@ -197,12 +208,13 @@ class NearProvider {
                 // TODO: Convert hex address to NEAR account ID
                 // I think we need to do an in between check
                 try {
-                    const state = await this.nearProvider.query(`account/bobblehead`, '');
-                    // Are transactions in order?
-                    console.log({state})
-                    const block = await this.nearProvider.block(state.block_height)
-                    console.log({block})
-                    // TODO: Convert NEAR amount to wei
+                    // const state = await this.nearProvider.query(`account/bobblehead`, '');
+                    // // Are transactions in order?
+                    // console.log({state})
+                    // const block = await this.nearProvider.block(state.block_height)
+                    // console.log({block})
+                    const balance = await this._callEvmContract('balance_of_near_account', 'liau')
+                    console.log({balance})
                     return utils.decToHex(10000000000);
                 } catch (e) {
                     return e;
@@ -220,6 +232,9 @@ class NearProvider {
                 const position = params[1];
                 const block = params[2];
 
+                // From near-evm contract:
+                //// for Eth call of similar name
+                // pub fn get_storage_at(& self, address: String, key: String) -> String {
                 return "0x";
             }
 
@@ -247,18 +262,16 @@ class NearProvider {
              * Returns block
              * web3.eth.getBlock accepts either a hash or a number.
              * Block hash params are handled here
-             * @param {String} blockHash block hash
+             * @param {String} blockHash hex equivalent of a NEAR block hash
              * @param {Boolean} returnTxObjects (optional) default: false. if
              * true returns the full transaction objects, else false.
              * @returns {Object} returns block object
              */
             case "eth_getBlockByHash": {
-                let blockHash = params[0];
-                const returnTxObjects = params[1];
+                console.log('get block by hash')
 
-                // TODO: blockHash being sent is an ETH block hash. How does this equate with NEAR blocks? Is the blockHash actually the base58 equivalent of a NEAR block? Or does the user actually want the ETH block for this ETH block hash? If following along with eth_getBlockByNumber, then the blockHash should reference a NEAR block, not an ETH block, and the blockHash should translate directly to a NEAR block hash
-                console.log('by hash')
-                blockHash = utils.hexToBase58(blockHash);
+                const blockHash = utils.hexToBase58(params[0]);
+                const returnTxObjects = params[1];
 
                 try {
                     const block = await this.nearProvider.block(blockHash);
@@ -354,37 +367,30 @@ class NearProvider {
 
             /**
              * Returns the transaction requested by a transaction hash
-             * @param {String} txHashAndAccountId transaction hash + accountId, separated by ':'
+             * @param {String} txHashAndAccountId transaction hash + accountId,
+             * separated by ':'
              * @returns {Object} returns transaction object
              */
             case "eth_getTransactionByHash": {
                 const txHashAndAccountId = params[0];
-                console.log('txHash', params[0])
-                // Split txHash
+
                 assert(txHashAndAccountId.includes(':'), 'Must pass in hash and accountId separated by ":" <txHash:accountId>');
 
+                // Split txHashAndAccountId into txHash and accountId
                 let [txHash, accountId] = txHashAndAccountId.split(':');
-                txHash = utils.hexToBase58(txHash);
-                console.log({txHash})
-                // '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy'
-                console.log({txHash})
-                const outcome = await this.nearProvider.txStatus(txHash, accountId);
 
-                const blockHash = outcome.transaction_outcome.block_hash;
+                // NB: provider.txStatus requires txHash to be a Uint8Array of
+                // the base58 tx hash. Since txHash is hex, it is converted to
+                // base58, and then turned into a Buffer
+                txHash = new Uint8Array(bs58.decode(utils.hexToBase58(txHash)));
+
+                const tx = await this.nearProvider.txStatus(txHash, accountId);
+
+                const blockHash = tx.transaction_outcome.block_hash;
                 const block = await this.nearProvider.block(blockHash);
 
-                function base_encode (value) {
-                    if (typeof (value) === 'string') {
-                        value = Buffer.from(value, 'utf8');
-                    }
-                    return bs58.encode(Buffer.from(value));
-                }
-                console.log({outcome})
+                console.log({tx})
 
-                // const block = await this.nearProvider.block(1221180);
-                // let outcome = await this.provider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
-
-                // TODO: this is hardcoded ATM.
                 return nearToEth.transactionObj(block.chunks[0], block.header.hash);
             }
 
@@ -398,6 +404,7 @@ class NearProvider {
              * @param {Number} txIndex transaction's index position
              * @returns {Object} returns transaction object
              */
+            // TODO: Fix to get transactions from chunks
             case "eth_getTransactionByBlockHashAndIndex": {
                 const blockHash = utils.hexToBase58(params[0]);
                 const txIndex = utils.hexToDec(params[1]);
