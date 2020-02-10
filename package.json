@@ -2,19 +2,37 @@
   "name": "near-web3-provider",
   "version": "0.1.0",
   "description": "NEAR Web3 integration",
+  "engines": {
+    "node": ">= 11"
+  },
   "main": "index.js",
   "scripts": {
     "test": "jest test"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "NEAR Inc <hello@nearprotocol.com>",
+  "contributors": [
+    "Barbara Liau <barbara@summa.one>"
+  ],
+  "license": "GPL-3.0",
   "dependencies": {
     "bn.js": "^5.0.0",
     "bs58": "^4.0.0",
     "bsert": "0.0.10",
-    "jest": "^24.9.0",
     "nearlib": "github:nearprotocol/nearlib",
     "web3": "^1.2.4",
     "web3-provider-engine": "^15.0.4"
-  }
+  },
+  "devDependencies": {
+    "jest": "^24.9.0"
+  },
+  "keywords": [
+    "blockchain",
+    "crypto",
+    "dapps",
+    "distributed",
+    "applications",
+    "distributed applications",
+    "web3",
+    "ethereum"
+  ]
 }
