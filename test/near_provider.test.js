@@ -1,6 +1,5 @@
 const NearProvider = require('../index');
 const web3 = require('web3');
-const assert = require('bsert');
 
 const withWeb3 = (fn) => {
     const web = new web3();
@@ -83,14 +82,14 @@ describe('#web3.eth', () => {
         }));
     });
 
-    describe.only('getBalance | eth_getBalance', () => {
+    describe('getBalance | eth_getBalance', () => {
         test('returns balance', withWeb3(async (web) => {
             try {
                 const balance = await web.eth.getBalance('0xB15D9b7C2F10a50dda6D88F40fb338cE514AF551', 'latest');
-                console.log({balance})
+                console.log({balance});
                 expect(typeof balance).toBe('string');
             } catch (e) {
-                console.log(e)
+                console.log(e);
             }
         }));
     });
@@ -100,7 +99,7 @@ describe('#web3.eth', () => {
             const address = TEST_NEAR_ACCOUNT;
             const position = 0;
             let storagePosition = await web.eth.getStorageAt(address, position);
-            console.log({storagePosition})
+            console.log({storagePosition});
             expect(typeof storagePosition).toBe('string');
         }));
     });
@@ -109,7 +108,7 @@ describe('#web3.eth', () => {
         test('gets code', withWeb3(async (web) => {
             const address = TEST_NEAR_ACCOUNT;
             const code = await web.eth.getCode(address);
-            console.log({code})
+            console.log({code});
             expect(typeof code).toBe('string');
         }));
     });
@@ -117,8 +116,9 @@ describe('#web3.eth', () => {
     describe(`getBlock |
         eth_getBlockByHash,
         eth_getBlockByNumber`, () => {
-        test('gets block by hash', withWeb3(async (web) => {
+        test.only('gets block by hash', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash);
+
             expect(block.hash).toEqual(blockHash);
             expect(block.number).toEqual(blockNumber);
             expect(Array.isArray(block.transactions)).toBe(true);
@@ -183,7 +183,7 @@ describe('#web3.eth', () => {
         test('gets transaction by hash', withWeb3(async(web) => {
             const tx = await web.eth.getTransaction(txHash + ':dinoaroma');
             expect(typeof tx === 'object').toBe(true);
-            expect(tx.hasOwnProperty('hash')).toBe(true);
+            expect(typeof tx.hash === 'string').toBe(true);
         }));
     });
 
