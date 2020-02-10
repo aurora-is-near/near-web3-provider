@@ -7,7 +7,9 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "jest test"
+    "test": "jest test",
+    "lint": "eslint test && eslint src/**/*.js",
+    "lint:fix": "eslint test --fix && eslint src/**/*.js --fix"
   },
   "author": "NEAR Inc <hello@nearprotocol.com>",
   "contributors": [
@@ -23,7 +25,14 @@
     "web3-provider-engine": "^15.0.4"
   },
   "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-plugin-jest": "^23.7.0",
     "jest": "^24.9.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "./coverage/",
+    "collectCoverage": true
   },
   "keywords": [
     "blockchain",
