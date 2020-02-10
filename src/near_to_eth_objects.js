@@ -11,7 +11,6 @@ const nearToEth = {};
  */
 nearToEth.syncObj = function (syncInfo) {
 	return {
-		// TODO: Not sure how to get this
 		startingBlock: '0x0',
 		currentBlock: utils.decToHex(syncInfo.latest_block_height),
 		highestBlock: utils.decToHex(syncInfo.latest_block_height),
@@ -26,7 +25,7 @@ nearToEth.syncObj = function (syncInfo) {
  */
 
 /**
- * Gets NEAR transactions from FROM A BLOCK
+ * Gets NEAR transactions FROM A BLOCK
  * @param {Array} block block
  * @param {Boolean} returnTxObjects (optional) default false. if true,
  * return entire transaction object, otherwise just hashes
@@ -49,6 +48,7 @@ nearToEth._getTxsFromChunks = function(block, returnTxObjects, near) {
 
 			// Add for convenience and to prevent multiple queries
 			chunk.block_hash = block.header.hash;
+			chunk.block_height = block.header.height;
 			chunk.gas_price = block.header.gas_price;
 
 			return chunk;
@@ -58,32 +58,29 @@ nearToEth._getTxsFromChunks = function(block, returnTxObjects, near) {
 	}
 
 	// Create promise array of hydrate chunk promises
-	const promiseArray = chunkHashes.map((chunkHash) => hydrateChunk(chunkHash, block));
+	const promiseArray = chunkHashes.map((ch) => hydrateChunk(ch, block));
 
 	// Hydrate the chunks
-	const hydratedChunks = await Promise.all(promiseArray);
+	try {
+		const hydratedChunks = await Promise.all(promiseArray);
 
-	let allTransactions = [];
+		let transactions = [];
 
-	// Push all the transactions into one list
-	hydratedChunks.forEach((chunk) => {
-		return allTransactions.push(chunk.transactions);
-	});
+		// Return either transaction hashes or full transaction objects
+		if (hydratedChunks.length > 0 && !returnTxObjects) {
+			// Return tx hashes (default)
+			transactions = hydratedChunks.map((tx) => utils.base58ToHex(tx.hash));
+		} else if (hydratedChunks.length > 0 && returnTxObjects) {
+			// Return transaction object if requested and txs exist
+			transactions = hydratedChunks.map((tx, txIndex) => {
+				return this.transactionObj(tx, txIndex, block, near);
+			});
+		}
 
-	let transactions = [];
-
-	// Return either transaction hashes or full transaction objects
-	if (allTransactions.length > 0 && !returnTxObjects) {
-		// Return tx hashes (default)
-		transactions = allTransactions.map((t) => utils.base58ToHex(t.hash));
-	} else if (allTransactions.length > 0 && returnTxObjects) {
-		// Return transaction object if requested and txs exist
-		transactions = allTransactions.map((tx, txIndex) => {
-			return this.transactionObj(tx, txIndex, block, near.nearAccountToEvmAddress);
-		});
+		return transactions;
+	} catch (e) {
+		return e;
 	}
-
-	return transactions;
 }
 /**
  * Maps NEAR Transaction FROM A CHUNK QUERY to ETH Transaction Object
@@ -93,21 +90,21 @@ nearToEth._getTxsFromChunks = function(block, returnTxObjects, near) {
  * Maps NEAR Transaction FROM A TX QUERY to ETH Transaction Object
  * @param {Object} 		tx NEAR transaction
  * @param {Number}		txIndex	txIndex
- * @param {Function}	nearAccountToEvmAddress Get evm address from near
+ * @param {Object}		near nearProvider instance
  * account
  * @returns {Object} returns ETH transaction object
  *
- * @example nearToEth.transactionObject(tx, _nearAccountToEvmAddress)
+ * @example nearToEth.transactionObject(tx, near
  */
-nearToEth.transactionObj = async function(tx, txIndex, block, nearAccountToEvmAddress) {
+nearToEth.transactionObj = async function(tx, txIndex, near) {
 	assert(typeof tx === 'object' && tx.transaction.hash, 'nearToEth.transactionObj: must pass in tx object');
 
 	const { transaction_outcome, transaction } = tx;
 
 	// TODO: Add this back in when EVM contract is deployed
 	// const [sender, receiver] = await Promise.all(
-	// 	nearAccountToEvmAddress(transaction.signer_id),
-	// 	nearAccountToEvmAddress(transaction.receiver_id)
+	// 	near.nearAccountToEvmAddress(transaction.signer_id),
+	// 	near.nearAccountToEvmAddress(transaction.receiver_id)
 	// );
 
 	return {
@@ -115,7 +112,9 @@ nearToEth.transactionObj = async function(tx, txIndex, block, nearAccountToEvmAd
 		blockHash: utils.base58ToHex(transaction.block_hash),
 
 		// QUANTITY block number where this transaction was in
-		blockNumber: utils.decToHex(transaction_outcome.block_hash),
+		blockNumber: transaction_outcome
+			? utils.decToHex(transaction_outcome.block_hash)
+			: tx.blockNumber,
 
 		// DATA 20 bytes - address of the sender
 		// TODO: from: sender
@@ -142,8 +141,7 @@ nearToEth.transactionObj = async function(tx, txIndex, block, nearAccountToEvmAd
 		to: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
 
 		// QUANTITY - integer of the tx's index position in the block
-		// TODO: use utils.decToHex(txIndex)
-		transactionIndex: '0x1',
+		transactionIndex: utils.decToHex(txIndex),
 
 		// QUANTITY - value transferred in wei (yoctoNEAR)
 		value: transaction.actions[0].Transfer.deposit,
@@ -160,13 +158,42 @@ nearToEth.transactionObj = async function(tx, txIndex, block, nearAccountToEvmAd
 
 /**
  * Maps NEAR Block to ETH Block Object
- * @param {Object} block NEAR block
+ * @param {Object|String} block NEAR block. If 'empty', return empty block
  * @param {Boolean} returnTxObjects (optional) default false. if true, return
  * entire transaction object, other just hashes
  * @returns {Object} returns ETH block object
  */
-nearToEth.blockObj = function(block, returnTxObjects) {
+nearToEth.blockObj = function(block, returnTxObjects, near) {
+	if (typeof block === 'string' && block === 'empty') {
+		return {
+			number: null,
+			hash: null,
+			parentHash: null,
+			nonce: null,
+			transactionsRoot: '',
+			gasLimit: '',
+			gasUsed: '',
+			timestamp: '0x',
+			transactions: [],
+			uncles: []
+		};
+	}
+
 	const { header } = block;
+
+	/**
+	 * Get the maximum gas limit allowed in this block. Since gas limit is listed
+	 * in each chunk, get the gas limit in each chunk and take the max.
+	 * @param {Object} chunks all of a blocks chunks
+	 * @returns {Number} Returns max gas limit
+	 */
+	function getMaxGas(chunks) {
+		return chunks.map((c) => c.gas_limit).sort()[0];
+	}
+
+	const transactions = this._getTxsFromChunks(block, returnTxObjects, near);
+
+
 
 	// call all the chunks and get the transactions
 
@@ -190,7 +217,10 @@ nearToEth.blockObj = function(block, returnTxObjects) {
 		// logsBloom: '',
 
 		// DATA the root of the transaction trie of the block
-		transactionsRoot: utils.base58ToHex(header.chunk_tx_root),
+		// TODO: There is no such thing as transaction trie of the block.
+		// Transactions live on chunks, there is a tx_root on each chunk. Could
+		// hash all of them into one hash?
+		transactionsRoot: '0x00000000000000000000000000000000',
 
 		// DATA the root of the final state trie of the block
 		// stateRoot: '',
@@ -207,9 +237,9 @@ nearToEth.blockObj = function(block, returnTxObjects) {
 		// extraData: '',
 		// QUANTITY integer of the size of this block in bytes
 		// size: null,
-		// TODO: gas limit
+
 		// QUANTITY the maximum gas allowed in this block
-		gasLimit: "0xffffffffff",
+		gasLimit: utils.decToHex(getMaxGas(block.chunks)),
 
 		// QUANTITY the total used gas by all transactions in this block
 		gasUsed: null,
@@ -218,10 +248,10 @@ nearToEth.blockObj = function(block, returnTxObjects) {
 		timestamp: utils.convertTimestamp(header.timestamp),
 
 		// ARRAY Array of transaction objects, or 32 bytes transaction hashes
-		transactions: this._getTxsFromChunks(block, returnTxObjects),
+		transactions: ,
 
 		// ARRAY Array of uncle hashes
-		uncles: ['']
+		uncles: []
 	};
 };
 
