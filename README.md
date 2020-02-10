@@ -5,6 +5,14 @@
 NEAR Protocol Web3 provider.
 Use it to connect your Ethereum frontend or Truffle to NEAR Protocol.
 
+## Description
+
+NEAR Protocol is a sharded, proof-of-stake blockchain. Keeping that in mind, some Ethereum concepts are naturally not shared with NEAR; for example, there is no concept of uncle blocks, pending blocks, or block difficulty.
+
+As a sharded blockchain, the structure of NEAR blocks is also different. In Ethereum, blocks have transactions. In NEAR, blocks have chunks, and chunks have transactions.
+
+`near-web3-provider` has been adapted to follow `web3` as closely as possible, but where there are no equivalents, empty values have been passed through. Other return values have been adapted to account for the difference in block structure (for example, the root of the transaction trie comes from a chunk rather than a block). If a method has no direct translation, an `Unsupported method` error is returned.
+
 ## Install
 
 ```bash
@@ -46,6 +54,11 @@ module.exports = {
 }
 ```
 
+## API
+
+TODO: Add in API methods and differences with web3.
+
+`eth_getTransactionByBlockHashAndIndex` - how can you get the transaction by index if it is nested inside chunks? should we unfold chunks until that index is found? keep a count and only get transactions up until that point.
 -------------------------
 
 ## Development
@@ -83,7 +96,7 @@ See [JSON-RPC-PROVIDER.js](https://github.com/nearprotocol/nearlib/blob/master/l
 - status
 - chunk
 - getNetwork  // Can't call this method. Get method unfound
-- txStatus    // Can't call this method. Get method unfound
+- tx
 
 All of them, except for `getNetwork`, use `sendJsonRpc` internally.
 
@@ -371,20 +384,49 @@ Querying call/evm/utils.near_account_id_to_evm_address} failed: wasm execution f
 
 Blocks contain chunks, and chunks contain transactions.
 
+Chunk: `29QUPr3jsmT5JccVjFCBbPnoYMct2P8p3G9ntZVVH8Qr`
+
+```
+  {
+      "header": {
+          "balance_burnt": "0",
+          "chunk_hash": "29QUPr3jsmT5JccVjFCBbPnoYMct2P8p3G9ntZVVH8Qr",
+          "encoded_length": 8,
+          "encoded_merkle_root": "D7vyy5n5oKyZUBEWbj4VdyRktH4ZzBx1JnDMDaS8sDAG",
+          "gas_limit": 1000000000000000,
+          "gas_used": 0,
+          "height_created": 1465617,
+          "height_included": 0,
+          "outcome_root": "11111111111111111111111111111111",
+          "outgoing_receipts_root": "6m2bJP9TiEtxqHSzLygPCQqiGdgYQQYaSYTFeP2gEUQj",
+          "prev_block_hash": "D7LAQwt9N3W1iB8Pm59BoftTNGVE6qqrebDogtD7vEKV",
+          "prev_state_root": "32Wh26Ld31R6aXggpL3RHNEmcrKNjHyNX2HBJRtP4Vp7",
+          "rent_paid": "0",
+          "shard_id": 0,
+          "signature": "ed25519:42PcsC7y6NWbc1rhEbtAWYokrYnKf3u5kLiXuXcqZdd6YHmpz8QRQsMo7qXTUDJkhGreUCZZMuRfdxkcCAuaaBAU",
+          "tx_root": "11111111111111111111111111111111",
+          "validator_proposals": [],
+          "validator_reward": "0"
+      },
+      "receipts": [],
+      "transactions": []
+  }
+```
+
+>  Note: `tx` on the RPC is the same as `txStatus` on provider
+
 Transaction look-up requires both the hash and the account ID.
 
-> Note: Passing through an empty account ID can still return a transaction, but not always.
+>  Note: Passing through an empty account ID can still return a transaction, but not always.
 
 `txStatus` for hash `8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy` and accountId: `dinoaroma"`
 
 ```
 {
-	receipts_outcome:
-	[{
+	receipts_outcome: [{
 		block_hash: 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN',
 		id: 'DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm',
-		outcome:
-		{
+		outcome: {
 			gas_burnt: 937144500000,
 			logs: [],
 			receipt_ids: [],
@@ -392,29 +434,36 @@ Transaction look-up requires both the hash and the account ID.
 		},
 		proof: []
 	}],
-		status: { SuccessValue: '' },
-	transaction:
-	{
-		actions: [{ Transfer: { deposit: '1000000000000000000000000' } }],
-			hash: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
-				nonce: 2,
-					public_key: 'ed25519:Cev7YwHpPHsH7mJDuUdcHxobvVSNzTHMBgpTYYYEUv26',
-						receiver_id: 'bobblehead',
-							signature:
+
+	status: {
+    SuccessValue: ''
+  },
+
+	transaction: {
+		actions: [{
+      Transfer: {
+        deposit: '1000000000000000000000000'
+      }
+    }],
+    hash: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
+    nonce: 2,
+    public_key: 'ed25519:Cev7YwHpPHsH7mJDuUdcHxobvVSNzTHMBgpTYYYEUv26',
+    receiver_id: 'bobblehead',
+    signature:
 		'ed25519:5wQqUxSwhZgw75oamBrFdRCno4tixejWiHA64LyzLGAwjp7pJAR795VctkAHsa2sybk7AzUWQDs1bg7eCdh4hrUU',
-			signer_id: 'dinoaroma'
+    signer_id: 'dinoaroma'
 	},
-	transaction_outcome:
-	{
+
+	transaction_outcome: {
 		block_hash: 'G5CCPBoQqPpqYf4e1SrQmJtymDsfnUCkFbKJAK1khbjp',
-			id: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
-				outcome:
-		{
+		id: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
+		outcome: {
 			gas_burnt: 937144500000,
-				logs: [],
-					receipt_ids: ['DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm'],
-						status:
-			{ SuccessReceiptId: 'DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm' }
+			logs: [],
+			receipt_ids: ['DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm'],
+			status: {
+        SuccessReceiptId: 'DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm'
+      }
 		},
 		proof: []
 	}
