@@ -8,8 +8,8 @@
   "main": "index.js",
   "scripts": {
     "test": "jest test",
-    "lint": "eslint test && eslint src/**/*.js",
-    "lint:fix": "eslint test --fix && eslint src/**/*.js --fix"
+    "lint": "eslint test/ && eslint src/**/*.js",
+    "lint:fix": "eslint test/ --fix && eslint src/**/*.js --fix"
   },
   "author": "NEAR Inc <hello@nearprotocol.com>",
   "contributors": [
@@ -20,7 +20,7 @@
     "bn.js": "^5.0.0",
     "bs58": "^4.0.0",
     "bsert": "0.0.10",
-    "nearlib": "github:nearprotocol/nearlib",
+    "nearlib": "^0.21.0",
     "web3": "^1.2.4",
     "web3-provider-engine": "^15.0.4"
   },
