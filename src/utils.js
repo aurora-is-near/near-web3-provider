@@ -9,6 +9,8 @@ const utils = {};
  * @return {string} string without 0x
  */
 utils.remove0x = function(value) {
+    assert(typeof value === 'string', 'remove0x: must pass in string');
+
     if (value.slice(0, 2) === '0x') {
         return value.slice(2);
     } else {
@@ -110,4 +112,21 @@ utils.convertTimestamp = function(value) {
     return this.decToHex(roundedTime);
 };
 
+/**
+ * Splits hex string into txHash and accountId
+ * Used by eth_getTransactionByHash, eth_getTransactionReceipt
+ * @param {String} value hex string in format <txHash>:<accountId>
+ * @returns {Object} Returns txHash and accountId
+ */
+utils.getTxHashAndAccountId = function(value) {
+  assert(
+    value.includes(':'),
+    'Must pass in hash and accountId separated by ":" <txHash:accountId>'
+  );
+  // Split value into txHash and accountId
+  const [ txHash, accountId ] = value.split(':');
+
+  // Return object for convenience so we don't need to keep track of index order
+  return { txHash, accountId };
+}
 module.exports = utils;
