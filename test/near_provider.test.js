@@ -198,7 +198,7 @@ describe('#web3.eth', () => {
 
     });
 
-    describe.only(`getTransactionFromBlock |
+    describe(`getTransactionFromBlock |
         eth_getTransactionByBlockHashAndIndex,
         eth_getTransactionByBlockNumberAndIndex`, () => {
         test('returns transaction from block hash', withWeb3(async (web) => {
