@@ -142,7 +142,7 @@ class NearProvider {
                 console.log({result});
                 // convert to BN in case number is bigger than 2^53 - 1
                 const gasPrice = new BN(result.gas_price);
-                return result.gas_price;
+                return utils.decToHex(gasPrice);
             } catch (e) {
                 return e;
             }
