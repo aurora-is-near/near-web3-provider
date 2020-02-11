@@ -1,7 +1,10 @@
 const assert = require('bsert');
 const bs58 = require('bs58');
+const web3 = require('web3');
 
 const utils = {};
+
+utils.keccak256 = web3.utils.keccak256;
 
 /**
  * Remove 0x if prepended
@@ -129,4 +132,18 @@ utils.getTxHashAndAccountId = function(value) {
     // Return object for convenience so we don't need to keep track of index order
     return { txHash, accountId };
 };
+
+/**
+ * Converts a Near account ID into the corresponding ETH address
+ * @param {String} accountID account ID as a string
+ * @returns {String} Returns the corresponding ETH address without a 0x prefix
+ */
+utils.nearAccountToEvmAddress = function(accountID) {
+  assert(
+    typeof accountID === 'string', 'nearAccountToEvmAddress must pass in string'
+  );
+  // NB: 2 characters of hex prefix. Then 20 hex pairs.
+  return utils.keccak256(accountID).slice(26, 66);
+}
+
 module.exports = utils;
