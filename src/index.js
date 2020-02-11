@@ -87,18 +87,18 @@ class NearProvider {
         switch (method) {
 
         /**
-             * Returns the current network id
-             * @returns {String}
-             */
+         * Returns the current network id
+         * @returns {String}
+         */
         case 'net_version': {
             return NEAR_NET_VERSION;
         }
 
         /**
-             * Returns true if client is actively listening for network
-             * connections
-             * @returns {boolean}
-             */
+         * Returns true if client is actively listening for network
+         * connections
+         * @returns {boolean}
+         */
         case 'net_listening': {
             try {
                 const status = await this.nearProvider.status();
@@ -113,10 +113,10 @@ class NearProvider {
         }
 
         /**
-             * Checks if the node is currently syncing
-             * @returns {Object|boolean} a sync object when the node is
-             * currently syncing or 'false'
-             */
+         * Checks if the node is currently syncing
+         * @returns {Object|boolean} a sync object when the node is
+         * currently syncing or 'false'
+         */
         case 'eth_syncing': {
             try {
                 const { sync_info } = await this.nearProvider.status();
@@ -132,10 +132,10 @@ class NearProvider {
         }
 
         /**
-             * Returns the current price per gas in yoctoNEAR
-             * @returns {Quantity} integer of the current gas price in
-             * yoctoNEAR as hex
-             */
+         * Returns the current price per gas in yoctoNEAR
+         * @returns {Quantity} integer of the current gas price in
+         * yoctoNEAR as hex
+         */
         case 'eth_gasPrice': {
             try {
                 const result = await this.nearProvider.query('gas_price', []);
@@ -149,10 +149,10 @@ class NearProvider {
         }
 
         /**
-             * Returns a list of addresses owned by client/accounts the node
-             * controls
-             * @returns {String[]} array of 20 byte addresses
-             */
+         * Returns a list of addresses owned by client/accounts the node
+         * controls
+         * @returns {String[]} array of 20 byte addresses
+         */
         case 'eth_accounts': {
             // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
 
@@ -193,23 +193,23 @@ class NearProvider {
         }
 
         /**
-             * Returns the number of the most recent block
-             * @returns {Quantity} integer of the current block number the
-             * client is on
-             */
+         * Returns the number of the most recent block
+         * @returns {Quantity} integer of the current block number the
+         * client is on
+         */
         case 'eth_blockNumber': {
             const status = await this.nearProvider.status();
             return utils.decToHex(status.sync_info.latest_block_height);
         }
 
         /**
-             * Gets the balance of an address at a given block
-             * @param {String} address Address to check for balance
-             * @param {Quantity|Tag} block Optional. Integer block
-             * number, or the string "latest", "earliest", or "pending".
-             * Default is "latest"
-             * @returns {Quantity} integer of the current balance in wei
-             */
+         * Gets the balance of an address at a given block
+         * @param {String} address Address to check for balance
+         * @param {Quantity|Tag} block Optional. Integer block
+         * number, or the string "latest", "earliest", or "pending".
+         * Default is "latest"
+         * @returns {Quantity} integer of the current balance in wei
+         */
         case 'eth_getBalance': {
             console.log({params});
             const address = params[0];
@@ -230,12 +230,12 @@ class NearProvider {
             }
         }
         /**
-             * Returns the value from a storage position at a given address.
-             * @param {String} address 20-byte address of the storage
-             * @param {Quantity} position The index position of the storage
-             * @param {Quantity} block (optional) Block
-             * @returns {String} The value at this storage position
-             */
+         * Returns the value from a storage position at a given address.
+         * @param {String} address 20-byte address of the storage
+         * @param {Quantity} position The index position of the storage
+         * @param {Quantity} block (optional) Block
+         * @returns {String} The value at this storage position
+         */
         case 'eth_getStorageAt': {
             const address = params[0];
             const position = params[1];
@@ -248,10 +248,10 @@ class NearProvider {
         }
 
         /**
-             * Gets the code at a specific address
-             * @param {String} address 20-byte address to get the code from
-             * @param {Quantity} block (optional)
-             */
+         * Gets the code at a specific address
+         * @param {String} address 20-byte address to get the code from
+         * @param {Quantity} block (optional)
+         */
         case 'eth_getCode': {
             const address = utils.remove0x(params[0]);
 
@@ -268,14 +268,14 @@ class NearProvider {
         }
 
         /**
-             * Returns block
-             * web3.eth.getBlock accepts either a hash or a number.
-             * Block hash params are handled here
-             * @param {String} blockHash hex equivalent of a NEAR block hash
-             * @param {Boolean} returnTxObjects (optional) default: false. if
-             * true returns the full transaction objects, else false.
-             * @returns {Object} returns block object
-             */
+         * Returns block
+         * web3.eth.getBlock accepts either a hash or a number.
+         * Block hash params are handled here
+         * @param {String} blockHash hex equivalent of a NEAR block hash
+         * @param {Boolean} returnTxObjects (optional) default: false. if
+         * true returns the full transaction objects, else false.
+         * @returns {Object} returns block object
+         */
         case 'eth_getBlockByHash': {
             console.log('get block by hash');
 
@@ -291,15 +291,15 @@ class NearProvider {
         }
 
         /**
-             * Returns block object
-             * web3.eth.getBlock accepts either a hash, number, or string.
-             * Number and string params are handled here.
-             * @param {Quantity|Tag} height block height or enum string
-             * 'genesis', 'latest', 'earliest', or 'pending'
-             * @param {Boolean} returnTxObjects (optional) default: false. if
-             * true returns the full transaction objects, else false.
-             * @returns {Object} returns block object
-             */
+         * Returns block object
+         * web3.eth.getBlock accepts either a hash, number, or string.
+         * Number and string params are handled here.
+         * @param {Quantity|Tag} height block height or enum string
+         * 'genesis', 'latest', 'earliest', or 'pending'
+         * @param {Boolean} returnTxObjects (optional) default: false. if
+         * true returns the full transaction objects, else false.
+         * @returns {Object} returns block object
+         */
         // TODO: Handle other enum strings
         case 'eth_getBlockByNumber': {
             let blockHeight = params[0];
@@ -321,14 +321,14 @@ class NearProvider {
         }
 
         /**
-             * Returns the number of transactions in a block from a block
-             * matching the given block hash.
-             * web3.eth.getBlockTransactionCount accepts either a hash, number,
-             * or string.
-             * Hash params are handled here
-             * @param {String} blockHash 32-byte block hash
-             * @returns {Quantity} Integer of the number of txs in this block
-             */
+         * Returns the number of transactions in a block from a block
+         * matching the given block hash.
+         * web3.eth.getBlockTransactionCount accepts either a hash, number,
+         * or string.
+         * Hash params are handled here
+         * @param {String} blockHash 32-byte block hash
+         * @returns {Quantity} Integer of the number of txs in this block
+         */
         case 'eth_getBlockTransactionCountByHash': {
             let blockHash = params[0];
             blockHash = utils.hexToBase58(blockHash);
@@ -343,14 +343,14 @@ class NearProvider {
         }
 
         /**
-            * Returns the number of transactions in a block from a block
-            * matching the given number or string
-            * web3.eth.getBlockTransactionCount accepts either a hash, number,
-            * or string.
-            * Number and string params are handled here
-            * @param {String} blockHeight 32-byte block hash
-            * @returns {Quantity} Integer of the number of txs in this block
-            */
+         * Returns the number of transactions in a block from a block
+         * matching the given number or string
+         * web3.eth.getBlockTransactionCount accepts either a hash, number,
+         * or string.
+         * Number and string params are handled here
+         * @param {String} blockHeight 32-byte block hash
+         * @returns {Quantity} Integer of the number of txs in this block
+         */
         // TODO: Handle other enum strings
         case 'eth_getBlockTransactionCountByNumber': {
             console.log('number');
@@ -375,18 +375,13 @@ class NearProvider {
         }
 
         /**
-             * Returns the transaction requested by a transaction hash
-             * @param {String} txHashAndAccountId transaction hash + accountId,
-             * separated by ':'
-             * @returns {Object} returns transaction object
-             */
+         * Returns the transaction requested by a transaction hash
+         * @param {String} txHashAndAccountId transaction hash + accountId,
+         * separated by ':'
+         * @returns {Object} returns transaction object
+         */
         case 'eth_getTransactionByHash': {
-            const txHashAndAccountId = params[0];
-
-            assert(txHashAndAccountId.includes(':'), 'Must pass in hash and accountId separated by ":" <txHash:accountId>');
-
-            // Split txHashAndAccountId into txHash and accountId
-            let [txHash, accountId] = txHashAndAccountId.split(':');
+            let { txHash, accountId } = utils.getTxHashAndAccountId(params[0]);
 
             // NB: provider.txStatus requires txHash to be a Uint8Array of
             // the base58 tx hash. Since txHash is hex, it is converted to
@@ -400,19 +395,19 @@ class NearProvider {
 
             console.log({tx});
 
-            return nearToEth.transactionObj(block.chunks[0], block.header.hash);
+            return nearToEth.transactionObj(tx);
         }
 
         /**
-             * Returns a transaction based on a block hash and the transactions
-             * index position
-             * web3.eth.getTransactionFromBlock accepts either a hash, number,
-             * or string.
-             * Hash params are handled here
-             * @param {String} blockHash 32-byte block hash
-             * @param {Number} txIndex transaction's index position
-             * @returns {Object} returns transaction object
-             */
+         * Returns a transaction based on a block hash and the transactions
+         * index position
+         * web3.eth.getTransactionFromBlock accepts either a hash, number,
+         * or string.
+         * Hash params are handled here
+         * @param {String} blockHash 32-byte block hash
+         * @param {Number} txIndex transaction's index position
+         * @returns {Object} returns transaction object
+         */
         // TODO: Fix to get transactions from chunks
         case 'eth_getTransactionByBlockHashAndIndex': {
             const blockHash = utils.hexToBase58(params[0]);
@@ -432,15 +427,15 @@ class NearProvider {
         }
 
         /**
-            * Returns a transaction based on a block number or enum string and
-            * the transactions index position
-            * web3.eth.getTransactionFromBlock accepts either a hash, number,
-            * or string.
-            * Number and string params are handled here
-            * @param {String} blockHeight block number or enum string
-            * @param {Number} txIndex transaction's index position
-            * @returns {Object} returns transaction object
-            */
+         * Returns a transaction based on a block number or enum string and
+         * the transactions index position
+         * web3.eth.getTransactionFromBlock accepts either a hash, number,
+         * or string.
+         * Number and string params are handled here
+         * @param {String} blockHeight block number or enum string
+         * @param {Number} txIndex transaction's index position
+         * @returns {Object} returns transaction object
+         */
         case 'eth_getTransactionByBlockNumberAndIndex': {
             let blockHeight = params[0];
             const txIndex = utils.hexToDec(params[1]);
@@ -467,11 +462,12 @@ class NearProvider {
         }
 
         /**
-             * Returns the receipt of a transaction by transaction hash
-             * @param {String} txHash transaction hash
-             * @returns {Object} returns transaction receipt object or null
-             */
+         * Returns the receipt of a transaction by transaction hash
+         * @param {String} txHash transaction hash
+         * @returns {Object} returns transaction receipt object or null
+         */
         case 'eth_getTransactionReceipt': {
+            const txHash = hexToBase58(params[0]);
             let status = await this.nearProvider.status();
             let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
 
@@ -481,13 +477,13 @@ class NearProvider {
         }
 
         /**
-             * Returns the number of transactions SENT from an address
-             * @param {String} address 20-byte address
-             * @param {Quantity|Tag} block (optional) block number, or the
-             * string "latest", "earliest", or "pending"
-             * @returns {Quantity} Integer of the number of transactions sent
-             * from this address
-             */
+         * Returns the number of transactions SENT from an address
+         * @param {String} address 20-byte address
+         * @param {Quantity|Tag} block (optional) block number, or the
+         * string "latest", "earliest", or "pending"
+         * @returns {Quantity} Integer of the number of transactions sent
+         * from this address
+         */
         case 'eth_getTransactionCount': {
             const address = params[0];
             const block = params[1];
@@ -508,11 +504,11 @@ class NearProvider {
         }
 
         /**
-             * Creates new message call transaction or a contract creation, if
-             * the data field contains code
-             * web3.eth.sendTransaction
-             *
-             */
+         * Creates new message call transaction or a contract creation, if
+         * the data field contains code
+         * web3.eth.sendTransaction
+         *
+         */
         case 'eth_sendTransaction': {
             if (params[0].to === undefined) {
                 // If contract deployment.
@@ -535,13 +531,13 @@ class NearProvider {
         }
 
         /**
-             * web3.eth.sendSignedTransaction
-             * Creates new message call transaction or a contract creation for
-             * signed transactions
-             * @param {String} txData the signed transaction data
-             * @returns {String} returns the 32-byte transaction hash, or the
-             * zero hash if the transaction is not yet available
-             */
+         * web3.eth.sendSignedTransaction
+         * Creates new message call transaction or a contract creation for
+         * signed transactions
+         * @param {String} txData the signed transaction data
+         * @returns {String} returns the 32-byte transaction hash, or the
+         * zero hash if the transaction is not yet available
+         */
         case 'eth_sendRawTransaction': {
             const txData = params[0];
 
@@ -549,32 +545,33 @@ class NearProvider {
         }
 
         /**
-             * web3.eth.sign and web3.eth.signTransaction
-             */
+         * web3.eth.sign and web3.eth.signTransaction
+         */
+        // https://nomicon.io/Runtime/Scenarios/FinancialTransaction.html
         case 'eth_sign': {
 
         }
 
         /**
-             * Executes a new message call immediately without creating a
-             * transaction on the block chain
-             * @param {Object} txCallObj transaction call object
-             * @property {String} to the address the tx is directed to
-             * @property {String} from (optional) the address the tx is sent
-             * from
-             * @property {Quantity} gas (optional) integer of the gas provided
-             * for the tx execution. `eth_call` consumes zero gas, but this
-             * parameter may be needed by some executions
-             * @property {Quantity} gasPrice (optional) integer of the gasPrice
-             * used for each paid gas
-             * @property {Quantity} value (optional) integer of the value sent
-             * with this tx
-             * @property {String} data (optional) hash of the method signature
-             * and encoded parameters
-             * @param {Quantity|Tag} blockHeight integer block number or the
-             * string 'latest', 'earliest', or 'pending'
-             * @returns {String} the return value of the executed contract
-             */
+         * Executes a new message call immediately without creating a
+         * transaction on the block chain
+         * @param {Object} txCallObj transaction call object
+         * @property {String} to the address the tx is directed to
+         * @property {String} from (optional) the address the tx is sent
+         * from
+         * @property {Quantity} gas (optional) integer of the gas provided
+         * for the tx execution. `eth_call` consumes zero gas, but this
+         * parameter may be needed by some executions
+         * @property {Quantity} gasPrice (optional) integer of the gasPrice
+         * used for each paid gas
+         * @property {Quantity} value (optional) integer of the value sent
+         * with this tx
+         * @property {String} data (optional) hash of the method signature
+         * and encoded parameters
+         * @param {Quantity|Tag} blockHeight integer block number or the
+         * string 'latest', 'earliest', or 'pending'
+         * @returns {String} the return value of the executed contract
+         */
         case 'eth_call': {
             let result = await this.account.viewFunction('evm', 'view_call', { contract_address: 'de5f4b90790d48e0c00348eb55c6d763a47a9443', encoded_input: params[0].data.slice(2) });
             return '0x' + result;
