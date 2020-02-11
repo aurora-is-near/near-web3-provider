@@ -76,4 +76,11 @@ describe('utils', () => {
             expect(result.accountId).toEqual('accountId');
         });
     });
+
+    describe('#nearAccountToEvmAddress', () => {
+        test('calculates addresses correctly', () => {
+            expect(utils.nearAccountToEvmAddress('test.near'))
+                .toEqual('cbda96b3f2b8eb962f97ae50c3852ca976740e2b');
+        });
+    });
 });
