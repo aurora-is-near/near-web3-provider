@@ -9,7 +9,7 @@ const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
 // DELETE LATER
-const TEST_NEAR_ACCOUNT = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
+const TEST_NEAR_ACCOUNT = 'test.near';
 // const TEST_ACCOUNT_TWO = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
 
 class NearProvider {
@@ -21,6 +21,7 @@ class NearProvider {
 
         const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
         const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
+
         this.keyStore = new nearlib.keyStores.InMemoryKeyStore();
         this.keyStore.setKey(networkId, TEST_NEAR_ACCOUNT, keyPair);
 
@@ -330,9 +331,8 @@ class NearProvider {
         // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
         const networkId = this.connection.networkId;
         const accounts = await this.keyStore.getAccounts(networkId);
-        console.log(accounts);
 
-        const evmAccounts = accounts.map(utils.nearAccountIdToEvmAddress);
+        const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
         return evmAccounts;
     }
 

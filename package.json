@@ -21,13 +21,14 @@
     "bs58": "^4.0.0",
     "bsert": "0.0.10",
     "nearlib": "^0.21.0",
+    "tweetnacl": "^1.0.3",
     "web3": "^1.2.4",
     "web3-provider-engine": "^15.0.4"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
     "eslint-plugin-jest": "^23.7.0",
-    "jest": "^24.9.0"
+    "jest": "^25.1.0"
   },
   "jest": {
     "testEnvironment": "node",

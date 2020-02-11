@@ -1,3 +1,4 @@
+const nearlib = require('nearlib');
 const NearProvider = require('../src/index');
 const web3 = require('web3');
 
@@ -8,7 +9,7 @@ const withWeb3 = (fn) => {
     return () => fn(web);
 };
 
-const TEST_NEAR_ACCOUNT = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
+const TEST_NEAR_ACCOUNT = 'test.near';
 // NB: This is the hex equivalent of NEAR block hash
 
 // NEW BLOCK INFO
@@ -71,6 +72,7 @@ describe('#web3.eth', () => {
         test('returns accounts', withWeb3(async (web) => {
             const accounts = await web.eth.getAccounts();
             expect(Array.isArray(accounts)).toBe(true);
+            expect(accounts[0]).toEqual('0xCBdA96B3F2B8eb962f97AE50C3852CA976740e2B');
         }));
     });
 
