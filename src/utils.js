@@ -119,14 +119,14 @@ utils.convertTimestamp = function(value) {
  * @returns {Object} Returns txHash and accountId
  */
 utils.getTxHashAndAccountId = function(value) {
-  assert(
-    value.includes(':'),
-    'Must pass in hash and accountId separated by ":" <txHash:accountId>'
-  );
-  // Split value into txHash and accountId
-  const [ txHash, accountId ] = value.split(':');
+    assert(
+        value.includes(':'),
+        'Must pass in hash and accountId separated by ":" <txHash:accountId>'
+    );
+    // Split value into txHash and accountId
+    const [ txHash, accountId ] = value.split(':');
 
-  // Return object for convenience so we don't need to keep track of index order
-  return { txHash, accountId };
-}
+    // Return object for convenience so we don't need to keep track of index order
+    return { txHash, accountId };
+};
 module.exports = utils;
