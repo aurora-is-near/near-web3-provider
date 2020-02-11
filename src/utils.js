@@ -136,14 +136,14 @@ utils.getTxHashAndAccountId = function(value) {
 /**
  * Converts a Near account ID into the corresponding ETH address
  * @param {String} accountID account ID as a string
- * @returns {String} Returns the corresponding ETH address without a 0x prefix
+ * @returns {String} Returns the corresponding ETH address with a 0x prefix
  */
 utils.nearAccountToEvmAddress = function(accountID) {
-  assert(
-    typeof accountID === 'string', 'nearAccountToEvmAddress must pass in string'
-  );
-  // NB: 2 characters of hex prefix. Then 20 hex pairs.
-  return utils.keccak256(accountID).slice(26, 66);
-}
+    assert(
+        typeof accountID === 'string', 'nearAccountToEvmAddress must pass in string'
+    );
+    // NB: 2 characters of hex prefix. Then 20 hex pairs.
+    return '0x' + utils.keccak256(accountID).slice(26, 66);
+};
 
 module.exports = utils;

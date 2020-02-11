@@ -57,28 +57,6 @@ class NearProvider {
         }
     }
 
-    async nearAccountToEvmAddress(accountId) {
-        try {
-            const evmAddress = await this._callEvmContract(
-                'utils.near_account_id_to_evm_address',
-                { account_id: accountId }
-            );
-            return evmAddress;
-        } catch (e) {
-            return e;
-        }
-    }
-
-    async _ethAddressToNearAccount(ethAddress) {
-        const method = 'utils.evm_account_to_internal_address';
-        try {
-            const nearAddress = await this._callEvmContract(method, ethAddress);
-            return nearAddress;
-        } catch (e) {
-            return e;
-        }
-    }
-
     unsupportedMethodErrorMsg(method) {
         return `NearProvider: ${method} is unsupported.`;
     }
@@ -346,45 +324,16 @@ class NearProvider {
     /**
      * Returns a list of addresses owned by client/accounts the node
      * controls
-     * @returns {String[]} array of 20 byte addresses
+     * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
     async routeEthAccounts() {
         // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
-
         const networkId = this.connection.networkId;
         const accounts = await this.keyStore.getAccounts(networkId);
         console.log(accounts);
 
-        // call evm contract
-        // const evmMethod = 'utils.near_account_id_to_evm_address';
-
-        // const nearAccountIdToEvmAddress = (accountId) => {
-        //     return new Promise((resolve, reject) => {
-        //         this.nearProvider.query(
-        //             `call/${this.evm_contract}/${evmMethod}}`,
-        //             accountId
-        //         )
-        //             .then((id) => resolve(id))
-        //             .catch((err) => reject(err));
-        //     });
-        // }
-
-        // const promiseArray = accounts.map((accountId) => {
-        //    return nearAccountIdToEvmAddress(accountId);
-        // });
-
-        // Promise.all(promiseArray)
-        //     .then((res) => {
-        //         console.log({res});
-        //         return res;
-        //     })
-        //     .catch((err) => {
-        //         return new Error(err);
-        //     });
-
-        // console.log({ remappedAccounts})
-        // return remappedAccounts;
-        return ['0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368'];
+        const evmAccounts = accounts.map(utils.nearAccountIdToEvmAddress);
+        return evmAccounts;
     }
 
     /**
