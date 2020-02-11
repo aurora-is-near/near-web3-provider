@@ -4,7 +4,9 @@
 const assert = require('bsert');
 const utils = require('./utils');
 
-const nearToEth = {};
+const nearToEth = {
+	utils: {}
+};
 
 /**
  * ETH Sync Object
@@ -21,8 +23,17 @@ nearToEth.syncObj = function (syncInfo) {
 }
 
 /**
- * Get full chunks from a block
+ * Get chunks from a block
  */
+
+/**
+ * Hydrate block chunks up to the specified transaction index
+ * @param {Object} block NEAR block
+ * @param {Number|Tag} txIndex transaction index or 'all'
+ */
+nearToEth.utils.hydrateBlock = async function(block, txIndex, near) {
+
+};
 
 /**
  * Gets NEAR transactions FROM A BLOCK
@@ -31,7 +42,7 @@ nearToEth.syncObj = function (syncInfo) {
  * return entire transaction object, otherwise just hashes
  * @returns {Array} returns array of tx hashes or full tx object
  */
-nearToEth._getTxsFromChunks = function(block, returnTxObjects, near) {
+nearToEth._getTxsFromChunks = async function(block, returnTxObjects, near) {
 	const hasChunks = block.chunks.length > 0;
 
 	if (!hasChunks) {
@@ -144,6 +155,7 @@ nearToEth.transactionObj = async function(tx, txIndex, near) {
 		transactionIndex: utils.decToHex(txIndex),
 
 		// QUANTITY - value transferred in wei (yoctoNEAR)
+		// TODO: This is not always the only value. other properties have an amount
 		value: transaction.actions[0].Transfer.deposit,
 
 		// NB: These are dummy values. I don't think there is a NEAR equivalent
@@ -248,7 +260,7 @@ nearToEth.blockObj = function(block, returnTxObjects, near) {
 		timestamp: utils.convertTimestamp(header.timestamp),
 
 		// ARRAY Array of transaction objects, or 32 bytes transaction hashes
-		transactions: ,
+		transactions: [],
 
 		// ARRAY Array of uncle hashes
 		uncles: []
