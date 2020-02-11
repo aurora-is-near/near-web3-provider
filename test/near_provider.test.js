@@ -1,4 +1,4 @@
-const NearProvider = require('../index');
+const NearProvider = require('../src/index');
 const web3 = require('web3');
 
 const withWeb3 = (fn) => {
@@ -116,7 +116,7 @@ describe('#web3.eth', () => {
     describe(`getBlock |
         eth_getBlockByHash,
         eth_getBlockByNumber`, () => {
-        test.only('gets block by hash', withWeb3(async (web) => {
+        test('gets block by hash', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash);
 
             expect(block.hash).toEqual(blockHash);
@@ -198,11 +198,11 @@ describe('#web3.eth', () => {
 
     });
 
-    describe(`getTransactionFromBlock |
+    describe.only(`getTransactionFromBlock |
         eth_getTransactionByBlockHashAndIndex,
         eth_getTransactionByBlockNumberAndIndex`, () => {
         test('returns transaction from block hash', withWeb3(async (web) => {
-            const tx = await web.eth.getTransactionFromBlock(blockHash, txIndex);
+            const tx = await web.eth.getTransactionFromBlock(blockHash, 'txIndex');
             expect(typeof tx).toBe('object');
             expect(tx.hash).toEqual(txHash);
         }));
