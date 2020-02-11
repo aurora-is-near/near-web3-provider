@@ -513,3 +513,4 @@ NEAR timestamp is 1000000 the size of a normal date. Had to do some weird stuff 
 #### Storage
 
 I don't understand `storage_paid_at` and `storage_usage` and if they have an ETH equivalent.
+
