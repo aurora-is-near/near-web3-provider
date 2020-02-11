@@ -1,0 +1,29 @@
+env:
+  es6: true
+  node: true
+  jest/globals: true
+extends:
+  - 'eslint:recommended'
+parserOptions:
+  ecmaVersion: 2018
+plugins:
+  - 'jest'
+rules:
+  indent:
+    - error
+    - 4
+  linebreak-style:
+    - error
+    - unix
+  quotes:
+    - error
+    - single
+  semi:
+    - error
+    - always
+  no-console: off
+globals:
+  window: true
+  fetch: true
+  Headers: true
+  document: true
