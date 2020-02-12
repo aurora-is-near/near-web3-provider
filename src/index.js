@@ -688,7 +688,8 @@ class NearProvider {
      */
     async routeEthSendRawTransaction(/* params */) {
         // const txData = params[0];
-        // TODO: throw, this is impossible with near rpc
+        // https://docs.nearprotocol.com/docs/interaction/rpc#send-transaction-wait-until-done
+        // TODO: this ^
         return '0x';
     }
 
@@ -721,11 +722,14 @@ class NearProvider {
      * @returns {String} the return value of the executed contract
      */
     async routeEthCall(params) {
-        let {data} = params[0];
+        const {to, value, gas, data} = params[0];
         let result = await this.account.viewFunction(
           'evm',
           'view_call',
-          { contract_address: 'de5f4b90790d48e0c00348eb55c6d763a47a9443', encoded_input: utils.remove0x(data) });
+          {
+            contract_address: 'de5f4b90790d48e0c00348eb55c6d763a47a9443',
+            encoded_input: utils.remove0x(data)
+          });
         return '0x' + result;
     }
 
