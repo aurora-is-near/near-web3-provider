@@ -87,16 +87,55 @@ hydrate.block = async function(block, nearProvider) {
  * @returns {Object[]} array of hydrated transaction(s)
  */
 
-// !!! so there is no way to TRULY hydrate transactions without knowing the account id associated with the block. we COULD just query for the tx but there is no guarantee that we will get back the whole transaction.
 hydrate.transaction = async function(block, txIndex, nearProvider) {
 	assert(
 		block.transactions,
 		'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'
-	);
+  );
 
-	block.transactions.forEach((tx) => {
-		const fullTx = await nearProvider.query('tx', )
-	})
+  try {
+    const tx = block.transactions[txIndex];
+    const fullTx = await nearProvider.txStatus(utils.hexToUint8(tx), tx.signer_id);
+
+    block.transactions[txIndex] = Object.assign(tx, fullTx);
+
+    return block;
+  } catch (e) {
+    return new Error('hydrate.transaction:', e);
+  }
 };
+
+/**
+ * Hydrate transactions aka gets the rest of the transaction values not
+ * included when querying a chunk: receipts_outcome, status, transaction_outcome
+ *
+ * @param {Object} block NEAR block with filled transactions
+ * @property {Array} block.transactions A block's txs. If block does not have
+ * these, then call hydrate.block
+ * @param {Object} nearProvider NearProvider instance
+ * @returns {Object[]} array of hydrated transactions
+ */
+hydrate.allTransactions = async function(block, nearProvider) {
+  assert(
+    block.transactions,
+    'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'
+  );
+
+  if (transactions.length <= 0) {
+    return block;
+  }
+
+  try {
+    const promiseArray = block.transactions.map((tx, txIndex) =>
+      this.transaction(block, txIndex, nearProvider));
+
+    const transactions = await Promise.all(promiseArray);
+
+
+    return block;
+  } catch (e) {
+    return new Error('hydrate.allTransactions:', e);
+  }
+}
 
 module.exports = hydrate;
