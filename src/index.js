@@ -138,10 +138,6 @@ class NearProvider {
             return this.routeEthSendRawTransactionh(params);
         }
 
-        case 'eth_sign': {
-            return this.routeEthSign(params);
-        }
-
         case 'eth_call': {
             return this.routeEthCall(params);
         }
@@ -155,6 +151,14 @@ class NearProvider {
         }
 
         /**-----------UNSUPPORTED METHODS------------**/
+        case 'eth_sign': {
+            throw new Error(this.unsupportedMethodErrorMsg(method));
+        }
+
+        case 'eth_getPastLogs': {
+          throw new Error(this.unsupportedMethodErrorMsg(method));
+        }
+
         case 'eth_pendingTransactions': {
             // return [];
             throw new Error(this.unsupportedMethodErrorMsg(method));
