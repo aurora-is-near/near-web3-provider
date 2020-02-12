@@ -139,7 +139,7 @@ class NearProvider {
         }
 
         case 'eth_getTransactionCount': {
-            return this.routeEthGetTransactionCounth(params);
+            return this.routeEthGetTransactionCount(params);
         }
 
         case 'eth_sendTransaction': {
