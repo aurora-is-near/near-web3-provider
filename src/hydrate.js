@@ -80,8 +80,8 @@ hydrate.block = async function(block, nearProvider) {
  * included when querying a chunk: receipts_outcome, status, transaction_outcome
  *
  * @param {Object} block NEAR block with filled transactions
- * @property {Array} block.transactions A block's txs. If block does not have
- * these, then call hydrate.block
+ * @property {Array} block.transactions A block's transactions. If block does
+ * not have these, then call hydrate.block
  * @param {Number|Tag} txIndex which tx to hydrate, or 'all' (default)
  * @param {Object} nearProvider NearProvider instance
  * @returns {Object[]} array of hydrated transaction(s)
@@ -131,6 +131,7 @@ hydrate.allTransactions = async function(block, nearProvider) {
 
     const transactions = await Promise.all(promiseArray);
 
+	block.transactions = transactions;
 
     return block;
   } catch (e) {
