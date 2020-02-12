@@ -308,14 +308,13 @@ class NearProvider {
     /**
      * Returns the current price per gas in yoctoNEAR
      * @returns {Quantity} integer of the current gas price in
-     * yoctoNEAR as hex
+     * yoctoNEAR as Decimal String
      */
     async routeEthGasPrice() {
         try {
-            const result = await this.nearProvider.query('gas_price', []);
-            console.log({result});
-            // convert to BN in case number is bigger than 2^53 - 1
-            const gasPrice = new BN(result.gas_price);
+            const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
+            const result = await this.nearProvider.block(latest_block_hash);
+            const gasPrice = new BN(result.header.gas_price);
             return utils.decToHex(gasPrice);
         } catch (e) {
             return e;
