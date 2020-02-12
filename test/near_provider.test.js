@@ -1,10 +1,18 @@
 const utils = require('../src/utils');
 const NearProvider = require('../src/index');
+const nearlib = require('nearlib');
 const web3 = require('web3');
 
 const withWeb3 = (fn) => {
     const web = new web3();
-    web.setProvider(new NearProvider('http://localhost:3030'));
+
+    const accountId = 'test.near';
+    const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
+    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);    
+    const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+    keyStore.setKey('test', accountId, keyPair);
+    
+    web.setProvider(new NearProvider('http://localhost:3030', keyStore, accountId));
     return () => fn(web);
 };
 

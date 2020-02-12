@@ -28,10 +28,14 @@ npm install near-web3-provider
 You can use this provider wherever a Web3 provider is needed.
 
 ```javascript
+const nearlib = require('nearlib');
 const NearProvider = require("near-web3-provider");
 
+const accountId = '<account id to use for tx>';
+const keyStore = new nearlib.keyStores.<one of keyStores>;
+
 const web = new Web3();
-web.setProvider(new NearProvider("<url to NEAR RPC>"));
+web.setProvider(new NearProvider("<url to NEAR RPC>", keyStore, accountId));
 web.eth.net.isListening();
 ```
 
@@ -40,14 +44,18 @@ web.eth.net.isListening();
 Add to your `truffle-config.json`:
 
 ```javascript
+const nearlib = require('nearlib');
 const NearProvider = require("near-web3-provider");
+
+// Use standard near-shell structure for storing keys.
+const keyStore = new nearlib.keyStores.UnencryptedFileSystemKeyStore('neardev');
 
 module.exports = {
   networks: {
     near: {
         network_id: "99",
         provider: function() {
-            return new NearProvider("https://rpc.nearprotocol.com")
+            return new NearProvider("https://rpc.nearprotocol.com", keyStore, 'accounttest')
         },
     }
   }
