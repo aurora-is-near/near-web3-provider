@@ -55,7 +55,7 @@ utils.hexToDec = function(value) {
     assert(typeof value === 'string', 'hexToDec: must pass in hex string');
     assert(this.isHex(value), 'hexToDec: must pass in hex string');
 
-    return parseInt(value.slice(2), 16);
+    return parseInt(utils.remove0x(value), 16);
 };
 
 /**
@@ -73,7 +73,6 @@ utils.base58ToHex = function(value) {
  * @returns {string} returns base58 string equivalent of hex string
  */
 utils.hexToBase58 = function(value) {
-    console.log({value});
     assert(typeof value === 'string', 'hexToBase58: must pass in hex string');
     assert(this.isHex(value), 'hexToBase58: must pass in hex string');
     value = this.remove0x(value);
@@ -136,14 +135,14 @@ utils.getTxHashAndAccountId = function(value) {
 /**
  * Converts a Near account ID into the corresponding ETH address
  * @param {String} accountID account ID as a string
- * @returns {String} Returns the corresponding ETH address without a 0x prefix
+ * @returns {String} Returns the corresponding ETH address with a 0x prefix
  */
 utils.nearAccountToEvmAddress = function(accountID) {
-  assert(
-    typeof accountID === 'string', 'nearAccountToEvmAddress must pass in string'
-  );
-  // NB: 2 characters of hex prefix. Then 20 hex pairs.
-  return utils.keccak256(accountID).slice(26, 66);
-}
+    assert(
+        typeof accountID === 'string', 'nearAccountToEvmAddress must pass in string'
+    );
+    // NB: 2 characters of hex prefix. Then 20 hex pairs.
+    return '0x' + utils.keccak256(accountID).slice(26, 66);
+};
 
 module.exports = utils;

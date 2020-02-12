@@ -9,7 +9,7 @@ const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
 // DELETE LATER
-const TEST_NEAR_ACCOUNT = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
+const TEST_NEAR_ACCOUNT = 'test.near';
 // const TEST_ACCOUNT_TWO = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
 
 class NearProvider {
@@ -21,6 +21,7 @@ class NearProvider {
 
         const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
         const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
+
         this.keyStore = new nearlib.keyStores.InMemoryKeyStore();
         this.keyStore.setKey(networkId, TEST_NEAR_ACCOUNT, keyPair);
 
@@ -52,28 +53,6 @@ class NearProvider {
                 // "6x8V37bGexiqvZNMu397P2"
             );
             return result;
-        } catch (e) {
-            return e;
-        }
-    }
-
-    async nearAccountToEvmAddress(accountId) {
-        try {
-            const evmAddress = await this._callEvmContract(
-                'utils.near_account_id_to_evm_address',
-                { account_id: accountId }
-            );
-            return evmAddress;
-        } catch (e) {
-            return e;
-        }
-    }
-
-    async _ethAddressToNearAccount(ethAddress) {
-        const method = 'utils.evm_account_to_internal_address';
-        try {
-            const nearAddress = await this._callEvmContract(method, ethAddress);
-            return nearAddress;
         } catch (e) {
             return e;
         }
@@ -329,15 +308,13 @@ class NearProvider {
     /**
      * Returns the current price per gas in yoctoNEAR
      * @returns {Quantity} integer of the current gas price in
-     * yoctoNEAR as hex
+     * yoctoNEAR as Decimal String
      */
     async routeEthGasPrice() {
         try {
-            const result = await this.nearProvider.query('gas_price', []);
-            console.log({result});
-            // convert to BN in case number is bigger than 2^53 - 1
-            const gasPrice = new BN(result.gas_price);
-            return utils.decToHex(gasPrice);
+            const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
+            const result = await this.nearProvider.block(latest_block_hash);
+            return result.header.gas_price;
         } catch (e) {
             return e;
         }
@@ -346,45 +323,15 @@ class NearProvider {
     /**
      * Returns a list of addresses owned by client/accounts the node
      * controls
-     * @returns {String[]} array of 20 byte addresses
+     * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
     async routeEthAccounts() {
         // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
-
         const networkId = this.connection.networkId;
         const accounts = await this.keyStore.getAccounts(networkId);
-        console.log(accounts);
 
-        // call evm contract
-        // const evmMethod = 'utils.near_account_id_to_evm_address';
-
-        // const nearAccountIdToEvmAddress = (accountId) => {
-        //     return new Promise((resolve, reject) => {
-        //         this.nearProvider.query(
-        //             `call/${this.evm_contract}/${evmMethod}}`,
-        //             accountId
-        //         )
-        //             .then((id) => resolve(id))
-        //             .catch((err) => reject(err));
-        //     });
-        // }
-
-        // const promiseArray = accounts.map((accountId) => {
-        //    return nearAccountIdToEvmAddress(accountId);
-        // });
-
-        // Promise.all(promiseArray)
-        //     .then((res) => {
-        //         console.log({res});
-        //         return res;
-        //     })
-        //     .catch((err) => {
-        //         return new Error(err);
-        //     });
-
-        // console.log({ remappedAccounts})
-        // return remappedAccounts;
-        return ['0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368'];
+        const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
+        return evmAccounts;
     }
 
     /**
