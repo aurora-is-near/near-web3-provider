@@ -32,17 +32,13 @@ class NearProvider {
         this.connection = new nearlib.Connection('default', this.nearProvider, this.signer);
     }
 
-    async _callEvmContract(method, methodArgs) {
+    async _viewEvmContract(method, methodArgs) {
         // TODO: clarify methodArgs passed in should be { argName: arg }
-        // Step 3 in https://docs.nearprotocol.com/docs/roles/developer/examples/nearlib/guides#levels-of-abstraction
-        methodArgs = bs58.encode(Buffer.from(JSON.stringify(methodArgs)));
-
         try {
-            const result = await this.nearProvider.query(
-                `call/${this.evm_contract}/${method}`,
+            const result = await this.account.viewFunction(
+                this.evm_contract,
+                method,
                 methodArgs
-                // 'call/evm/balance_of_near_account',
-                // "6x8V37bGexiqvZNMu397P2"
             );
             return result;
         } catch (e) {
@@ -345,20 +341,13 @@ class NearProvider {
      * @returns {Quantity} integer of the current balance in wei
      */
     async routeEthGetBalance(params) {
-        console.log({params});
-        const address = params[0];
-        // const block = params[1];
-        // TODO: Convert hex address to NEAR account ID
-        // I think we need to do an in between check
+        const address = utils.remove0x(params[0]);
         try {
-            // const state = await this.nearProvider.query(`account/bobblehead`, '');
-            // // Are transactions in order?
-            // console.log({state})
-            // const block = await this.nearProvider.block(state.block_height)
-            // console.log({block})
-            const balance = await this._callEvmContract('balance_of_near_account', { address });
-            console.log({balance});
-            return utils.decToHex(10000000000);
+            const balance = await this._viewEvmContract(
+                'balance_of_evm_address',
+                { address }
+            );
+            return utils.decToHex(balance);
         } catch (e) {
             return e;
         }
@@ -370,15 +359,16 @@ class NearProvider {
      * @param {Quantity} block (optional) Block
      * @returns {String} The value at this storage position
      */
-    async routeEthGetStorageAt(/*params*/) {
-        // const address = params[0];
-        // const position = params[1];
-        // const block = params[2];
+    async routeEthGetStorageAt(params) {
+        // string magic makes a fixed-length hex string from the int
+        const key = `${'00'.repeat(32)}${utils.remove0x(params[1].toString(16))}`.slice(-64);
+        const address = utils.remove0x(params[0]);
 
-        // From near-evm contract:
-        //// for Eth call of similar name
-        // pub fn get_storage_at(& self, address: String, key: String) -> String {
-        return '0x';
+        let result = await this._viewEvmContract(
+          'get_storage_at',
+          { address, key }
+        )
+        return `0x${result}`;
     }
 
     /**
@@ -388,11 +378,10 @@ class NearProvider {
      */
     async routeEthGetCode(params) {
         const address = utils.remove0x(params[0]);
-
         try {
-            let result = await this._callEvmContract(
-                'code_at',
-                { contract_address: address });
+            let result = await this._viewEvmContract(
+                'get_code',
+                { address });
             return '0x' + result;
         } catch (e) {
             return e;
@@ -409,8 +398,6 @@ class NearProvider {
      * @returns {Object} returns block object
      */
     async routeEthGetBlockByHash(params) {
-        console.log('get block by hash');
-
         const blockHash = utils.hexToBase58(params[0]);
         const returnTxObjects = params[1];
 
@@ -689,24 +676,18 @@ class NearProvider {
      * transaction on the block chain
      * @param {Object} txCallObj transaction call object
      * @property {String} to the address the tx is directed to
-     * @property {String} from (optional) the address the tx is sent
-     * from
-     * @property {Quantity} gas (optional) integer of the gas provided
-     * for the tx execution. `eth_call` consumes zero gas, but this
-     * parameter may be needed by some executions
+     * @property {String} from (optional) the address the tx is sent from
      * @property {Quantity} value (optional) integer of the value sent
      * with this tx
      * @property {String} data (optional) hash of the method signature
      * and encoded parameters
-     * @param {Quantity|Tag} blockHeight integer block number or the
-     * string 'latest', 'earliest', or 'pending'
      * @returns {String} the return value of the executed contract
      */
     async routeEthCall(params) {
-        const {to, value, gas, data} = params[0];
-        let result = await this.account.viewFunction(
-          'evm',
-          'view_call',
+        const {to, /* value, */ data} = params[0];
+
+        let result = await this._viewEvmContract(
+          'call_contract',
           {
             contract_address: utils.remove0x(to),
             encoded_input: utils.remove0x(data)
