@@ -23,12 +23,13 @@ describe('#web3.eth', () => {
 
     beforeAll(withWeb3(async (web) => {
         const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
+        const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
         const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
         await web._provider.keyStore.setKey(this.networkId, this.evm_contract, keyPair);
         return web._provider.account.createAndDeployContract(
             web._provider.evm_contract,
             keyPair.getPublicKey(),
-            evmCode,
+            evmBytecode,
             0  // NEAR value
         ).then(() => {
             console.log('deployed EVM contract');
