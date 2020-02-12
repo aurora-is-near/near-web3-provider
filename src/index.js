@@ -8,27 +8,19 @@ const NEAR_NET_VERSION = '99';
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
-// DELETE LATER
-const TEST_NEAR_ACCOUNT = 'test.near';
-// const TEST_ACCOUNT_TWO = '0xd148eC3d91AB223AD19051CE651fab2Cf0bE6410';
-
 class NearProvider {
-    constructor(url) {
-        const networkId = 'default';
+    constructor(url, keyStore, accountId) {
+        const networkId = process.env.NODE_ENV || 'default';
         this.evm_contract = 'evm';
         this.url = url;
         this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
 
-        const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
-        const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
-
-        this.keyStore = new nearlib.keyStores.InMemoryKeyStore();
-        this.keyStore.setKey(networkId, TEST_NEAR_ACCOUNT, keyPair);
-
+        this.keyStore = keyStore;
         this.signer = new nearlib.InMemorySigner(this.keyStore);
 
         this.connection = new nearlib.Connection(networkId, this.nearProvider, this.signer);
-        this.account = new nearlib.Account(this.connection, 'liau');
+        this.accountId = accountId;
+        this.account = new nearlib.Account(this.connection, accountId);
     }
 
     async _createNewAccount(accountId) {
@@ -354,7 +346,7 @@ class NearProvider {
      */
     async routeEthGetBalance(params) {
         console.log({params});
-        // const address = params[0];
+        const address = params[0];
         // const block = params[1];
         // TODO: Convert hex address to NEAR account ID
         // I think we need to do an in between check
@@ -364,7 +356,7 @@ class NearProvider {
             // console.log({state})
             // const block = await this.nearProvider.block(state.block_height)
             // console.log({block})
-            const balance = await this._callEvmContract('balance_of_near_account', 'liau');
+            const balance = await this._callEvmContract('balance_of_near_account', { address });
             console.log({balance});
             return utils.decToHex(10000000000);
         } catch (e) {
@@ -398,11 +390,9 @@ class NearProvider {
         const address = utils.remove0x(params[0]);
 
         try {
-            let result = await this.account.viewFunction(
-                this.evm_contract,
+            let result = await this._callEvmContract(
                 'code_at',
                 { contract_address: address });
-                // console.warn(result);
             return '0x' + result;
         } catch (e) {
             return e;
@@ -611,7 +601,7 @@ class NearProvider {
     async routeEthGetTransactionReceipt(params) {
         // const txHash = utils.hexToBase58(params[0]);
         let status = await this.nearProvider.status();
-        let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.account.accountId);
+        let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.accountId);
 
         // TODO: compute proper tx status: accumulate logs and gas.
         const result = nearToEth.transactionReceiptObj(status, outcome);
@@ -635,7 +625,7 @@ class NearProvider {
         // get other thing isntead
         try {
             // const query = await this.nearProvider.query('account/evm', '')
-            const account = new nearlib.Account(this.connection, 'liau');
+            const account = new nearlib.Account(this.connection, this.accountId);
             const details = await account.state();
             console.log(details);
             return '0x0';
