@@ -1,4 +1,4 @@
-const bs58 = require('bs58');
+'const bs58 = require('bs58');
 const nearlib = require('nearlib');
 const BN = require('bn.js');
 const assert = require('bsert');
@@ -282,7 +282,6 @@ class NearProvider {
     async routeEthSyncing() {
         try {
             const { sync_info } = await this.nearProvider.status();
-            // TODO: Syncing always returns false even though values are updating
             if (!sync_info.syncing) {
                 return false;
             } else {
@@ -314,7 +313,6 @@ class NearProvider {
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
     async routeEthAccounts() {
-        // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
         const networkId = this.connection.networkId;
         const accounts = await this.keyStore.getAccounts(networkId);
 
@@ -624,29 +622,39 @@ class NearProvider {
 
     /**
      * Creates new message call transaction or a contract creation, if
-     * the data field contains code
+     * the data field contains code, pass it through
      * web3.eth.sendTransaction
      *
+     * @param    {Object} txObj transaction object
+     * @property {String} params.to EVM destination address
+     * @property {String} params.value amount of yoctoNEAR to attach
+     * @property {String} params.gas amount of gas to attach
+     * @property {String} params.data the encoded call data
+     * @returns  {String} The resulting txid
      */
     async routeEthSendTransaction(params) {
-        if (params[0].to === undefined) {
-            // If contract deployment.
-            let outcome = await this.account.functionCall(
+        let outcome;
+        const {to, value, gas, data} = params[0];
+
+        if (to === undefined) {
+            // Contract deployment.
+            outcome = await this.account.functionCall(
                 this.evm_contract,
                 'deploy_code',
-                { 'bytecode': params[0].data.slice(2) },
-                new BN(params[0].gas.slice(2), 16),
-                '100000');
-            return outcome.transaction.id;
+                { 'bytecode': utils.remove0x(data) },
+                new BN(utils.remove0x(gas), 16).toString(),
+                value.toString()
+            );
         } else {
-            let outcome = await this.account.functionCall(
+            outcome = await this.account.functionCall(
                 this.evm_contract,
                 'run_command',
-                { contract_address: params[0].to.slice(2), encoded_input: params[0].data.slice(2) },
-                '10000000', 0
+                { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
+                new BN(utils.remove0x(gas), 16).toString(),
+                value.toString()
             );
-            return outcome.transaction.id;
         }
+        return outcome.transaction.id;
     }
 
     /**
@@ -657,9 +665,10 @@ class NearProvider {
      * @returns {String} returns the 32-byte transaction hash, or the
      * zero hash if the transaction is not yet available
      */
-    async routeEthSendRawTransaction() {
+    async routeEthSendRawTransaction(/* params */) {
         // const txData = params[0];
-        // TODO
+        // https://docs.nearprotocol.com/docs/interaction/rpc#send-transaction-wait-until-done
+        // TODO: this ^
         return '0x';
     }
 
@@ -668,7 +677,7 @@ class NearProvider {
      */
     // https://nomicon.io/Runtime/Scenarios/FinancialTransaction.html
     async routeEthSign() {
-        // TODO
+        // TODO: throw, this is impossible with near RPC
     }
 
     /**
