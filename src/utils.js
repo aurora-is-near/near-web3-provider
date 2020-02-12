@@ -99,6 +99,14 @@ utils.base64ToString = function(value) {
 };
 
 /**
+ * Converts hex representation of a base58 string to Uint8Array
+ * @param {String}  value hex string
+ * @returns {Uint8Array} returns hex string in Uint8Array
+ */
+utils.hexToUint8 = function(value) {
+  return Uint8Array(bs58.decode(this.hexToBase58(value)));
+};
+/**
  * Convert timestamp in NEAR to hex
  * @param {number} value NEAR timestamp
  * @returns {string} hex string equivalent of timestamp
