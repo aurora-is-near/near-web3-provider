@@ -1,4 +1,4 @@
-'const bs58 = require('bs58');
+const bs58 = require('bs58');
 const nearlib = require('nearlib');
 const BN = require('bn.js');
 const assert = require('bsert');
@@ -147,7 +147,7 @@ class NearProvider {
         }
 
         case 'eth_estimateGas': {
-            return this.routeEthEstimateGas(params);
+            return '0x0';
         }
 
         case 'eth_getPastLogs': {
@@ -648,7 +648,7 @@ class NearProvider {
         } else {
             outcome = await this.account.functionCall(
                 this.evm_contract,
-                'run_command',
+                'call_contract',
                 { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
                 new BN(utils.remove0x(gas), 16).toString(),
                 value.toString()
@@ -704,14 +704,9 @@ class NearProvider {
         return '0x' + result;
     }
 
-    // TODO
-    async routeEthEstimateGas() {
-        return '0x00';
-    }
-
-    // TODO
     async routeEthGetPastLogs() {
-        return '0x00';
+        // TODO I think this is impossible with NEAR RPC
+        return '0x0';
     }
 }
 
