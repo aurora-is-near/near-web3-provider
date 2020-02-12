@@ -522,6 +522,7 @@ class NearProvider {
      * separated by ':'
      * @returns {Object} returns transaction object
      */
+    // TODO: Update accountID references to be signerID (more explicit)
     async routeEthGetTransactionByHash(params) {
         let { txHash, accountId } = utils.getTxHashAndAccountId(params[0]);
 
