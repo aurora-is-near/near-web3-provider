@@ -90,40 +90,38 @@ describe('#web3.eth', () => {
         }));
     });
 
-    // Broken without contract deploy
-    describe.only('getBalance | eth_getBalance', () => {
+    describe('getBalance | eth_getBalance', () => {
+        // TODO: test with a non-0 balance
         test('returns balance', withWeb3(async (web) => {
-            try {
-                const balance = await web.eth.getBalance(
-                  utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT),
-                  'latest'
-                );
-                console.log({balance});
-                expect(typeof balance).toBe('string');
-            } catch (e) {
-                console.log(e);
-            }
+            const balance = await web.eth.getBalance(
+              utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT),
+              'latest'
+            );
+            expect(typeof balance).toBe('string');
+            expect(balance).toEqual('0');
         }));
     });
 
-    // Broken without contract deploy
-    describe.skip('getStorageAt | eth_getStorageAt', () => {
+    describe('getStorageAt | eth_getStorageAt', () => {
+        // TODO: test with a non-0 slot
         test('returns storage position', withWeb3(async (web) => {
             const address = utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT);
             const position = 0;
             let storagePosition = await web.eth.getStorageAt(address, position);
-            console.log({storagePosition});
             expect(typeof storagePosition).toBe('string');
+            expect(storagePosition).toEqual(`0x${'00'.repeat(32)}`);
         }));
     });
 
     // Broken without contract deploy
-    describe.skip('getCode | eth_getCode', () => {
+    describe('getCode | eth_getCode', () => {
+        // TODO: deploy a contract and test
         test('gets code', withWeb3(async (web) => {
             const address = utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT);
             const code = await web.eth.getCode(address);
-            console.log({code});
             expect(typeof code).toBe('string');
+            expect(code).toEqual('0x');
+
         }));
     });
 
