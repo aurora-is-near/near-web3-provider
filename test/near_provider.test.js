@@ -1,7 +1,10 @@
+const fs = require('fs');
+const web3 = require('web3');
+const nearlib = require('nearlib');
 const utils = require('../src/utils');
 const NearProvider = require('../src/index');
-const nearlib = require('nearlib');
-const web3 = require('web3');
+
+const TEST_NEAR_ACCOUNT = 'test.near';
 
 const TEST_NEAR_ACCOUNT = 'test.near';
 const TEST_NEAR_ACCOUNT_RECEIVER = test.near.receiver;
@@ -61,8 +64,35 @@ const blockNumber = 1221180;
 // found in block 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN'
 const txHash = '0x6c409109338aa109c3b696ba855ff5543a70204ce127e5991fff45c9fd60051c';
 const txIndex = 0;
+    const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
+    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
+    const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+    keyStore.setKey('test', TEST_NEAR_ACCOUNT, keyPair);
+
+    web.setProvider(new NearProvider('http://localhost:3030', keyStore, TEST_NEAR_ACCOUNT));
+    return () => fn(web);
+};
+
 
 describe('#web3.eth', () => {
+
+    beforeAll(withWeb3(async (web) => {
+        const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
+        const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
+        const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+        await web._provider.keyStore.setKey(this.networkId, this.evm_contract, keyPair);
+        return web._provider.account.createAndDeployContract(
+            web._provider.evm_contract,
+            keyPair.getPublicKey(),
+            evmBytecode,
+            0  // NEAR value
+        ).then(() => {
+            console.log('deployed EVM contract');
+        }).catch(() => {
+            console.log('EVM already deployed');
+        });
+    }), 10000);
+
     describe('isSyncing | eth_syncing', () => {
         test('returns correct type - Boolean|Object', withWeb3(async (web) => {
             const sync = await web.eth.isSyncing();
@@ -115,37 +145,38 @@ describe('#web3.eth', () => {
         }));
     });
 
-    // Broken without contract deploy
-    describe.skip('getBalance | eth_getBalance', () => {
+    describe('getBalance | eth_getBalance', () => {
+        // TODO: test with a non-0 balance
         test('returns balance', withWeb3(async (web) => {
-            try {
-                const balance = await web.eth.getBalance('0xB15D9b7C2F10a50dda6D88F40fb338cE514AF551', 'latest');
-                console.log({balance});
-                expect(typeof balance).toBe('string');
-            } catch (e) {
-                console.log(e);
-            }
+            const balance = await web.eth.getBalance(
+              utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT),
+              'latest'
+            );
+            expect(typeof balance).toBe('string');
+            expect(balance).toEqual('0');
         }));
     });
 
-    // Broken without contract deploy
-    describe.skip('getStorageAt | eth_getStorageAt', () => {
+    describe('getStorageAt | eth_getStorageAt', () => {
+        // TODO: test with a non-0 slot
         test('returns storage position', withWeb3(async (web) => {
             const address = utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT);
             const position = 0;
             let storagePosition = await web.eth.getStorageAt(address, position);
-            console.log({storagePosition});
             expect(typeof storagePosition).toBe('string');
+            expect(storagePosition).toEqual(`0x${'00'.repeat(32)}`);
         }));
     });
 
     // Broken without contract deploy
-    describe.skip('getCode | eth_getCode', () => {
+    describe('getCode | eth_getCode', () => {
+        // TODO: deploy a contract and test
         test('gets code', withWeb3(async (web) => {
             const address = utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT);
             const code = await web.eth.getCode(address);
-            console.log({code});
             expect(typeof code).toBe('string');
+            expect(code).toEqual('0x');
+
         }));
     });
 
