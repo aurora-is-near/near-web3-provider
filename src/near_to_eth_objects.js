@@ -3,9 +3,10 @@
  */
 const assert = require('bsert');
 const utils = require('./utils');
+const hydrate = require('./hydrate');
 
 const nearToEth = {
-    utils: {}
+	hydrate
 };
 
 /**
@@ -21,81 +22,6 @@ nearToEth.syncObj = function (syncInfo) {
         pulledStates: '0x0'
     };
 };
-
-/**
- * Get chunks from a block
- */
-
-/**
- * Hydrate block chunks up to the specified transaction index
- * @param {Object} block NEAR block
- * @param {Number|Tag} txIndex transaction index or 'all'
- */
-nearToEth.utils.hydrateBlock = async function(block, txIndex, near) {
-
-};
-
-/**
- * Gets NEAR transactions FROM A BLOCK
- * @param {Array} block block
- * @param {Boolean} returnTxObjects (optional) default false. if true,
- * return entire transaction object, otherwise just hashes
- * @returns {Array} returns array of tx hashes or full tx object
- */
-nearToEth._getTxsFromChunks = async function(block, returnTxObjects, near) {
-    const hasChunks = block.chunks.length > 0;
-
-    if (!hasChunks) {
-        return [];
-    }
-
-    // Get all the chunk hashes
-    const chunkHashes = block.chunks.map((c) => c.chunk_hash);
-
-    // Create promise function to hydrate each chunk
-    const hydrateChunk = async (chunkHash, block) => {
-        try {
-            const chunk = await this.nearProvider.chunk(chunkHash);
-
-            // Add for convenience and to prevent multiple queries
-            chunk.block_hash = block.header.hash;
-            chunk.block_height = block.header.height;
-            chunk.gas_price = block.header.gas_price;
-
-            return chunk;
-        } catch (e) {
-            return e;
-        }
-    };
-
-    // Create promise array of hydrate chunk promises
-    const promiseArray = chunkHashes.map((ch) => hydrateChunk(ch, block));
-
-    // Hydrate the chunks
-    try {
-        const hydratedChunks = await Promise.all(promiseArray);
-
-        let transactions = [];
-
-        // Return either transaction hashes or full transaction objects
-        if (hydratedChunks.length > 0 && !returnTxObjects) {
-            // Return tx hashes (default)
-            transactions = hydratedChunks.map((tx) => utils.base58ToHex(tx.hash));
-        } else if (hydratedChunks.length > 0 && returnTxObjects) {
-            // Return transaction object if requested and txs exist
-            transactions = hydratedChunks.map((tx, txIndex) => {
-                return this.transactionObj(tx, txIndex, block, near);
-            });
-        }
-
-        return transactions;
-    } catch (e) {
-        return e;
-    }
-};
-/**
- * Maps NEAR Transaction FROM A CHUNK QUERY to ETH Transaction Object
- */
 
 /**
  * Maps NEAR Transaction FROM A TX QUERY to ETH Transaction Object
