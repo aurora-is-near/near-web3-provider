@@ -314,8 +314,7 @@ class NearProvider {
         try {
             const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
             const result = await this.nearProvider.block(latest_block_hash);
-            const gasPrice = new BN(result.header.gas_price);
-            return utils.decToHex(gasPrice);
+            return result.header.gas_price;
         } catch (e) {
             return e;
         }
