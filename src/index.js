@@ -1,4 +1,4 @@
-'const bs58 = require('bs58');
+const bs58 = require('bs58');
 const nearlib = require('nearlib');
 const BN = require('bn.js');
 const assert = require('bsert');
