@@ -1,4 +1,4 @@
-const bs58 = require('bs58');
+'const bs58 = require('bs58');
 const nearlib = require('nearlib');
 const BN = require('bn.js');
 const assert = require('bsert');
@@ -711,8 +711,6 @@ class NearProvider {
      * @property {Quantity} gas (optional) integer of the gas provided
      * for the tx execution. `eth_call` consumes zero gas, but this
      * parameter may be needed by some executions
-     * @property {Quantity} gasPrice (optional) integer of the gasPrice
-     * used for each paid gas
      * @property {Quantity} value (optional) integer of the value sent
      * with this tx
      * @property {String} data (optional) hash of the method signature
@@ -727,7 +725,7 @@ class NearProvider {
           'evm',
           'view_call',
           {
-            contract_address: 'de5f4b90790d48e0c00348eb55c6d763a47a9443',
+            contract_address: utils.remove0x(to),
             encoded_input: utils.remove0x(data)
           });
         return '0x' + result;
