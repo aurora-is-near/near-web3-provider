@@ -1,44 +1,42 @@
+const fs = require('fs');
+const web3 = require('web3');
+const nearlib = require('nearlib');
 const utils = require('../src/utils');
 const NearProvider = require('../src/index');
-const nearlib = require('nearlib');
-const web3 = require('web3');
+
+const TEST_NEAR_ACCOUNT = 'test.near';
 
 const withWeb3 = (fn) => {
     const web = new web3();
 
-    const accountId = 'test.near';
     const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
-    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);    
+    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
-    keyStore.setKey('test', accountId, keyPair);
-    
-    web.setProvider(new NearProvider('http://localhost:3030', keyStore, accountId));
+    keyStore.setKey('test', TEST_NEAR_ACCOUNT, keyPair);
+
+    web.setProvider(new NearProvider('http://localhost:3030', keyStore, TEST_NEAR_ACCOUNT));
     return () => fn(web);
 };
 
-const TEST_NEAR_ACCOUNT = 'test.near';
-
-// NEW BLOCK INFO
-// '0xaee2455a8605f67af54e7e7c6f3c216606c14d89c3180ad00fff41a178743b17'
-// 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN'
-// 1367550
-// Wed Feb 05 2020 11: 17: 47 GMT - 0700(Mountain Standard Time)
-
-// '9TWEeS11Up9nR9AobKWdKfzmF9j1TriB8TLbRCZqznia' which is block number
-// 1221180, from 2020-02-03T23:18:52.817928262Z
-const blockHash = '0x7da7a7223c6677bf0f2b775b60f76832fab71441280ba94eb98af68dd17a8367';
-const blockNumber = 1221180;
-// NB: txHash is hex equivalent of
-// 'CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK' found at index 0 of
-// blockNumber 1221180
-
-// txHash is hex equivalent of '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy'
-// with accountId 'dinoaroma'
-// found in block 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN'
-const txHash = '0x6c409109338aa109c3b696ba855ff5543a70204ce127e5991fff45c9fd60051c';
-const txIndex = 0;
 
 describe('#web3.eth', () => {
+
+    beforeAll(withWeb3(async (web) => {
+        const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
+        const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+        await web._provider.keyStore.setKey(this.networkId, this.evm_contract, keyPair);
+        return web._provider.account.createAndDeployContract(
+            web._provider.evm_contract,
+            keyPair.getPublicKey(),
+            evmCode,
+            0  // NEAR value
+        ).then(() => {
+            console.log('deployed EVM contract');
+        }).catch(() => {
+            console.log('EVM already deployed');
+        });
+    }), 10000);
+
     describe('isSyncing | eth_syncing', () => {
         test('returns correct type - Boolean|Object', withWeb3(async (web) => {
             const sync = await web.eth.isSyncing();
@@ -92,10 +90,13 @@ describe('#web3.eth', () => {
     });
 
     // Broken without contract deploy
-    describe.skip('getBalance | eth_getBalance', () => {
+    describe.only('getBalance | eth_getBalance', () => {
         test('returns balance', withWeb3(async (web) => {
             try {
-                const balance = await web.eth.getBalance('0xB15D9b7C2F10a50dda6D88F40fb338cE514AF551', 'latest');
+                const balance = await web.eth.getBalance(
+                  utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT),
+                  'latest'
+                );
                 console.log({balance});
                 expect(typeof balance).toBe('string');
             } catch (e) {
