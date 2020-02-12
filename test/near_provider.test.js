@@ -10,25 +10,9 @@ const withWeb3 = (fn) => {
 
 const TEST_NEAR_ACCOUNT = 'test.near';
 
-// NEW BLOCK INFO
-// '0xaee2455a8605f67af54e7e7c6f3c216606c14d89c3180ad00fff41a178743b17'
-// 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN'
-// 1367550
-// Wed Feb 05 2020 11: 17: 47 GMT - 0700(Mountain Standard Time)
-
-// '9TWEeS11Up9nR9AobKWdKfzmF9j1TriB8TLbRCZqznia' which is block number
-// 1221180, from 2020-02-03T23:18:52.817928262Z
-const blockHash = '0x7da7a7223c6677bf0f2b775b60f76832fab71441280ba94eb98af68dd17a8367';
-const blockNumber = 1221180;
-// NB: txHash is hex equivalent of
-// 'CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK' found at index 0 of
-// blockNumber 1221180
-
-// txHash is hex equivalent of '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy'
-// with accountId 'dinoaroma'
-// found in block 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN'
-const txHash = '0x6c409109338aa109c3b696ba855ff5543a70204ce127e5991fff45c9fd60051c';
-const txIndex = 0;
+beforeAll(withWeb3(async () => {
+  // TODO: deploy near_evm
+}));
 
 describe('#web3.eth', () => {
     describe('isSyncing | eth_syncing', () => {
