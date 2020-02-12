@@ -3,20 +3,44 @@ const NearProvider = require('../src/index');
 const nearlib = require('nearlib');
 const web3 = require('web3');
 
-const withWeb3 = (fn) => {
+const TEST_NEAR_ACCOUNT = 'test.near';
+const TEST_NEAR_ACCOUNT_RECEIVER = test.near.receiver;
+
+function createWeb3Instance(accountId, keyPair) {
     const web = new web3();
 
-    const accountId = 'test.near';
-    const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
-    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);    
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
     keyStore.setKey('test', accountId, keyPair);
-    
-    web.setProvider(new NearProvider('http://localhost:3030', keyStore, accountId));
-    return () => fn(web);
-};
 
-const TEST_NEAR_ACCOUNT = 'test.near';
+    web.setProvider(new NearProvider('http://localhost:3030', keyStore, accountId));
+
+    return web;
+}
+
+// Main/Sender Account. Majority of tests will use this instance of web3
+const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
+const senderKeyPair = nearlib.utils.KeyPair.fromString(keyPairString);
+const withWeb3 = (fn) => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, senderKeyPair));
+
+
+// Receiver Account. Create second account so we can have a place to send transactions
+const receiverKeyPair = nearlib.utils.KeyPair.fromRandom('receiver key');
+const withWeb3Receiver = fn(createWeb3Instance(TEST_NEAR_ACCOUNT_RECEIVER, receiverKeyPair));
+// const withWeb3 = (fn) => {
+//     const web = new web3();
+
+//     const accountId = 'test.near';
+//     const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
+//     const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
+//     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+//     keyStore.setKey('test', accountId, keyPair);
+
+//     web.setProvider(new NearProvider('http://localhost:3030', keyStore, accountId));
+//     return () => fn(web);
+// };
+
+
+
 
 // NEW BLOCK INFO
 // '0xaee2455a8605f67af54e7e7c6f3c216606c14d89c3180ad00fff41a178743b17'
