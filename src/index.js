@@ -409,18 +409,14 @@ class NearProvider {
             blockHash = utils.hexToBase58(blockHash);
             const block = await this.nearProvider.block(blockHash);
 
-            const hydratedBlock = await nearToEth.hydrate.block(block, this.nearProvider);
+            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
 
-            console.log({hydratedBlock});
-
-            const fullBlock = await nearToEth.blockObj(hydratedBlock, returnTxObjects, this.nearProvider);
-
-            console.log({fullBlock})
             return fullBlock;
         } catch (e) {
             return e;
         }
     }
+
 
     /**
      * Returns block object
@@ -461,7 +457,12 @@ class NearProvider {
             }
 
             const block = await this.nearProvider.block(blockHeight);
-            return nearToEth.blockObj(block, returnTxObjects);
+
+            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
+
+            console.log({fullBlock})
+
+            return fullBlock;
         } catch (e) {
             return e;
         }
