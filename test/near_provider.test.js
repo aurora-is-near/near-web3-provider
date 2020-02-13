@@ -2,7 +2,7 @@ const fs = require('fs');
 const web3 = require('web3');
 const nearlib = require('nearlib');
 const utils = require('../src/utils');
-const NearProvider = require('../src/index');
+const { NearProvider } = require('../src/index');
 
 const TEST_NEAR_ACCOUNT = 'test.near';
 
