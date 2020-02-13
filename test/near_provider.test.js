@@ -259,7 +259,7 @@ describe('\n---- CONTRACT INTERACTION ----', () => {
 
 });
 
-describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
+describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
     let blockHash;
     let blockHeight;
 
@@ -280,24 +280,23 @@ describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
             blockHash = utils.base58ToHex(base58BlockHash);
             blockHeight = block.header.height;
         } else {
-            const newBlock = getLatestBlockInfo();
+            const newBlock = await getLatestBlockInfo();
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
             // TODO: Create txs
         }
     }));
 
-    describe.skip('getBlockNumber | eth_blockNumber', () => {
+    describe('getBlockNumber | eth_blockNumber', () => {
         test('returns the most recent blockNumber', withWeb3(async (web) => {
             await waitForABlock();
-
             let blockNumber = await web.eth.getBlockNumber();
             expect(blockNumber).not.toBeNaN();
             expect(blockNumber).toBeGreaterThan(blockHeight);
         }));
     });
 
-    describe.skip(`getBlock |
+    describe(`getBlock |
         eth_getBlockByHash,
         eth_getBlockByNumber`, () => {
 
@@ -341,9 +340,16 @@ describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
 
         test('gets block by number with full tx objs', withWeb3(async (web) => {
-            const block = await web.eth.getBlock(blockHeight, true);
-            expect(block.number).toEqual(blockHeight);
-            expect(typeof block.transactions[0]).toBe('object');
+          const block = await web.eth.getBlock(blockHeight, true);
+
+          expect(block.hash).toEqual(blockHash);
+          expect(block.number).toEqual(blockHeight);
+          expect(Array.isArray(block.transactions)).toBe(true);
+          if (block.transactions.length > 0) {
+              expect(typeof block.transactions[0] === 'object').toBe(true);
+              expect(typeof block.transactions[0].hash).toBe('string');
+              expect(block.transactions[0].hash).toEqual(utils.base58ToHex(base58TxHash));
+          }
         }));
 
         test('gets block by string - "latest"', withWeb3(async (web) => {
@@ -364,7 +370,7 @@ describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
     });
 
-    describe.skip(`getBlockTransactionCount |
+    describe(`getBlockTransactionCount |
         eth_getBlockTransactionCountByHash,
         eth_getBlockTransactionCountByNumber`, () => {
 
