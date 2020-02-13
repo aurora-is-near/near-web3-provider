@@ -37,7 +37,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 
     const { transaction_outcome, transaction } = tx;
 
-    // const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
+    const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
     // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
     const value = transaction.actions.map(v => {
         const k = Object.keys(v)[0];
@@ -48,7 +48,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         // DATA 20 bytes - address of the sender
         // from: sender,
         // TODO: PUt this back to sender when we figure out contract stuff
-        from: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
+        from: sender,
 
         // DATA 20 bytes - address of the receiver
         // TODO: to: receiver
@@ -72,7 +72,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
 
         // DATA 32 bytes - hash of the transaction
-        hash: utils.base58ToHex(tx.hash),
+        hash: `${tx.hash}:${transaction.signer_id}`,
 
         // QUANTITY - the number of txs made by the sender prior to this one
         nonce: utils.decToHex(tx.nonce),
@@ -239,7 +239,7 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
  * @param {Object} nearTxObj NEAR transaction object
  * @returns {Object} returns ETH transaction receipt object
  */
-nearToEth.transactionReceiptObj = function(block, nearTxObj) {
+nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
     const responseHash = utils.base64ToString(nearTxObj.status.SuccessValue);
     const { transaction, transaction_outcome } = nearTxObj;
 
@@ -247,7 +247,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj) {
     const logs = transaction_outcome.outcome.logs;
 
     return {
-        transactionHash: utils.base58ToHex(transaction.hash),
+        transactionHash: `${transaction.hash}:${accountId}`,
         transactionIndex: '0x1',
         blockNumber: utils.decToHex(block.header.height),
         blockHash: utils.base58ToHex(block.header.hash),

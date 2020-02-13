@@ -513,10 +513,12 @@ class NearProvider {
 
             accountId = accountId || this.accountId;
 
-            const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(utils.hexToUint8(txHash), accountId);
+            const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(
+                utils.base58ToUint8(txHash),
+                accountId
+            );
             const block = await this._getBlock(block_hash, true);
-
-            const findTx = block.transactions.find((t) => t.hash === txHash);
+            const findTx = block.transactions.find((t) => t.hash === txHashAndAccountId);
 
             return findTx;
         } catch (e) {
@@ -586,12 +588,14 @@ class NearProvider {
      * @param {String} txHash transaction hash
      * @returns {Object} returns transaction receipt object or null
      */
-    async routeEthGetTransactionReceipt(params) {
-        const txHash = utils.deserializeHex(params[0]);
-        let tx = await this.nearProvider.txStatus(txHash, this.accountId);
+    async routeEthGetTransactionReceipt([txHashAndAccountId]) {
+        let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
+
+        let tx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
         let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
+
         // TODO: compute proper tx status: accumulate logs and gas.
-        const result = nearToEth.transactionReceiptObj(block, tx);
+        const result = nearToEth.transactionReceiptObj(block, tx, accountId);
         return result;
     }
 
@@ -606,12 +610,10 @@ class NearProvider {
     async routeEthGetTransactionCount(params) {
         const address = utils.remove0x(params[0]);
 
-        console.log({address});
         let result = await this._viewEvmContract(
             'nonce_of_evm_address',
             { address }
         );
-        console.log({ result });
         return `0x${result.toString()}`;
     }
 
@@ -654,7 +656,8 @@ class NearProvider {
                 val.toString()
             );
         }
-        return utils.base58ToHex(outcome.transaction_outcome.id);
+
+        return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
     /**
