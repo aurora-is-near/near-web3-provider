@@ -281,21 +281,19 @@ describe('#web3.eth', () => {
         test('gets block by hash', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash);
 
-            console.log('testblock', block);
             expect(block.hash).toEqual(blockHash);
             expect(block.number).toEqual(blockHeight);
             expect(Array.isArray(block.transactions)).toBe(true);
             if (block.transactions.length > 0) {
-                expect(typeof block.transactions[0] === 'string').toBe(true);
+                expect(typeof block.transactions[0]).toBe('string');
                 expect(block.transactions[0]).toEqual(utils.base58ToHex(base58TxHash));
             }
-            expect(typeof block.timestamp === 'number').toBe(true);
+            expect(typeof block.timestamp).toBe('number');
         }));
 
         test('gets block by hash with full tx objs', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash, true);
 
-            console.log('testblock hash', block)
             expect(block.hash).toEqual(blockHash);
             expect(block.number).toEqual(blockHeight);
             expect(Array.isArray(block.transactions)).toBe(true);
@@ -322,7 +320,7 @@ describe('#web3.eth', () => {
         test('gets block by number with full tx objs', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHeight, true);
             expect(block.number).toEqual(blockHeight);
-            expect(typeof block.transactions[0] === 'object').toBe(true);
+            expect(typeof block.transactions[0]).toBe('object');
         }));
 
         test('gets block by string - "latest"', withWeb3(async (web) => {
