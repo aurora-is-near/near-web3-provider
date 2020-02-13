@@ -7,6 +7,11 @@ const utils = {};
 utils.keccak256 = web3.utils.keccak256;
 
 /**
+ * base58 for 0s. Indicates empty result
+ */
+utils.emptyResult = '11111111111111111111111111111111';
+
+/**
  * Remove 0x if prepended
  * @param {string} value value to check and modify
  * @return {string} string without 0x
@@ -147,8 +152,12 @@ utils.base64ToString = function(value) {
  * @returns {Uint8Array} returns hex string in Uint8Array
  */
 utils.hexToUint8 = function(value) {
-  return Uint8Array(bs58.decode(this.hexToBase58(value)));
+    return Uint8Array(bs58.decode(this.hexToBase58(value)));
 };
+
+utils.base58ToUint8 = function(value) {
+    return new Uint8Array(bs58.decode(value));
+}
 /**
  * Convert timestamp in NEAR to hex
  * @param {number} value NEAR timestamp
