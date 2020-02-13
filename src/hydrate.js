@@ -1,4 +1,5 @@
 const utils = require('./utils');
+const assert = require('bsert');
 
 const hydrate = {};
 
@@ -10,14 +11,14 @@ const hydrate = {};
  * @returns {Object} hydrated chunk with transactions and (sometimes) receipts
  */
 hydrate.chunk = async function(chunk, block, nearProvider) {
-  // NB: A chunk with no transactions is indicated by chunk.tx_root: '11111111111111111111111111111111'
-  const hasNoTxs = '11111111111111111111111111111111';
+  console.log('---------hydrate.chunk');
+  // NB: A chunk with no transactions is indicated by an empty chunk.tx_root
+  const hasNoTxs = utils.emptyResult;
 
   // Create promise function to hydrate each chunk ONLY if tx_root !== noTxs
   // Calling this gets all the receipts[] and transactions[] in a chunk
   try {
     let hydratedChunk;
-
     if (chunk.tx_root === hasNoTxs) {
       hydratedChunk = chunk;
       hydratedChunk.transactions = [];
@@ -44,6 +45,8 @@ hydrate.chunk = async function(chunk, block, nearProvider) {
  * @returns {Object} returns NEAR block with NEAR transactions array
  */
 hydrate.block = async function(block, nearProvider) {
+  console.log('---------hydrate.block');
+
   try {
     // Create promise array of hydrate chunk promises
     const promiseArray = block.chunks.map((chunk) => {
@@ -66,10 +69,12 @@ hydrate.block = async function(block, nearProvider) {
       });
     });
 
-	let blockWithTxs = block;
-	blockWithTxs.transactions = transactions;
+    // console.log({transactions})
 
-	return blockWithTxs;
+    let blockWithTxs = block;
+    blockWithTxs.transactions = transactions;
+
+	  return blockWithTxs;
   } catch (e) {
     return e;
   }
@@ -82,9 +87,9 @@ hydrate.block = async function(block, nearProvider) {
  * @param {Object} block NEAR block with filled transactions
  * @property {Array} block.transactions A block's transactions. If block does
  * not have these, then call hydrate.block
- * @param {Number|Tag} txIndex which tx to hydrate, or 'all' (default)
+ * @param {Number|Tag} txIndex which tx to hydrate
  * @param {Object} nearProvider NearProvider instance
- * @returns {Object[]} array of hydrated transaction(s)
+ * @returns {Object} hydrated transaction
  */
 
 hydrate.transaction = async function(block, txIndex, nearProvider) {
@@ -95,13 +100,15 @@ hydrate.transaction = async function(block, txIndex, nearProvider) {
 
   try {
     const tx = block.transactions[txIndex];
-    const fullTx = await nearProvider.txStatus(utils.hexToUint8(tx), tx.signer_id);
 
-    block.transactions[txIndex] = Object.assign(tx, fullTx);
+    const fullTx = await nearProvider.txStatus(utils.base58ToUint8(tx.hash), tx.signer_id);
 
-    return block;
+    // TODO: Clean this up later.
+    const hydratedTx = Object.assign(tx, fullTx);
+
+    return hydratedTx;
   } catch (e) {
-    return new Error('hydrate.transaction:', e);
+    return e;
   }
 };
 
@@ -116,24 +123,26 @@ hydrate.transaction = async function(block, txIndex, nearProvider) {
  * @returns {Object[]} array of hydrated transactions
  */
 hydrate.allTransactions = async function(block, nearProvider) {
+  console.log('-----------hydrate.allTransactions')
   assert(
     block.transactions,
     'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'
   );
 
-  if (transactions.length <= 0) {
+  if (block.transactions.length <= 0) {
     return [];
   }
 
   try {
-    const promiseArray = block.transactions.map((tx, txIndex) =>
-      this.transaction(block, txIndex, nearProvider));
+    const promiseArray = block.transactions.map((tx, txIndex) => {
+      return this.transaction(block, txIndex, nearProvider)
+    });
 
     const transactions = await Promise.all(promiseArray);
 
     return transactions;
   } catch (e) {
-    return new Error('hydrate.allTransactions:', e);
+    return e;
   }
 }
 
