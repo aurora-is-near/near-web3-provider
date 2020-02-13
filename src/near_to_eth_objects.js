@@ -4,6 +4,7 @@
 const assert = require('bsert');
 const utils = require('./utils');
 const hydrate = require('./hydrate');
+const bn = require('bn.js');
 
 const nearToEth = {
 	hydrate
@@ -27,48 +28,48 @@ nearToEth.syncObj = function (syncInfo) {
  * Maps NEAR Transaction FROM A TX QUERY to ETH Transaction Object
  * @param {Object} 		tx NEAR transaction
  * @param {Number}		txIndex	txIndex
- * @param {Object}		near nearProvider instance
- * account
  * @returns {Object} returns ETH transaction object
  *
- * @example nearToEth.transactionObject(tx, near
+ * @example nearToEth.transactionObject(tx, txIndex)
  */
-nearToEth.transactionObj = async function(tx, txIndex, near) {
+nearToEth.transactionObj = async function(tx, txIndex) {
     assert(typeof tx === 'object' && tx.transaction.hash, 'nearToEth.transactionObj: must pass in tx object');
 
     const { transaction_outcome, transaction } = tx;
 
-  	const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
+  	// const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
     const value = transaction.actions.map(v => {
       const k = Object.keys(v)[0];
       return parseInt(v[k].deposit, 10);
     }).reduce((a, b) => a + b);
 
-    return {
+    const obj = {
         // DATA 32 bytes - hash of the block where this transaction was in
         blockHash: utils.base58ToHex(transaction_outcome.block_hash),
 
         // QUANTITY block number where this transaction was in
-        blockNumber: tx.blockNumber,
+        blockNumber: utils.decToHex(tx.block_height),
 
         // DATA 20 bytes - address of the sender
-        from: sender,
+        // from: sender,
+        from: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
 
         // QUANTITY gas provided by the sender
         gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
 
-        // TODO: How to get gas price? it's on the block where the tx came from block.header.gas_price
-        gasPrice: '0x4a817c800',
+        // QUANTITY - integer of the current gas price in wei
+        // TODO: Will this break with big numbers?
+        gasPrice: utils.decToHex(parseInt(tx.gas_price)),
 
         // DATA 32 bytes - hash of the transaction
-        hash: utils.base58ToHex(transaction.hash),
+        hash: utils.base58ToHex(tx.hash),
 
         // DATA - the data sent along with the transaction
         // TODO: Would a comparison be for transaction.actions[i]?
         input: '0x',
 
         // QUANTITY - the number of txs made by the sender prior to this one
-        nonce: utils.decToHex(transaction.nonce),
+        nonce: utils.decToHex(tx.nonce),
 
         // DATA 20 bytes - address of the receiver
         // TODO: to: receiver
@@ -78,8 +79,7 @@ nearToEth.transactionObj = async function(tx, txIndex, near) {
         transactionIndex: utils.decToHex(txIndex),
 
         // QUANTITY - value transferred in wei (yoctoNEAR)
-        // TODO: This is not always the only value. other properties have an amount
-        value: value,
+        value: utils.decToHex(value),
 
         // QUANTITY - ECDSA recovery id
         v: '0x0',
@@ -88,11 +88,15 @@ nearToEth.transactionObj = async function(tx, txIndex, near) {
         // QUANTITY - ECDSA signature s
         s: '0x0'
     };
+
+    console.log({obj})
+
+    return obj;
 };
 
 /**
  * Maps NEAR Block to ETH Block Object
- * @param {Object|String} block a hydrated NEAR block. If 'empty', return empty block
+ * @param {Object|String} block NEAR block. If 'empty', return empty block
  * @param {Boolean} returnTxObjects (optional) default false. if true, return
  * entire transaction object, other just hashes
  * @param {Object} nearProvider NearProvider instance
@@ -100,6 +104,8 @@ nearToEth.transactionObj = async function(tx, txIndex, near) {
  */
 nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
     console.log('-----nearToEth.blockObj')
+
+    block = await this.hydrate.block(block, nearProvider);
 
     if (typeof block === 'string' && block === 'empty') {
         return {
@@ -118,9 +124,30 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
 
     const { header } = block;
 
-    const transactions = await getTransactions(block, returnTxObjects, nearProvider);
+    const hydratedTransactions = await getTransactions(block, returnTxObjects, nearProvider);
+    const promiseArray = hydratedTransactions.map((tx, txIndex) => {
+        return this.transactionObj(tx, txIndex);
+    });
+
+    const transactions = await Promise.all(promiseArray);
 
     return {
+        /**---------------- TODO: --------------- */
+
+        // DATA hash of the generated proof-of-work. null when its pending block
+        // TODO: What is this equivalent?
+        nonce: null,
+
+        // DATA the root of the transaction trie of the block
+        // TODO: There is no such thing as transaction trie of the block.
+        // Transactions live on chunks, there is a tx_root on each chunk. Could
+        // hash all of them into one hash?
+        transactionsRoot: '0x00000000000000000000000000000000',
+
+        // TODO: is this block.header.total_weight?
+        // QUANTITY integer of the size of this block in bytes
+        // size: '',
+
         // QUANTITTY the block number. 'null' when it's pending block
         number: utils.decToHex(header.height),
 
@@ -130,20 +157,27 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
         // DATA hash of the parent block
         parentHash: utils.base58ToHex(header.prev_hash),
 
-        // DATA hash of the generated proof-of-work. null when its pending block
-        nonce: null,
+        // QUANTITY the maximum gas allowed in this block
+        gasLimit: utils.decToHex(getMaxGas(block.chunks)),
 
+        // QUANTITY the total used gas by all transactions in this block
+        gasUsed: utils.decToHex(getGasUsed(block.chunks)),
+
+        // QUANTITY the unix timestamp for when the block was collated
+        timestamp: utils.convertTimestamp(header.timestamp),
+
+        // ARRAY Array of transaction objects, or 32 bytes transaction hashes
+        transactions: transactions
+
+        /**------------UNSUPPORTED VALUES--------- */
         // DATA sha3 of the uncles data in the block
         // sha3Uncles: '',
 
         // DATA the bloom filter for the logs of the block. null when its pending block
         // logsBloom: '',
 
-        // DATA the root of the transaction trie of the block
-        // TODO: There is no such thing as transaction trie of the block.
-        // Transactions live on chunks, there is a tx_root on each chunk. Could
-        // hash all of them into one hash?
-        transactionsRoot: '0x00000000000000000000000000000000',
+        // ARRAY Array of uncle hashes
+        // uncles: []
 
         // DATA the root of the final state trie of the block
         // stateRoot: '',
@@ -158,23 +192,6 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
         // totalDifficulty: null,
         // DATA the extra data field of this block
         // extraData: '',
-        // QUANTITY integer of the size of this block in bytes
-        // size: null,
-
-        // QUANTITY the maximum gas allowed in this block
-        gasLimit: utils.decToHex(getMaxGas(block.chunks)),
-
-        // QUANTITY the total used gas by all transactions in this block
-        gasUsed: utils.decToHex(getGasUsed(block.chunks)),
-
-        // QUANTITY the unix timestamp for when the block was collated
-        timestamp: utils.convertTimestamp(header.timestamp),
-
-        // ARRAY Array of transaction objects, or 32 bytes transaction hashes
-        transactions: transactions,
-
-        // ARRAY Array of uncle hashes
-        uncles: []
     };
 
     /**
@@ -190,18 +207,30 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
     /**
      * Get the total gas used. gas_used is listed on each chunk
      */
+    // TODO: Is this chunks.gas_used or accumulated gas_burnt for each tx?
     function getGasUsed (chunks) {
-        return chunks.map((c) => c.gas_used).reduce((a, b) => a + b);
+        const gasUsed = chunks.map((c) => c.gas_used);
+        // console.log({gasUsed})
+        const accumulated = gasUsed.reduce((a, b) => a + b);
+        // console.log({accumulated})
+        return accumulated;
     }
 
     async function getTransactions (block, returnTxObjects, nearProvider) {
-        try {
-            let transactions = [];
+        console.log('getTransactions, return full objs?', returnTxObjects);
+        let transactions = [];
 
+        if (block.transactions.length <= 0) {
+            return transactions;
+        }
+
+        try {
             if (!returnTxObjects) {
-                transactions = transactions.map((tx) => tx.transaction.hash);
+                console.log('Just hashes');
+                transactions = block.transactions.map((tx) => utils.base58ToHex(tx.hash));
             } else {
-                transactions = await this.hydrate.allTransactions(block, nearProvider);
+                console.log('everything')
+                transactions = await hydrate.allTransactions(block, nearProvider);
             }
 
             return transactions;
