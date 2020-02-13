@@ -152,7 +152,7 @@ utils.base64ToString = function(value) {
  * @returns {Uint8Array} returns hex string in Uint8Array
  */
 utils.hexToUint8 = function(value) {
-    return Uint8Array(bs58.decode(this.hexToBase58(value)));
+    return new Uint8Array(bs58.decode(this.hexToBase58(value)));
 };
 
 utils.base58ToUint8 = function(value) {
@@ -178,7 +178,7 @@ utils.convertTimestamp = function(value) {
  * Splits hex string into txHash and accountId
  * Used by eth_getTransactionByHash, eth_getTransactionReceipt
  * @param {String} value hex string in format <txHash>:<accountId>
- * @returns {Object} Returns txHash and accountId
+ * @returns {Object} Returns txHash and accountId as strings
  */
 utils.getTxHashAndAccountId = function(value) {
     assert(
