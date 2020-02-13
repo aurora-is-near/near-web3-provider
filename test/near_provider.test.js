@@ -251,10 +251,13 @@ describe('#web3.eth', () => {
         let blockHash;
         let blockHeight;
 
+        const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
+        const base58BlockHash = '3cdkbRn1hpNLH5Ri6pipy7AEAKJscPD7TCgLFs94nWGB';
+
         beforeAll(withWeb3(async (web) => {
             if (net === 'testnet') {
                 console.log('-----Using testnet-----')
-                const base58BlockHash = '3cdkbRn1hpNLH5Ri6pipy7AEAKJscPD7TCgLFs94nWGB';
+
 
                 const block = await testNearProvider.block(base58BlockHash);
                 blockHash = utils.base58ToHex(base58BlockHash);
@@ -267,7 +270,7 @@ describe('#web3.eth', () => {
             }
         }));
 
-        test.skip('gets block by hash', withWeb3(async (web) => {
+        test('gets block by hash', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash);
 
             console.log('testblock', block);
@@ -276,6 +279,7 @@ describe('#web3.eth', () => {
             expect(Array.isArray(block.transactions)).toBe(true);
             if (block.transactions.length > 0) {
                 expect(typeof block.transactions[0] === 'string').toBe(true);
+                expect(block.transactions[0]).toEqual(utils.base58ToHex(base58TxHash));
             }
             expect(typeof block.timestamp === 'number').toBe(true);
         }));
@@ -290,6 +294,7 @@ describe('#web3.eth', () => {
             if (block.transactions.length > 0) {
                 expect(typeof block.transactions[0] === 'object').toBe(true);
                 expect(typeof block.transactions[0].hash).toBe('string');
+                expect(block.transactions[0].hash).toEqual(utils.base58ToHex(base58TxHash));
             }
         }));
 
