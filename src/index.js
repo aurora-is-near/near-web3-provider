@@ -29,7 +29,7 @@ class NearProvider {
         await this.keyStore.setKey(this.networkId, accountId, keyPair);
         this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
         this.signer = new nearlib.InMemorySigner(this.keyStore);
-        this.connection = new nearlib.Connection('default', this.nearProvider, this.signer);
+        this.connection = new nearlib.Connection(networkId, this.nearProvider, this.signer);
     }
 
     async _viewEvmContract(method, methodArgs) {
@@ -352,6 +352,7 @@ class NearProvider {
             return e;
         }
     }
+
     /**
      * Returns the value from a storage position at a given address.
      * @param {String} address 20-byte address of the storage
@@ -397,13 +398,22 @@ class NearProvider {
      * true returns the full transaction objects, else false.
      * @returns {Object} returns block object
      */
-    async routeEthGetBlockByHash(params) {
-        const blockHash = utils.hexToBase58(params[0]);
-        const returnTxObjects = params[1];
-
+    async routeEthGetBlockByHash([blockHash, returnTxObjects]) {
         try {
+            console.log('gethash', blockHash)
+            assert(blockHash, 'Must pass in blockHash');
+
+            blockHash = utils.hexToBase58(blockHash);
             const block = await this.nearProvider.block(blockHash);
-            return nearToEth.blockObj(block, returnTxObjects);
+
+            const hydratedBlock = await nearToEth.hydrate.block(block, this.nearProvider);
+
+            console.log({hydratedBlock});
+
+            const fullBlock = await nearToEth.blockObj(hydratedBlock, returnTxObjects, this.nearProvider);
+
+            console.log({fullBlock})
+            return fullBlock;
         } catch (e) {
             return e;
         }
@@ -419,17 +429,32 @@ class NearProvider {
      * true returns the full transaction objects, else false.
      * @returns {Object} returns block object
      */
-    // TODO: Handle other enum strings
-    async routeEthGetBlockByNumber(params) {
-        let blockHeight = params[0];
-        const returnTxObjects = params[1];
+    async routeEthGetBlockByNumber([blockHeight, returnTxObjects]) {
+        const enums = ['genesis', 'latest', 'earliest', 'pending'];
+
+        if (typeof blockHeight === 'string') {
+            assert(enums.find(blockHeight), 'Must pass in a valid block description: "genesis", "latest", "earliest", "pending"');
+        } else {
+            assert(typeof blockHeight === 'number', 'Must pass in block number');
+        }
 
         try {
-            if (blockHeight === 'latest') {
-                const status = await this.nearProvider.status();
-                blockHeight = status.sync_info.latest_block_height;
-            } else {
-                blockHeight = utils.hexToDec(blockHeight);
+            switch (blockHeight) {
+                case 'latest' || 'pending': {
+                    const { sync_info } = await this.nearProvider.status();
+                    blockHeight = sync_info.latest_block_height;
+                    break;
+                }
+
+                case 'earliest' || 'genesis': {
+                    blockHeight = 0;
+                    break;
+                }
+
+                default: {
+                    blockHeight = utils.hexToDec(blockHeight);
+                    break;
+                }
             }
 
             const block = await this.nearProvider.block(blockHeight);
