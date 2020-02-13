@@ -202,8 +202,8 @@ describe('#web3.eth', () => {
         // TODO: test with a non-0 balance
         test('returns balance', withWeb3(async (web) => {
             const balance = await web.eth.getBalance(
-              utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT),
-              'latest'
+                utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT),
+                'latest'
             );
             expect(typeof balance).toBe('string');
             expect(balance).toEqual('0');

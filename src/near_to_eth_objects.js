@@ -38,27 +38,24 @@ nearToEth.transactionObj = async function(tx, txIndex, near) {
 
     const { transaction_outcome, transaction } = tx;
 
-    // TODO: Add this back in when EVM contract is deployed
-    // const [sender, receiver] = await Promise.all(
-    // 	near.nearAccountToEvmAddress(transaction.signer_id),
-    // 	near.nearAccountToEvmAddress(transaction.receiver_id)
-    // );
+  	const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
+    const value = transaction.actions.map(v => {
+      const k = Object.keys(v)[0];
+      return parseInt(v[k].deposit, 10);
+    }).reduce((a, b) => a + b);
 
     return {
         // DATA 32 bytes - hash of the block where this transaction was in
-        blockHash: utils.base58ToHex(transaction.block_hash),
+        blockHash: utils.base58ToHex(transaction_outcome.block_hash),
 
         // QUANTITY block number where this transaction was in
-        blockNumber: transaction_outcome
-            ? utils.decToHex(transaction_outcome.block_hash)
-            : tx.blockNumber,
+        blockNumber: tx.blockNumber,
 
         // DATA 20 bytes - address of the sender
-        // TODO: from: sender
-        from: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
+        from: sender,
 
         // QUANTITY gas provided by the sender
-        gas: utils.decToHex(transaction.outcome.gas_burnt),
+        gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
 
         // TODO: How to get gas price? it's on the block where the tx came from block.header.gas_price
         gasPrice: '0x4a817c800',
@@ -82,15 +79,14 @@ nearToEth.transactionObj = async function(tx, txIndex, near) {
 
         // QUANTITY - value transferred in wei (yoctoNEAR)
         // TODO: This is not always the only value. other properties have an amount
-        value: transaction.actions[0].Transfer.deposit,
+        value: value,
 
-        // NB: These are dummy values. I don't think there is a NEAR equivalent
         // QUANTITY - ECDSA recovery id
-        v: '0x25',
+        v: '0x0',
         // QUANTITY - ECDSA signature r
-        r: '0x1b5e176d927f8e9ab405058b2d2457392da3e20f328b16ddabcebc33eaac5fea',
+        r: '0x0',
         // QUANTITY - ECDSA signature s
-        s: '0x4ba69724e8f69de52f0125ad8b3c5c2cef33019bac3249e2c0a2192766d1721c'
+        s: '0x0'
     };
 };
 
@@ -224,16 +220,19 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
  */
 nearToEth.transactionReceiptObj = function(block, nearTxObj) {
     const responseHash = utils.base64ToString(nearTxObj.status.SuccessValue);
-    const { transaction } = nearTxObj;
+    const { transaction, transaction_outcome } = nearTxObj;
+
+    const gas_burnt = transaction_outcome.outcome.gas_burnt;
+    const logs = transaction_outcome.outcome.logs;
 
     return {
         transactionHash: utils.base58ToHex(transaction.hash),
         transactionIndex: '0x1',
-        blockNumber: utils.decToHex(block.number),
-        blockHash: utils.base58ToHex(block.hash),
+        blockNumber: utils.decToHex(block.header.height),
+        blockHash: utils.base58ToHex(block.header.hash),
         contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
-        gasUsed: utils.decToHex(transaction.outcome.gas_burnt),
-        logs: transaction.outcome.logs,
+        gasUsed: utils.decToHex(gas_burnt),
+        logs: logs,
         status: '0x1',
     };
 

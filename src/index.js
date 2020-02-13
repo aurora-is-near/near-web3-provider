@@ -9,8 +9,8 @@ const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
 class NearProvider {
-    constructor(url, keyStore, accountId) {
-        const networkId = process.env.NODE_ENV || 'default';
+    constructor(url, keyStore, accountId, networkId) {
+        this.networkId = networkId || process.env.NODE_ENV || 'default';
         this.evm_contract = 'evm';
         this.url = url;
         this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
@@ -18,9 +18,10 @@ class NearProvider {
         this.keyStore = keyStore;
         this.signer = new nearlib.InMemorySigner(this.keyStore);
 
-        this.connection = new nearlib.Connection(networkId, this.nearProvider, this.signer);
+        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
         this.accountId = accountId;
         this.account = new nearlib.Account(this.connection, accountId);
+        this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
     }
 
     async _createNewAccount(accountId) {
@@ -131,15 +132,11 @@ class NearProvider {
         }
 
         case 'eth_sendTransaction': {
-            return this.routeEthSendTransactionh(params);
+            return this.routeEthSendTransaction(params);
         }
 
         case 'eth_sendRawTransaction': {
-            return this.routeEthSendRawTransactionh(params);
-        }
-
-        case 'eth_sign': {
-            return this.routeEthSign(params);
+            return this.routeEthSendRawTransaction(params);
         }
 
         case 'eth_call': {
@@ -147,7 +144,7 @@ class NearProvider {
         }
 
         case 'eth_estimateGas': {
-            return this.routeEthEstimateGas(params);
+            return '0x0';
         }
 
         case 'eth_getPastLogs': {
@@ -155,6 +152,14 @@ class NearProvider {
         }
 
         /**-----------UNSUPPORTED METHODS------------**/
+        case 'eth_sign': {
+            throw new Error(this.unsupportedMethodErrorMsg(method));
+        }
+
+        case 'eth_getPastLogs': {
+          throw new Error(this.unsupportedMethodErrorMsg(method));
+        }
+
         case 'eth_pendingTransactions': {
             // return [];
             throw new Error(this.unsupportedMethodErrorMsg(method));
@@ -282,7 +287,6 @@ class NearProvider {
     async routeEthSyncing() {
         try {
             const { sync_info } = await this.nearProvider.status();
-            // TODO: Syncing always returns false even though values are updating
             if (!sync_info.syncing) {
                 return false;
             } else {
@@ -314,7 +318,6 @@ class NearProvider {
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
     async routeEthAccounts() {
-        // TODO: Near accounts have human-readable names and do not match the ETH address format. web3 will not allow non-valid Ethereum addresses and errors.
         const networkId = this.connection.networkId;
         const accounts = await this.keyStore.getAccounts(networkId);
 
@@ -526,21 +529,17 @@ class NearProvider {
      */
     // TODO: Update accountID references to be signerID (more explicit)
     async routeEthGetTransactionByHash(params) {
-        let { txHash, accountId } = utils.getTxHashAndAccountId(params[0]);
-
         // NB: provider.txStatus requires txHash to be a Uint8Array of
         // the base58 tx hash. Since txHash is hex, it is converted to
         // base58, and then turned into a Buffer
-        txHash = new Uint8Array(bs58.decode(utils.hexToBase58(txHash)));
+        let txHash = new Uint8Array(bs58.decode(utils.hexToBase58(params[0])));
 
-        const tx = await this.nearProvider.txStatus(txHash, accountId);
-
+        const tx = await this.nearProvider.txStatus(txHash, this.accountId);
+        let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
         // const blockHash = tx.transaction_outcome.block_hash;
         // const block = await this.nearProvider.block(blockHash);
 
-        console.log({tx});
-
-        return nearToEth.transactionObj(tx);
+        return nearToEth.transactionObj(tx, 1);
     }
 
     /**
@@ -612,12 +611,11 @@ class NearProvider {
      * @returns {Object} returns transaction receipt object or null
      */
     async routeEthGetTransactionReceipt(params) {
-        // const txHash = utils.hexToBase58(params[0]);
-        let status = await this.nearProvider.status();
-        let outcome = await this.nearProvider.txStatus(Buffer.from(bs58.decode(params[0])), this.accountId);
-
+        const txHash = utils.deserializeHex(params[0]);
+        let tx = await this.nearProvider.txStatus(txHash, this.accountId);
+        let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
         // TODO: compute proper tx status: accumulate logs and gas.
-        const result = nearToEth.transactionReceiptObj(status, outcome);
+        const result = nearToEth.transactionReceiptObj(block, tx);
         return result;
     }
 
@@ -630,49 +628,57 @@ class NearProvider {
      * from this address
      */
     async routeEthGetTransactionCount(params) {
-        const address = params[0];
-        const block = params[1];
-        // TODO: transaction count.
+        const address = utils.remove0x(params[0]);
 
-        console.log({address, block});
-        // get other thing isntead
-        try {
-            // const query = await this.nearProvider.query('account/evm', '')
-            const account = new nearlib.Account(this.connection, this.accountId);
-            const details = await account.state();
-            console.log(details);
-            return '0x0';
-        } catch (e) {
-            console.log({e});
-            return '0x0';
-        }
+        console.log({address});
+        let result = await this._viewEvmContract(
+          'nonce_of_evm_address',
+          { address }
+        )
+        console.log({ result });
+        return `0x${result.toString()}`;
     }
 
     /**
      * Creates new message call transaction or a contract creation, if
-     * the data field contains code
+     * the data field contains code, pass it through
      * web3.eth.sendTransaction
      *
+     * @param    {Object} txObj transaction object
+     * @property {String} params.to EVM destination address
+     * @property {String} params.value amount of yoctoNEAR to attach
+     * @property {String} params.gas amount of gas to attach
+     * @property {String} params.data the encoded call data
+     * @returns  {String} The resulting txid
      */
     async routeEthSendTransaction(params) {
-        if (params[0].to === undefined) {
-            // If contract deployment.
-            let outcome = await this.account.functionCall(
+        let outcome;
+        let val = 0;
+
+        const {to, value, data} = params[0];
+        if (value !== undefined) {
+          val = value;
+        }
+
+        if (to === undefined) {
+            // Contract deployment.
+            outcome = await this.account.functionCall(
                 this.evm_contract,
                 'deploy_code',
-                { 'bytecode': params[0].data.slice(2) },
-                new BN(params[0].gas.slice(2), 16),
-                '100000');
-            return outcome.transaction.id;
-        } else {
-            let outcome = await this.account.functionCall(
-                this.evm_contract,
-                'run_command',
-                { contract_address: params[0].to.slice(2), encoded_input: params[0].data.slice(2) },
-                '10000000', 0
+                { 'bytecode': utils.remove0x(data) },
+                undefined,
+                val.toString()
             );
-            return outcome.transaction.id;
+        } else {
+            outcome = await this.account.functionCall(
+                this.evm_contract,
+                'call_contract',
+                { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
+                undefined,
+                val.toString()
+            );
         }
+        return utils.base58ToHex(outcome.transaction_outcome.id);
     }
 
     /**
@@ -683,18 +689,11 @@ class NearProvider {
      * @returns {String} returns the 32-byte transaction hash, or the
      * zero hash if the transaction is not yet available
      */
-    async routeEthSendRawTransaction() {
+    async routeEthSendRawTransaction(/* params */) {
         // const txData = params[0];
-        // TODO
+        // https://docs.nearprotocol.com/docs/interaction/rpc#send-transaction-wait-until-done
+        // TODO: this ^
         return '0x';
-    }
-
-    /**
-     * web3.eth.sign and web3.eth.signTransaction
-     */
-    // https://nomicon.io/Runtime/Scenarios/FinancialTransaction.html
-    async routeEthSign() {
-        // TODO
     }
 
     /**
@@ -719,16 +718,6 @@ class NearProvider {
             encoded_input: utils.remove0x(data)
           });
         return '0x' + result;
-    }
-
-    // TODO
-    async routeEthEstimateGas() {
-        return '0x00';
-    }
-
-    // TODO
-    async routeEthGetPastLogs() {
-        return '0x00';
     }
 }
 

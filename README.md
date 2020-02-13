@@ -62,6 +62,16 @@ module.exports = {
 }
 ```
 
+## Limitations and differences from Ethereum providers
+
+* Any call that accepts blockHeight as an argument will function as `latest`,
+  regardless of the actual argument. This is a Near RPC limitation.
+* `eth_call` does not support `from` or `value` arguments. This is a Near RPC
+  limitation.
+* `eth_estimateGas` will always return `0x0`. Near RPC does not seem to support
+  gas estimation for calls.
+
+
 ## API
 
 TODO: Add in API methods and differences with web3.
@@ -497,17 +507,6 @@ Transaction look-up requires both the hash and the account ID.
   };
     ```
 
-`eth_gasPrice`
-
-- [ ] Where is gas price listed?
-- [ ] Is this referring to NEAR gas price or ETH gas price? Are these the same or different?
-
-`eth_accounts`
-
-- [ ] Do all NEAR accounts have an equivalent EVM address?
-- [ ] Are there address collisions?
-
-
 #### ETH to NEAR and NEAR to ETH values
 
 No conversion. All inputs in nearlib are denominated in yoctoNEAR (1 NEAR = 10^24 yoctoNEAR)
@@ -521,4 +520,3 @@ NEAR timestamp is 1000000 the size of a normal date. Had to do some weird stuff 
 #### Storage
 
 I don't understand `storage_paid_at` and `storage_usage` and if they have an ETH equivalent.
-
