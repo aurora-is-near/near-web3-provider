@@ -245,10 +245,9 @@ describe('\n---- CONTRACT INTERACTION ----', () => {
         }));
     });
 
-    describe.skip('getTransactionCount | eth_getTransactionCount', () => {
+    describe('getTransactionCount | eth_getTransactionCount', () => {
         // TODO: call, make tx, call again to see if incremented
-        // CONSIDER: should this return the Ethereum account nonce?
-        test.skip('returns transaction count', withWeb3(async (web) => {
+        test('returns transaction count', withWeb3(async (web) => {
             const address = utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT);
             const txCount = await web.eth.getTransactionCount(address);
 
