@@ -20,12 +20,10 @@
     "bn.js": "^5.0.0",
     "bs58": "^4.0.1",
     "bsert": "0.0.10",
+    "nearlib": "^0.21.0",
     "tweetnacl": "^1.0.3",
     "web3": "^1.2.4",
     "web3-provider-engine": "^15.0.4"
-  },
-  "peerDependencies": {
-    "nearlib": "^0.21.0"
   },
   "devDependencies": {
     "eslint": "^6.8.0",

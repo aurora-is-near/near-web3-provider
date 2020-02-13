@@ -699,4 +699,4 @@ class NearProvider {
     }
 }
 
-module.exports = NearProvider;
+module.exports = { NearProvider, nearlib };
