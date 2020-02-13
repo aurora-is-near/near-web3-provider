@@ -181,7 +181,6 @@ describe('\n---- BASIC QUERIES ----', () => {
         console.log('networkId variable', networkId)
         try {
             await web._provider.keyStore.setKey(networkId, 'evm', keyPair);
-            console.log('set key')
 
             const contract = await web._provider.account.createAndDeployContract(
                 'evm',
@@ -190,7 +189,11 @@ describe('\n---- BASIC QUERIES ----', () => {
                 0)  // NEAR value
             console.log('deployed EVM contract', contract);
         } catch (e) {
-            console.log('EVM deployed error', e);
+            if (e.type === 'AccountAlreadyExists') {
+                console.log('EVM already deployed');
+            } else {
+                console.log('EVM deploy error', e);
+            }
         }
     }));
 
