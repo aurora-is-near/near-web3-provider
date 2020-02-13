@@ -11,9 +11,9 @@ const nearToEth = require('./near_to_eth_objects');
 const GAS_AMOUNT = new BN('1000000000000000000');
 
 class NearProvider {
-    constructor(url, keyStore, accountId, networkId) {
+    constructor(url, keyStore, accountId, networkId, evmContractName) {
         this.networkId = networkId || process.env.NODE_ENV || 'default';
-        this.evm_contract = 'evm';
+        this.evm_contract = evmContractName || 'evm';
         this.url = url;
         this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
 
