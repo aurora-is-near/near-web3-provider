@@ -27,6 +27,17 @@ function createKeyPair() {
     return nearlib.utils.KeyPair.fromRandom('ed25519');
 }
 
+async function getLatestBlockInfo() {
+    const { sync_info } = await testNearProvider.status();
+    const { latest_block_hash, latest_block_height } = sync_info;
+    const block = {
+        blockHash: utils.base58ToHex(latest_block_hash),
+        blockHeight: latest_block_height
+    };
+
+    return block;
+}
+
 function createWeb3Instance(accountId, keyPair) {
     console.log('Creating web3 instance: ', accountId);
 
@@ -256,17 +267,14 @@ describe('#web3.eth', () => {
 
         beforeAll(withWeb3(async (web) => {
             if (net === 'testnet') {
-                console.log('-----Using testnet-----')
-
-
+                console.log('-----Using testnet-----');
                 const block = await testNearProvider.block(base58BlockHash);
                 blockHash = utils.base58ToHex(base58BlockHash);
                 blockHeight = block.header.height;
             } else {
-                const { sync_info } = await testNearProvider.status();
-                const { latest_block_hash, latest_block_height } = sync_info;
-                blockHash = utils.base58ToHex(latest_block_hash);
-                blockHeight = latest_block_height;
+                const newBlock = getLatestBlockInfo();
+                blockHash = newBlock.blockHash;
+                blockHeight = newBlock.blockHeight;
             }
         }));
 
@@ -298,34 +306,42 @@ describe('#web3.eth', () => {
             }
         }));
 
-        // test.skip('gets block by number', withWeb3(async (web) => {
-        //     const block = await web.eth.getBlock(blockHeight);
-        //     expect(block.hash).toEqual(blockHash);
-        //     expect(block.number).toEqual(blockHeight);
-        //     if (block.transactions.length > 0) {
-        //         expect(typeof block.transactions[0] === 'string').toBe(true);
-        //     }
-        // }));
+        test('gets block by number', withWeb3(async (web) => {
+            try {
+                const block = await web.eth.getBlock(blockHeight);
+                expect(block.hash).toEqual(blockHash);
+                expect(block.number).toEqual(blockHeight);
+                if (block.transactions.length > 0) {
+                    expect(typeof block.transactions[0]).toBe('string');
+                }
+            } catch (e) {
+                expect(e).toBe(null);
+            }
+        }));
 
-        // // broken because blockObj never awaits _getTxsFromChunks
-        // test.skip('gets block by number with full tx objs', withWeb3(async (web) => {
-        //     const block = await web.eth.getBlock(blockHeight, true);
-        //     expect(block.number).toEqual(blockHeight);
-        //     expect(typeof block.transactions[0] === 'object').toBe(true);
-        // }));
+        test('gets block by number with full tx objs', withWeb3(async (web) => {
+            const block = await web.eth.getBlock(blockHeight, true);
+            expect(block.number).toEqual(blockHeight);
+            expect(typeof block.transactions[0] === 'object').toBe(true);
+        }));
 
-        // test.skip('gets block by string - "latest"', withWeb3(async (web) => {
-        //     const blockString = 'latest';
+        test('gets block by string - "latest"', withWeb3(async (web) => {
+            const blockString = 'latest';
 
-        //     // wait for a new block
-        //     await new Promise(r => setTimeout(r, 1000));
-        //     const block = await web.eth.getBlock(blockString);
-        //     expect(block.number).toBeGreaterThan(blockHeight);
-        //     expect(Array.isArray(block.transactions)).toBe(true);
-        //     if (block.transactions.length > 0) {
-        //         expect(typeof block.transactions[0] === 'string').toBe(true);
-        //     }
-        // }));
+            // wait for a new block
+            await new Promise(r => setTimeout(r, 1000));
+
+            try {
+                const block = await web.eth.getBlock(blockString);
+                expect(block.number).toBeGreaterThan(blockHeight);
+                expect(Array.isArray(block.transactions)).toBe(true);
+                if (block.transactions.length > 0) {
+                    expect(typeof block.transactions[0]).toBe('string');
+                }
+            } catch (e) {
+                expect(e).toBe(null);
+            }
+        }));
     });
 
     describe(`getBlockTransactionCount |
