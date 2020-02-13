@@ -11,7 +11,6 @@ const hydrate = {};
  * @returns {Object} hydrated chunk with transactions and (sometimes) receipts
  */
 hydrate.chunk = async function(chunk, block, nearProvider) {
-  console.log('---------hydrate.chunk');
   // NB: A chunk with no transactions is indicated by an empty chunk.tx_root
   const hasNoTxs = utils.emptyResult;
 
