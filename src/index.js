@@ -503,21 +503,17 @@ class NearProvider {
      * @returns {Object} returns transaction object
      */
     async routeEthGetTransactionByHash(params) {
-        let { txHash, accountId } = utils.getTxHashAndAccountId(params[0]);
-
         // NB: provider.txStatus requires txHash to be a Uint8Array of
         // the base58 tx hash. Since txHash is hex, it is converted to
         // base58, and then turned into a Buffer
-        txHash = new Uint8Array(bs58.decode(utils.hexToBase58(txHash)));
+        let txHash = new Uint8Array(bs58.decode(utils.hexToBase58(params[0])));
 
-        const tx = await this.nearProvider.txStatus(txHash, accountId);
-
+        const tx = await this.nearProvider.txStatus(txHash, this.accountId);
+        let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
         // const blockHash = tx.transaction_outcome.block_hash;
         // const block = await this.nearProvider.block(blockHash);
 
-        console.log({tx});
-
-        return nearToEth.transactionObj(tx);
+        return nearToEth.transactionObj(tx, 1);
     }
 
     /**
@@ -590,10 +586,10 @@ class NearProvider {
      */
     async routeEthGetTransactionReceipt(params) {
         const txHash = utils.deserializeHex(params[0]);
-        let outcome = await this.nearProvider.txStatus(txHash, this.accountId);
-        let block = await this.nearProvider.block(outcome.transaction_outcome.block_hash);
+        let tx = await this.nearProvider.txStatus(txHash, this.accountId);
+        let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
         // TODO: compute proper tx status: accumulate logs and gas.
-        const result = nearToEth.transactionReceiptObj(block, outcome);
+        const result = nearToEth.transactionReceiptObj(block, tx);
         return result;
     }
 
