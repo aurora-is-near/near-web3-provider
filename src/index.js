@@ -8,6 +8,8 @@ const NEAR_NET_VERSION = '99';
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
+const GAS_AMOUNT = new BN('1000000000000000000');
+
 class NearProvider {
     constructor(url, keyStore, accountId, networkId) {
         this.networkId = networkId || process.env.NODE_ENV || 'default';
@@ -644,7 +646,7 @@ class NearProvider {
                 this.evm_contract,
                 'deploy_code',
                 { 'bytecode': utils.remove0x(data) },
-                undefined,
+                GAS_AMOUNT,
                 val.toString()
             );
         } else {
@@ -652,7 +654,7 @@ class NearProvider {
                 this.evm_contract,
                 'call_contract',
                 { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                undefined,
+                GAS_AMOUNT,
                 val.toString()
             );
         }
