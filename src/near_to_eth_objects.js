@@ -37,7 +37,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 
     const { transaction_outcome, transaction } = tx;
 
-    // const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
+    const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
     // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
     const value = transaction.actions.map(v => {
         const k = Object.keys(v)[0];
@@ -48,7 +48,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         // DATA 20 bytes - address of the sender
         // from: sender,
         // TODO: PUt this back to sender when we figure out contract stuff
-        from: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
+        from: sender,
 
         // DATA 20 bytes - address of the receiver
         // TODO: to: receiver
