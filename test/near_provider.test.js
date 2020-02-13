@@ -270,6 +270,8 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
 
     const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
     const base58BlockHash = '3cdkbRn1hpNLH5Ri6pipy7AEAKJscPD7TCgLFs94nWGB';
+    const testnetAccountId = 'dinoaroma';
+    const localAccountId = 'test.near';
 
     beforeAll(withWeb3(async (web) => {
         if (net === 'testnet') {
@@ -391,12 +393,33 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
     });
 
-    describe.skip('getTransaction | eth_getTransactionByHash', () => {
+    describe('getTransaction | eth_getTransactionByHash', () => {
         // broken on local because no txns on regtest.
-        test.skip('gets transaction by hash', withWeb3(async(web) => {
-            const tx = await web.eth.getTransaction(txHash + ':dinoaroma');
-            expect(typeof tx === 'object').toBe(true);
-            expect(typeof tx.hash === 'string').toBe(true);
+        test('gets transaction by hash', withWeb3(async(web) => {
+            const signerId = net === 'testnet'
+                ? testnetAccountId
+                : localAccountId;
+            const txHash = utils.base58ToHex(base58TxHash);
+
+            try {
+                const tx = await web.eth.getTransaction(`${txHash}:${signerId}`);
+                console.log({tx})
+
+                if (net === 'testnet') {
+                    expect(typeof tx).toBe('object');
+                    expect(typeof tx.hash).toBe('string');
+                    expect(tx.hash).toEqual(txHash)
+                } else {
+                    if (tx) {
+                        expect(typeof tx).toBe('object');
+                        expect(typeof tx.hash).toBe('string');
+                    } else {
+                        expect(tx).toBe(false);
+                    }
+                }
+            } catch (e) {
+                return e;
+            }
         }));
     });
 
