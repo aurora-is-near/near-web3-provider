@@ -288,7 +288,7 @@ describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }
     }));
 
-    describe('getBlockNumber | eth_blockNumber', () => {
+    describe.skip('getBlockNumber | eth_blockNumber', () => {
         test('returns the most recent blockNumber', withWeb3(async (web) => {
             await waitForABlock();
 
@@ -298,7 +298,7 @@ describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
     });
 
-    describe(`getBlock |
+    describe.skip(`getBlock |
         eth_getBlockByHash,
         eth_getBlockByNumber`, () => {
 
@@ -365,7 +365,7 @@ describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
     });
 
-    describe(`getBlockTransactionCount |
+    describe.skip(`getBlockTransactionCount |
         eth_getBlockTransactionCountByHash,
         eth_getBlockTransactionCountByNumber`, () => {
 
