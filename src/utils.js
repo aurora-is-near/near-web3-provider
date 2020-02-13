@@ -7,6 +7,11 @@ const utils = {};
 utils.keccak256 = web3.utils.keccak256;
 
 /**
+ * base58 for 0s. Indicates empty result
+ */
+utils.emptyResult = '11111111111111111111111111111111';
+
+/**
  * Remove 0x if prepended
  * @param {string} value value to check and modify
  * @return {string} string without 0x
@@ -54,40 +59,40 @@ utils.decToHex = function(value) {
  * @returns {string}      The value as a u8a
  */
 utils.deserializeHex = function(hexStr) {
-  if (!hexStr) {
-    return new Uint8Array();
-  }
-
-  if (typeof hexStr !== 'string') {
-    throw new TypeError('Error deserializing hex, must be a string');
-  }
-
-  let hex = '';
-  if (hexStr.slice(0, 2) === '0x') {
-    hex = hexStr.slice(2);
-  } else {
-    hex = hexStr;
-  }
-
-  if (hex.length % 2 !== 0) {
-    throw new TypeError('Error deserializing hex, string length is odd');
-  }
-
-  const a = [];
-  for (let i = 0; i < hex.length; i += 2) {
-    const byte = hex.substr(i, 2);
-    const uint8 = parseInt(byte, 16);
-
-    // TODO: any way to improve this?
-    if (!uint8 && uint8 !== 0) {
-      throw new TypeError(`Error deserializing hex, got non-hex byte: ${byte}`);
+    if (!hexStr) {
+        return new Uint8Array();
     }
 
-    a.push(uint8);
-  }
+    if (typeof hexStr !== 'string') {
+        throw new TypeError('Error deserializing hex, must be a string');
+    }
 
-  return new Uint8Array(a);
-}
+    let hex = '';
+    if (hexStr.slice(0, 2) === '0x') {
+        hex = hexStr.slice(2);
+    } else {
+        hex = hexStr;
+    }
+
+    if (hex.length % 2 !== 0) {
+        throw new TypeError('Error deserializing hex, string length is odd');
+    }
+
+    const a = [];
+    for (let i = 0; i < hex.length; i += 2) {
+        const byte = hex.substr(i, 2);
+        const uint8 = parseInt(byte, 16);
+
+        // TODO: any way to improve this?
+        if (!uint8 && uint8 !== 0) {
+            throw new TypeError(`Error deserializing hex, got non-hex byte: ${byte}`);
+        }
+
+        a.push(uint8);
+    }
+
+    return new Uint8Array(a);
+};
 
 /**
  * Converts hex to number
@@ -142,6 +147,18 @@ utils.base64ToString = function(value) {
 };
 
 /**
+ * Converts hex representation of a base58 string to Uint8Array
+ * @param {String}  value hex string
+ * @returns {Uint8Array} returns hex string in Uint8Array
+ */
+utils.hexToUint8 = function(value) {
+    return new Uint8Array(bs58.decode(this.hexToBase58(value)));
+};
+
+utils.base58ToUint8 = function(value) {
+    return new Uint8Array(bs58.decode(value));
+};
+/**
  * Convert timestamp in NEAR to hex
  * @param {number} value NEAR timestamp
  * @returns {string} hex string equivalent of timestamp
@@ -161,7 +178,7 @@ utils.convertTimestamp = function(value) {
  * Splits hex string into txHash and accountId
  * Used by eth_getTransactionByHash, eth_getTransactionReceipt
  * @param {String} value hex string in format <txHash>:<accountId>
- * @returns {Object} Returns txHash and accountId
+ * @returns {Object} Returns txHash and accountId as strings
  */
 utils.getTxHashAndAccountId = function(value) {
     assert(
@@ -186,6 +203,47 @@ utils.nearAccountToEvmAddress = function(accountID) {
     );
     // NB: 2 characters of hex prefix. Then 20 hex pairs.
     return '0x' + utils.keccak256(accountID).slice(26, 66);
+};
+
+/**
+ * Converts an enum blockHeight OR a hex blockHeight to number
+ * @param {Quantity|Tag} blockHeight block height or enum string
+ * 'genesis', 'latest', 'earliest', or 'pending'
+ * @returns {Number} blockHeight in number form
+ */
+utils.convertBlockHeight = async function(blockHeight, nearProvider) {
+    try {
+        const enums = ['genesis', 'latest', 'earliest', 'pending'];
+        const notHex = !this.isHex(blockHeight);
+        const isAnEnum = enums.find((e) => e === blockHeight);
+
+        if (notHex && typeof blockHeight === 'string') {
+            assert(isAnEnum,
+                'Must pass in a valid block description: "genesis", "latest", "earliest", "pending"');
+        }
+
+        switch (blockHeight) {
+            case 'latest' || 'pending': {
+                const { sync_info } = await nearProvider.status();
+                blockHeight = sync_info.latest_block_height;
+                break;
+            }
+
+            case 'earliest' || 'genesis': {
+                blockHeight = 0;
+                break;
+            }
+
+            default: {
+                blockHeight = this.hexToDec(blockHeight);
+                break;
+            }
+        }
+
+        return blockHeight;
+    } catch (e) {
+        return e;
+    }
 };
 
 module.exports = utils;

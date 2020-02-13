@@ -44,8 +44,8 @@ web.eth.net.isListening();
 Add to your `truffle-config.json`:
 
 ```javascript
-const nearlib = require('nearlib');
-const NearProvider = require("near-web3-provider");
+const { NearProvider, nearlib } = require('near-web3-provider');
+const nearNetworkId = '<local, default, test, etc>';
 
 // Use standard near-shell structure for storing keys.
 const keyStore = new nearlib.keyStores.UnencryptedFileSystemKeyStore('neardev');
@@ -54,8 +54,9 @@ module.exports = {
   networks: {
     near: {
         network_id: "99",
+        skipDryRun: true,
         provider: function() {
-            return new NearProvider("https://rpc.nearprotocol.com", keyStore, 'accounttest')
+            return new NearProvider("https://rpc.nearprotocol.com", keyStore, 'accounttest', nearNetworkId)
         },
     }
   }

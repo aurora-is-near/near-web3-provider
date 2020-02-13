@@ -32,7 +32,7 @@ class NearProvider {
         await this.keyStore.setKey(this.networkId, accountId, keyPair);
         this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
         this.signer = new nearlib.InMemorySigner(this.keyStore);
-        this.connection = new nearlib.Connection('default', this.nearProvider, this.signer);
+        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
     }
 
     async _viewEvmContract(method, methodArgs) {
@@ -48,6 +48,20 @@ class NearProvider {
             return e;
         }
     }
+
+    /**
+     * Calls a block and fills it up
+     */
+    async _getBlock(blockHeight, returnTxObjects) {
+        try {
+            const block = await this.nearProvider.block(blockHeight);
+            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
+
+            return fullBlock;
+        } catch (e) {
+            return e;
+        }
+    };
 
     unsupportedMethodErrorMsg(method) {
         return `NearProvider: ${method} is unsupported.`;
@@ -152,17 +166,13 @@ class NearProvider {
             return '0x0';
         }
 
-        case 'eth_getPastLogs': {
-            return this.routeEthGetPastLogss(params);
-        }
-
         /**-----------UNSUPPORTED METHODS------------**/
         case 'eth_sign': {
             throw new Error(this.unsupportedMethodErrorMsg(method));
         }
 
         case 'eth_getPastLogs': {
-          throw new Error(this.unsupportedMethodErrorMsg(method));
+            throw new Error(this.unsupportedMethodErrorMsg(method));
         }
 
         case 'eth_pendingTransactions': {
@@ -305,13 +315,14 @@ class NearProvider {
     /**
      * Returns the current price per gas in yoctoNEAR
      * @returns {Quantity} integer of the current gas price in
-     * yoctoNEAR as Decimal String
+     * yoctoNEAR
      */
     async routeEthGasPrice() {
         try {
             const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
             const result = await this.nearProvider.block(latest_block_hash);
-            return result.header.gas_price;
+
+            return new BN(result.header.gas_price);
         } catch (e) {
             return e;
         }
@@ -323,11 +334,15 @@ class NearProvider {
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
     async routeEthAccounts() {
-        const networkId = this.connection.networkId;
-        const accounts = await this.keyStore.getAccounts(networkId);
+        try {
+            const networkId = this.connection.networkId;
+            const accounts = await this.keyStore.getAccounts(networkId);
 
-        const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
-        return evmAccounts;
+            const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
+            return evmAccounts;
+        } catch (e) {
+            return e;
+        }
     }
 
     /**
@@ -360,6 +375,7 @@ class NearProvider {
             return e;
         }
     }
+
     /**
      * Returns the value from a storage position at a given address.
      * @param {String} address 20-byte address of the storage
@@ -373,9 +389,9 @@ class NearProvider {
         const address = utils.remove0x(params[0]);
 
         let result = await this._viewEvmContract(
-          'get_storage_at',
-          { address, key }
-        )
+            'get_storage_at',
+            { address, key }
+        );
         return `0x${result}`;
     }
 
@@ -405,13 +421,14 @@ class NearProvider {
      * true returns the full transaction objects, else false.
      * @returns {Object} returns block object
      */
-    async routeEthGetBlockByHash(params) {
-        const blockHash = utils.hexToBase58(params[0]);
-        const returnTxObjects = params[1];
-
+    async routeEthGetBlockByHash([blockHash, returnTxObjects]) {
         try {
-            const block = await this.nearProvider.block(blockHash);
-            return nearToEth.blockObj(block, returnTxObjects);
+            // console.log('gethash', blockHash);
+            assert(blockHash, 'Must pass in blockHash');
+            blockHash = utils.hexToBase58(blockHash);
+            const block = await this._getBlock(blockHash, returnTxObjects);
+
+            return block;
         } catch (e) {
             return e;
         }
@@ -427,21 +444,12 @@ class NearProvider {
      * true returns the full transaction objects, else false.
      * @returns {Object} returns block object
      */
-    // TODO: Handle other enum strings
-    async routeEthGetBlockByNumber(params) {
-        let blockHeight = params[0];
-        const returnTxObjects = params[1];
-
+    async routeEthGetBlockByNumber([blockHeight, returnTxObjects]) {
         try {
-            if (blockHeight === 'latest') {
-                const status = await this.nearProvider.status();
-                blockHeight = status.sync_info.latest_block_height;
-            } else {
-                blockHeight = utils.hexToDec(blockHeight);
-            }
+            blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
+            const block = await this._getBlock(blockHeight, returnTxObjects);
 
-            const block = await this.nearProvider.block(blockHeight);
-            return nearToEth.blockObj(block, returnTxObjects);
+            return block;
         } catch (e) {
             return e;
         }
@@ -456,14 +464,13 @@ class NearProvider {
      * @param {String} blockHash 32-byte block hash
      * @returns {Quantity} Integer of the number of txs in this block
      */
-    async routeEthGetBlockTransactionCountByHash(params) {
-        let blockHash = params[0];
-        blockHash = utils.hexToBase58(blockHash);
-
+    async routeEthGetBlockTransactionCountByHash([blockHash]) {
         try {
-            const block = await this.nearProvider.block(blockHash);
-            const transactionCount = block.header.chunks_included;
-            return utils.decToHex(transactionCount);
+            blockHash = utils.hexToBase58(blockHash);
+            const block = await this._getBlock(blockHash);
+            const txCount = block.transactions.length;
+
+            return utils.decToHex(txCount);
         } catch (e) {
             return e;
         }
@@ -478,24 +485,13 @@ class NearProvider {
      * @param {String} blockHeight 32-byte block hash
      * @returns {Quantity} Integer of the number of txs in this block
      */
-    // TODO: Handle other enum strings
-    async routeEthGetBlockTransactionCountByNumber(params) {
-        console.log('number');
-        let blockHeight = params[0];
-
-        if (blockHeight === 'latest') {
-            const status = await this.nearProvider.status();
-            blockHeight = status.sync_info.latest_block_height;
-        } else {
-            blockHeight = utils.hexToDec(blockHeight);
-        }
-
-        // TODO: Are chunks the same as transactions?
+    async routeEthGetBlockTransactionCountByNumber([blockHeight]) {
         try {
-            const block = await this.nearProvider.block(blockHeight);
-            const transactionCount = block.header.chunks_included;
+            blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
+            const block = await this._getBlock(blockHeight);
 
-            return utils.decToHex(transactionCount);
+            const txCount = block.transactions.length;
+            return utils.decToHex(txCount);
         } catch (e) {
             return e;
         }
@@ -507,18 +503,24 @@ class NearProvider {
      * separated by ':'
      * @returns {Object} returns transaction object
      */
-    async routeEthGetTransactionByHash(params) {
-        // NB: provider.txStatus requires txHash to be a Uint8Array of
-        // the base58 tx hash. Since txHash is hex, it is converted to
-        // base58, and then turned into a Buffer
-        let txHash = new Uint8Array(bs58.decode(utils.hexToBase58(params[0])));
+    // TODO: Update accountID references to be signerID (more explicit)
+    async routeEthGetTransactionByHash([txHashAndAccountId]) {
+        try {
+            // NB: provider.txStatus requires txHash to be a Uint8Array of
+            // the base58 tx hash. Since txHash is hex, it is converted to
+            // base58, and then turned into a Buffer
+            const { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
 
-        const tx = await this.nearProvider.txStatus(txHash, this.accountId);
-        let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
-        // const blockHash = tx.transaction_outcome.block_hash;
-        // const block = await this.nearProvider.block(blockHash);
+            const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(utils.hexToUint8(txHash), accountId);
+            const block = await this._getBlock(block_hash, true);
 
-        return nearToEth.transactionObj(tx, 1);
+            const findTx = block.transactions.find((t) => t.hash === txHash);
+
+            return findTx;
+        } catch (e) {
+            return e;
+        }
+
     }
 
     /**
@@ -532,18 +534,18 @@ class NearProvider {
      * @returns {Object} returns transaction object
      */
     // TODO: Fix to get transactions from chunks
-    async routeEthGetTransactionByBlockHashAndIndex(params) {
-        const blockHash = utils.hexToBase58(params[0]);
-        const txIndex = utils.hexToDec(params[1]);
+    async routeEthGetTransactionByBlockHashAndIndex([blockHash, txIndex]) {
+        blockHash = utils.hexToBase58(blockHash);
+        txIndex = utils.hexToDec(txIndex);
 
         assert(blockHash, 'Must pass in block hash as first argument');
         assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
 
         try {
-            const block = await this.nearProvider.block(blockHash);
-            const tx = nearToEth.transactionObj(block.chunks[txIndex], block.header.hash);
+            const block = await this._getBlock(blockHash, true);
 
-            return tx;
+            const tx = block.transactions[txIndex];
+            return tx || null;
         } catch (e) {
             return e;
         }
@@ -559,26 +561,19 @@ class NearProvider {
      * @param {Number} txIndex transaction's index position
      * @returns {Object} returns transaction object
      */
-    async routeEthGetTransactionByBlockNumberAndIndex(params) {
-        let blockHeight = params[0];
-        const txIndex = utils.hexToDec(params[1]);
+    async routeEthGetTransactionByBlockNumberAndIndex([blockHeight, txIndex]) {
+        txIndex = utils.hexToDec(txIndex);
 
+        assert(txIndex !== undefined, 'Must pass in tx index as second argument');
         assert(blockHeight, 'Must pass in block height as first argument');
-        assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
 
-        if (blockHeight === 'latest') {
-            const status = await this.nearProvider.status();
-            blockHeight = status.sync_info.latest_block_height;
-        } else {
-            blockHeight = utils.hexToDec(blockHeight);
-        }
+        blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
 
-        // TODO: Are chunks the same as transactions?
         try {
-            const block = await this.nearProvider.block(blockHeight);
-            const tx = nearToEth.transactionObj(block.chunks[txIndex], block.header.hash);
+            const block = await this._getBlock(blockHeight, true);
+            const tx = block.transactions[txIndex];
 
-            return tx;
+            return tx || null;
         } catch (e) {
             return e;
         }
@@ -611,9 +606,9 @@ class NearProvider {
 
         console.log({address});
         let result = await this._viewEvmContract(
-          'nonce_of_evm_address',
-          { address }
-        )
+            'nonce_of_evm_address',
+            { address }
+        );
         console.log({ result });
         return `0x${result.toString()}`;
     }
@@ -636,7 +631,7 @@ class NearProvider {
 
         const {to, value, data} = params[0];
         if (value !== undefined) {
-          val = value;
+            val = value;
         }
 
         if (to === undefined) {
