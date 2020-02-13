@@ -586,10 +586,12 @@ class NearProvider {
      * @param {String} txHash transaction hash
      * @returns {Object} returns transaction receipt object or null
      */
-    async routeEthGetTransactionReceipt(params) {
-        const txHash = utils.deserializeHex(params[0]);
-        let tx = await this.nearProvider.txStatus(txHash, this.accountId);
+    async routeEthGetTransactionReceipt([txHashAndAccountId]) {
+        let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
+
+        let tx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
         let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
+
         // TODO: compute proper tx status: accumulate logs and gas.
         const result = nearToEth.transactionReceiptObj(block, tx);
         return result;
@@ -654,7 +656,7 @@ class NearProvider {
                 val.toString()
             );
         }
-        return utils.base58ToHex(outcome.transaction_outcome.id);
+        return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
     /**
