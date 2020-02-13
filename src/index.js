@@ -639,7 +639,11 @@ class NearProvider {
      */
     async routeEthSendTransaction(params) {
         let outcome;
+        let val = 0;
         const {to, value, gas, data} = params[0];
+        if (value !== undefined) {
+          val = value;
+        }
 
         if (to === undefined) {
             // Contract deployment.
@@ -647,16 +651,16 @@ class NearProvider {
                 this.evm_contract,
                 'deploy_code',
                 { 'bytecode': utils.remove0x(data) },
-                new BN(utils.remove0x(gas), 16).toString(),
-                value.toString()
+                undefined,
+                val.toString()
             );
         } else {
             outcome = await this.account.functionCall(
                 this.evm_contract,
                 'call_contract',
                 { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                new BN(utils.remove0x(gas), 16).toString(),
-                value.toString()
+                undefined,
+                val.toString()
             );
         }
         return outcome.transaction.id;
