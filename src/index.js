@@ -131,11 +131,11 @@ class NearProvider {
         }
 
         case 'eth_sendTransaction': {
-            return this.routeEthSendTransactionh(params);
+            return this.routeEthSendTransaction(params);
         }
 
         case 'eth_sendRawTransaction': {
-            return this.routeEthSendRawTransactionh(params);
+            return this.routeEthSendRawTransaction(params);
         }
 
         case 'eth_call': {
