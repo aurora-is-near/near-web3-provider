@@ -2,7 +2,7 @@ const fs = require('fs');
 const web3 = require('web3');
 const nearlib = require('nearlib');
 const utils = require('../src/utils');
-const NearProvider = require('../src');
+const { NearProvider } = require('../src/index');
 const BN = require('bn.js');
 
 /**------------------------------------------------
@@ -43,7 +43,7 @@ Running tests on ${net} network
 URL: ${url}
 -----------------------`)
 
-const networkId = 'default'; // see NearProvider constructor, src/index.js
+const networkId = 'local'; // see NearProvider constructor, src/index.js
 const evmContract = 'evm';   // see NearProvider constructor, src/index.js
 const nearEvmFile = './artifacts/near_evm.wasm';
 const testNearProvider = new nearlib.providers.JsonRpcProvider(url);
@@ -74,7 +74,7 @@ function createWeb3Instance(accountId, keyPair) {
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
 
     keyStore.setKey(networkId, accountId, keyPair);
-    web.setProvider(new NearProvider(url, keyStore, accountId));
+    web.setProvider(new NearProvider(url, keyStore, accountId, networkId));
 
     // console.log('web3 provider created for account: ', web._provider.account.accountId);
     return web;
@@ -107,39 +107,38 @@ const withWeb3 = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, mainKeyP
 // const receiverKeyPair = createKeyPair();
 // const withWeb3Receiver = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT_RECEIVER, receiverKeyPair));
 
-// async function deployContract(web) {
-//     const accountId = web._provider.account.accountId;
-//     console.log('Deploying EVM Contract on account: ', accountId);
+async function deployContract(web) {
+    const accountId = web._provider.account.accountId;
+    console.log('Deploying EVM Contract on account: ', accountId);
 
-//     const evmCode = fs
-//         .readFileSync(nearEvmFile)
-//         .toString('hex');
-//     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-//     const evmKeyPair = createKeyPair();
+    const evmCode = fs
+        .readFileSync(nearEvmFile)
+        .toString('hex');
+    const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
+    const evmKeyPair = createKeyPair();
 
-//     // Set keypair
-//     try {
-//         await web._provider.keyStore.setKey(networkId, evmContract, evmKeyPair)
-//     } catch (e) {
-//         console.log('Setting key error', e);
-//     }
+    // Set keypair
+    try {
+        await web._provider.keyStore.setKey(networkId, evmContract, evmKeyPair)
+    } catch (e) {
+        console.log('Setting key error', e);
+    }
 
-//     try {
-//         console.log('web_provider', web._provider.account)
+    try {
+        console.log('web_provider', web._provider.account)
 
-//         const contract = await web._provider.account.createAndDeployContract(
-//             evmContract,                    // contractId
-//             contractKeyPair.getPublicKey(), // publicKey
-//             evmBytecode,                    // data
-//             0                               // amount. NEAR value
-//         )
-
-//         console.log('EVM Contract Deployed', contract);
-//         return true;
-//     } catch (e) {
-//         console.log('Error deploying EVM Contract', e);
-//     }
-// }
+        const contract = await web._provider.account.createAndDeployContract(
+            evmContract,                    // contractId
+            evmKeyPair.getPublicKey(),      // publicKey
+            evmBytecode,                    // data
+            0                               // amount. NEAR value
+        )
+        console.log('EVM Contract Deployed', contract);
+        return true;
+    } catch (e) {
+        console.log('Error deploying EVM Contract', e);
+    }
+}
 
 // beforeAll(withWeb3(async (web) => {
 //     console.log('web3 with', web._provider);
@@ -168,25 +167,33 @@ const withWeb3 = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, mainKeyP
 //     }
 // }));
 
+describe.only('\n---- BASIC QUERIES ----', () => {
+    // beforeAll(withWeb3(async (web) => await deployContract(web)));
+    beforeAll(withWeb3(async (web) => {
 
-// beforeAll(withWeb3(async (web) => {
-//     const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
-//     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-//     const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
-//     await web._provider.keyStore.setKey(this.networkId, this.evm_contract, keyPair);
-//     return web._provider.account.createAndDeployContract(
-//         web._provider.evm_contract,
-//         keyPair.getPublicKey(),
-//         evmBytecode,
-//         0  // NEAR value
-//     ).then(() => {
-//         console.log('deployed EVM contract');
-//     }).catch((e) => {
-//         console.log('EVM deployed error', e);
-//     });
-// }), 10000);
+        const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
+        const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
+        const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+        console.log('networkId variable', networkId)
+        console.log('this.networkId', this)
+        try {
+            await web._provider.keyStore.setKey(networkId, 'evm', keyPair);
+            console.log('set key')
+        } catch (e) {
+            return e;
+        }
+        try {
+            const contract = await web._provider.account.createAndDeployContract(
+                'evm',
+                keyPair.getPublicKey(),
+                evmBytecode,
+                0)  // NEAR value
+            console.log('deployed EVM contract');
+        } catch (e) {
+            console.log('EVM deployed error', e);
+        }
+    }));
 
-describe('\n---- BASIC QUERIES ----', () => {
     describe('isSyncing | eth_syncing', () => {
         test('returns correct type - Boolean|Object', withWeb3(async (web) => {
             const sync = await web.eth.isSyncing();
@@ -292,7 +299,7 @@ describe.skip('\n---- CONTRACT INTERACTION ----', () => {
 
 });
 
-describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
+describe.skip('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
     let blockHash;
     let blockHeight;
 
