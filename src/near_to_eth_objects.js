@@ -104,7 +104,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
  * @returns {Object} returns ETH block object
  */
 nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
-    console.log('-----nearToEth.blockObj');
+    // console.log('-----nearToEth.blockObj');
     try {
         block = await this.hydrate.block(block, nearProvider);
 
@@ -130,10 +130,10 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
             transactions = [];
         } else {
             if (!returnTxObjects) {
-                console.log('Just hashes');
+                // console.log('Just hashes');
                 transactions = block.transactions.map((tx) => utils.base58ToHex(tx.hash));
             } else {
-                console.log('everything');
+                // console.log('everything');
                 const hydratedTransactions = await hydrate.allTransactions(block, nearProvider);
 
                 const promiseArray = hydratedTransactions.map((tx, txIndex) => {

@@ -44,7 +44,7 @@ async function waitForABlock() {
 }
 
 function createWeb3Instance(accountId, keyPair) {
-    console.log('Creating web3 instance: ', accountId);
+    // console.log('Creating web3 instance: ', accountId);
 
     const web = new web3();
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
@@ -52,7 +52,7 @@ function createWeb3Instance(accountId, keyPair) {
     keyStore.setKey(networkId, accountId, keyPair);
     web.setProvider(new NearProvider(url, keyStore, accountId));
 
-    console.log('web3 provider created for account: ', web._provider.account.accountId);
+    // console.log('web3 provider created for account: ', web._provider.account.accountId);
     return web;
 }
 
@@ -262,6 +262,20 @@ describe.skip('\n---- CONTRACT INTERACTION ----', () => {
 
         }));
     });
+
+    describe.skip('getTransactionCount | eth_getTransactionCount', () => {
+        // TODO: call, make tx, call again to see if incremented
+        // CONSIDER: should this return the Ethereum account nonce?
+        test.skip('returns transaction count', withWeb3(async (web) => {
+            const address = utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT);
+            const txCount = await web.eth.getTransactionCount(address);
+
+            expect(typeof txCount).toBe('number');
+            expect(txCount).toBeGreaterThanOrEqual(0);
+        }));
+
+    });
+
 });
 
 describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
@@ -270,6 +284,11 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
 
     const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
     const base58BlockHash = '3cdkbRn1hpNLH5Ri6pipy7AEAKJscPD7TCgLFs94nWGB';
+
+    // TODO: These are for testnet. Make it so local testnet works
+    const txHash = utils.base58ToHex(base58TxHash);
+    const txIndex = 0;
+
     const testnetAccountId = 'dinoaroma';
     const localAccountId = 'test.near';
 
@@ -399,7 +418,6 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
             const signerId = net === 'testnet'
                 ? testnetAccountId
                 : localAccountId;
-            const txHash = utils.base58ToHex(base58TxHash);
 
             try {
                 const tx = await web.eth.getTransaction(`${txHash}:${signerId}`);
@@ -423,41 +441,44 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
     });
 
-    describe.skip('getTransactionCount | eth_getTransactionCount', () => {
-        // TODO: call, make tx, call again to see if incremented
-        // CONSIDER: should this return the Ethereum account nonce?
-        test.skip('returns transaction count', withWeb3(async (web) => {
-            const address = utils.nearAccountToEvmAddress(TEST_NEAR_ACCOUNT);
-            const txCount = await web.eth.getTransactionCount(address);
-
-            expect(typeof txCount).toBe('number');
-            expect(txCount).toBeGreaterThanOrEqual(0);
-        }));
-
-    });
-
     describe(`getTransactionFromBlock |
         eth_getTransactionByBlockHashAndIndex,
         eth_getTransactionByBlockNumberAndIndex`, () => {
         // broken on local because no txns on regtest.
-        test.skip('returns transaction from block hash', withWeb3(async (web) => {
-            const tx = await web.eth.getTransactionFromBlock(blockHash, 'txIndex');
+        test('returns transaction from block hash', withWeb3(async (web) => {
+            const tx = await web.eth.getTransactionFromBlock(blockHash, txIndex);
             expect(typeof tx).toBe('object');
-            expect(tx.hash).toEqual(txHash);
+            if (tx) {
+                expect(typeof tx.hash).toBe('string');
+                expect(tx.hash).toEqual(txHash);
+            }
         }));
 
         // broken on local because no txns on regtest.
-        test.skip('returns transaction from block number', withWeb3(async (web) => {
-            const tx = await web.eth.getTransactionFromBlock(blockNumber, txIndex);
+        test('returns transaction from block number', withWeb3(async (web) => {
+            const tx = await web.eth.getTransactionFromBlock(blockHeight, txIndex);
             expect(typeof tx).toBe('object');
-            expect(tx.hash).toEqual(txHash);
+            if (tx) {
+                expect(typeof tx.hash).toBe('string');
+                expect(tx.hash).toEqual(txHash);
+            }
         }));
 
         // broken on local because no txns on regtest.
-        test.skip('returns transaction from string - latest', withWeb3(async (web) => {
+        test('returns transaction from string - latest', withWeb3(async (web) => {
             const tx = await web.eth.getTransactionFromBlock('latest', txIndex);
             expect(typeof tx).toBe('object');
-            expect(typeof tx.hash).toEqual('string');
+            if (tx) {
+                expect(typeof tx.hash).toBe('string');
+            }
+        }));
+
+        test('returns tx from string - genesis', withWeb3(async (web) => {
+            const tx = await web.eth.getTransactionFromBlock('earliest', txIndex);
+            expect(typeof tx).toBe('object');
+            if (tx) {
+                expect(typeof tx.hash).toBe('string');
+            }
         }));
     });
 });

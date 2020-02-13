@@ -44,8 +44,7 @@ hydrate.chunk = async function(chunk, block, nearProvider) {
  * @returns {Object} returns NEAR block with NEAR transactions array
  */
 hydrate.block = async function(block, nearProvider) {
-    console.log('---------hydrate.block');
-
+    // console.log('---------hydrate.block');
     try {
     // Create promise array of hydrate chunk promises
         const promiseArray = block.chunks.map((chunk) => {
@@ -122,7 +121,7 @@ hydrate.transaction = async function(block, txIndex, nearProvider) {
  * @returns {Object[]} array of hydrated transactions
  */
 hydrate.allTransactions = async function(block, nearProvider) {
-    console.log('-----------hydrate.allTransactions');
+    // console.log('-----------hydrate.allTransactions');
     assert(
         block.transactions,
         'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'

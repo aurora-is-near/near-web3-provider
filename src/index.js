@@ -418,7 +418,7 @@ class NearProvider {
      */
     async routeEthGetBlockByHash([blockHash, returnTxObjects]) {
         try {
-            console.log('gethash', blockHash);
+            // console.log('gethash', blockHash);
             assert(blockHash, 'Must pass in blockHash');
             blockHash = utils.hexToBase58(blockHash);
             const block = await this._getBlock(blockHash, returnTxObjects);
