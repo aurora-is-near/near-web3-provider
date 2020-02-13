@@ -677,14 +677,6 @@ class NearProvider {
     }
 
     /**
-     * web3.eth.sign and web3.eth.signTransaction
-     */
-    // https://nomicon.io/Runtime/Scenarios/FinancialTransaction.html
-    async routeEthSign() {
-        // TODO: throw, this is impossible with near RPC
-    }
-
-    /**
      * Executes a new message call immediately without creating a
      * transaction on the block chain
      * @param {Object} txCallObj transaction call object
@@ -706,11 +698,6 @@ class NearProvider {
             encoded_input: utils.remove0x(data)
           });
         return '0x' + result;
-    }
-
-    async routeEthGetPastLogs() {
-        // TODO I think this is impossible with NEAR RPC
-        return '0x0';
     }
 }
 
