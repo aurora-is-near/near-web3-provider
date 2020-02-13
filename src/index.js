@@ -685,6 +685,7 @@ class NearProvider {
     async routeEthCall(params) {
         const {to, value, data} = params[0];
         const sender = params[0].from;
+        const val = value === undefined ? '0x0' : value;
 
         let result = await this._viewEvmContract(
           'view_call_contract',
@@ -692,7 +693,7 @@ class NearProvider {
             contract_address: utils.remove0x(to),
             encoded_input: utils.remove0x(data),
             sender: utils.remove0x(sender),
-            value: new BN(value, 16)
+            value: parseInt(val, 16)
           });
         return '0x' + result;
     }
