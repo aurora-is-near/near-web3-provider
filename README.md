@@ -1,4 +1,4 @@
-# *NOTE: DO NOT USE THIS CURRENTLY*
+# *NOTE: THIS IS ALPHA SOFTWARE*
 
 # near-web3-provider
 
@@ -71,6 +71,11 @@ module.exports = {
   limitation.
 * `eth_estimateGas` will always return `0x0`. Near RPC does not seem to support
   gas estimation for calls.
+* Many fields in Ethereum data structures do not have a direct correspondance
+  to Near data structures. Some attributes of transaction and block objects
+  will be unreliable.
+* Some fields are just unimplemented. For example, tx receipts currently always
+  have a 0x1 status, regardless of the success of the transaction.
 
 
 ## API
