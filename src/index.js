@@ -145,6 +145,9 @@ class NearProvider {
             return this.routeEthCall(params);
         }
 
+        /**
+         * Always 0
+         */
         case 'eth_estimateGas': {
             return '0x0';
         }
@@ -642,7 +645,7 @@ class NearProvider {
                 this.evm_contract,
                 'deploy_code',
                 { 'bytecode': utils.remove0x(data) },
-                GAS_AMOUNT,
+                2**52,
                 val.toString()
             );
         } else {
@@ -650,7 +653,7 @@ class NearProvider {
                 this.evm_contract,
                 'call_contract',
                 { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                GAS_AMOUNT,
+                2**52,
                 val.toString()
             );
         }
@@ -685,13 +688,16 @@ class NearProvider {
      * @returns {String} the return value of the executed contract
      */
     async routeEthCall(params) {
-        const {to, /* value, */ data} = params[0];
+        const {to, value, data} = params[0];
+        const sender = params[0].from;
 
         let result = await this._viewEvmContract(
-          'call_contract',
+          'view_call_contract',
           {
             contract_address: utils.remove0x(to),
-            encoded_input: utils.remove0x(data)
+            encoded_input: utils.remove0x(data),
+            sender: utils.remove0x(sender),
+            value: new BN(value, 16)
           });
         return '0x' + result;
     }
