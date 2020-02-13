@@ -499,18 +499,23 @@ class NearProvider {
      * @returns {Object} returns transaction object
      */
     // TODO: Update accountID references to be signerID (more explicit)
-    async routeEthGetTransactionByHash(params) {
-        // NB: provider.txStatus requires txHash to be a Uint8Array of
-        // the base58 tx hash. Since txHash is hex, it is converted to
-        // base58, and then turned into a Buffer
-        let txHash = new Uint8Array(bs58.decode(utils.hexToBase58(params[0])));
+    async routeEthGetTransactionByHash([txHashAndAccountId]) {
+        try {
+            // NB: provider.txStatus requires txHash to be a Uint8Array of
+            // the base58 tx hash. Since txHash is hex, it is converted to
+            // base58, and then turned into a Buffer
+            const { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
 
-        const tx = await this.nearProvider.txStatus(txHash, this.accountId);
-        let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
-        // const blockHash = tx.transaction_outcome.block_hash;
-        // const block = await this.nearProvider.block(blockHash);
+            const tx = await this.nearProvider.txStatus(utils.hexToUint8(txHash), accountId);
+            const block = await this._getBlock(tx.transaction_outcome.block_hash, true);
 
-        return nearToEth.transactionObj(tx, 1);
+            const findTx = block.transactions.find((t) => t.hash === txHash);
+
+            return findTx;
+        } catch (e) {
+            return e;
+        }
+
     }
 
     /**
