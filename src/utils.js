@@ -47,6 +47,49 @@ utils.decToHex = function(value) {
 };
 
 /**
+ *
+ * Deserializes a hex string into a Uint8Array
+ *
+ * @param {Uint8Array}    hexStr The value as a hex string
+ * @returns {string}      The value as a u8a
+ */
+utils.deserializeHex = function(hexStr) {
+  if (!hexStr) {
+    return new Uint8Array();
+  }
+
+  if (typeof hexStr !== 'string') {
+    throw new TypeError('Error deserializing hex, must be a string');
+  }
+
+  let hex = '';
+  if (hexStr.slice(0, 2) === '0x') {
+    hex = hexStr.slice(2);
+  } else {
+    hex = hexStr;
+  }
+
+  if (hex.length % 2 !== 0) {
+    throw new TypeError('Error deserializing hex, string length is odd');
+  }
+
+  const a = [];
+  for (let i = 0; i < hex.length; i += 2) {
+    const byte = hex.substr(i, 2);
+    const uint8 = parseInt(byte, 16);
+
+    // TODO: any way to improve this?
+    if (!uint8 && uint8 !== 0) {
+      throw new TypeError(`Error deserializing hex, got non-hex byte: ${byte}`);
+    }
+
+    a.push(uint8);
+  }
+
+  return new Uint8Array(a);
+}
+
+/**
  * Converts hex to number
  * @param {string} value hex string to convert to number
  * @returns {number} number equivalent of hex string

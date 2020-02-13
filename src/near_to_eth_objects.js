@@ -275,16 +275,19 @@ nearToEth.blockObj = function(block, returnTxObjects, near) {
  */
 nearToEth.transactionReceiptObj = function(block, nearTxObj) {
     const responseHash = utils.base64ToString(nearTxObj.status.SuccessValue);
-    const { transaction } = nearTxObj;
+    const { transaction, transaction_outcome } = nearTxObj;
+
+    const gas_burnt = transaction_outcome.outcome.gas_burnt;
+    const logs = transaction_outcome.outcome.logs;
 
     return {
         transactionHash: utils.base58ToHex(transaction.hash),
         transactionIndex: '0x1',
-        blockNumber: utils.decToHex(block.number),
-        blockHash: utils.base58ToHex(block.hash),
+        blockNumber: utils.decToHex(block.header.height),
+        blockHash: utils.base58ToHex(block.header.hash),
         contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
-        gasUsed: utils.decToHex(transaction.outcome.gas_burnt),
-        logs: transaction.outcome.logs,
+        gasUsed: utils.decToHex(gas_burnt),
+        logs: logs,
         status: '0x1',
     };
 
