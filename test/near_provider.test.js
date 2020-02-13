@@ -139,7 +139,7 @@ describe('\n---- BASIC QUERIES ----', () => {
                 0)  // NEAR value
             console.log('deployed EVM contract', contract);
         } catch (e) {
-            if (e.type === 'AccountAlreadyExists') {
+            if (e.type === 'ActionError::AccountAlreadyExists') {
                 console.log('EVM already deployed');
             } else {
                 console.log('EVM deploy error', e);
