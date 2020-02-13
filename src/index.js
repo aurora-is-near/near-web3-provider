@@ -9,8 +9,8 @@ const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
 class NearProvider {
-    constructor(url, keyStore, accountId) {
-        const networkId = process.env.NODE_ENV || 'default';
+    constructor(url, keyStore, accountId, networkId) {
+        this.networkId = networkId || process.env.NODE_ENV || 'default';
         this.evm_contract = 'evm';
         this.url = url;
         this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
@@ -18,9 +18,10 @@ class NearProvider {
         this.keyStore = keyStore;
         this.signer = new nearlib.InMemorySigner(this.keyStore);
 
-        this.connection = new nearlib.Connection(networkId, this.nearProvider, this.signer);
+        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
         this.accountId = accountId;
         this.account = new nearlib.Account(this.connection, accountId);
+        this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
     }
 
     async _createNewAccount(accountId) {
