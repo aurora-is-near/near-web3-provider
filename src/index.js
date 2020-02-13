@@ -47,6 +47,17 @@ class NearProvider {
         }
     }
 
+    /**
+     * Calls a block and fills it up
+     */
+    async _getBlock (blockHeight, returnTxObjects) {
+        const block = await this.nearProvider.block(blockHeight);
+
+        const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
+
+        return fullBlock;
+    }
+
     unsupportedMethodErrorMsg(method) {
         return `NearProvider: ${method} is unsupported.`;
     }
@@ -300,13 +311,14 @@ class NearProvider {
     /**
      * Returns the current price per gas in yoctoNEAR
      * @returns {Quantity} integer of the current gas price in
-     * yoctoNEAR as Decimal String
+     * yoctoNEAR
      */
     async routeEthGasPrice() {
         try {
             const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
             const result = await this.nearProvider.block(latest_block_hash);
-            return result.header.gas_price;
+
+            return new BN(result.header.gas_price);
         } catch (e) {
             return e;
         }
@@ -318,11 +330,15 @@ class NearProvider {
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
     async routeEthAccounts() {
-        const networkId = this.connection.networkId;
-        const accounts = await this.keyStore.getAccounts(networkId);
+        try {
+            const networkId = this.connection.networkId;
+            const accounts = await this.keyStore.getAccounts(networkId);
 
-        const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
-        return evmAccounts;
+            const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
+            return evmAccounts;
+        } catch (e) {
+            return e;
+        }
     }
 
     /**
@@ -405,11 +421,8 @@ class NearProvider {
         try {
             console.log('gethash', blockHash)
             assert(blockHash, 'Must pass in blockHash');
-
             blockHash = utils.hexToBase58(blockHash);
-            const block = await this.nearProvider.block(blockHash);
-
-            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
+            const fullBlock = await this._getBlock(blockHash, returnTxObjects);
 
             return fullBlock;
         } catch (e) {
@@ -454,9 +467,7 @@ class NearProvider {
                 }
             }
 
-            const block = await this.nearProvider.block(blockHeight);
-
-            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
+            const fullBlock = await this._getBlock(blockHash, returnTxObjects);
 
             return fullBlock;
         } catch (e) {
@@ -473,11 +484,9 @@ class NearProvider {
      * @param {String} blockHash 32-byte block hash
      * @returns {Quantity} Integer of the number of txs in this block
      */
-    async routeEthGetBlockTransactionCountByHash(params) {
-        let blockHash = params[0];
-        blockHash = utils.hexToBase58(blockHash);
-
+    async routeEthGetBlockTransactionCountByHash([blockHash]) {
         try {
+            blockHash = utils.hexToBase58(blockHash);
             const block = await this.nearProvider.block(blockHash);
             const transactionCount = block.header.chunks_included;
             return utils.decToHex(transactionCount);
