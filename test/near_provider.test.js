@@ -41,19 +41,30 @@ function createWeb3Instance(accountId, keyPair) {
 }
 
 // Contract Account.
-const TEST_NEAR_CONTRACT_ACCOUNT = 'test.evm';
-const contractKeyPair = createKeyPair();
-const withWeb3Contract = (fn) => () => fn(createWeb3Instance(TEST_NEAR_CONTRACT_ACCOUNT, contractKeyPair));
+// const TEST_NEAR_CONTRACT_ACCOUNT = 'test.evm';
+// const contractKeyPair = createKeyPair();
+// const withWeb3Contract = (fn) => () => fn(createWeb3Instance(TEST_NEAR_CONTRACT_ACCOUNT, contractKeyPair));
 
 // Main/Sender Account. Majority of tests will use this instance of web3
 const TEST_NEAR_ACCOUNT = 'test.near';
 const mainKeyPair = createKeyPair();
-const withWeb3 = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, mainKeyPair));
+const withWeb3 = (fn) => {
+    console.log('Creating web3 instance: ', TEST_NEAR_ACCOUNT);
+
+    const web = new web3();
+    const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+
+    keyStore.setKey(networkId, TEST_NEAR_ACCOUNT, mainKeyPair);
+    web.setProvider(new NearProvider(url, keyStore, TEST_NEAR_ACCOUNT));
+
+    console.log('web3 provider created for account: ', web._provider.account.accountId);
+    return () => fn(web);
+}
 
 // Receiver Account. Create second account so we can have a place to send transactions
-const TEST_NEAR_ACCOUNT_RECEIVER = 'test.near.receiver';
-const receiverKeyPair = createKeyPair();
-const withWeb3Receiver = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT_RECEIVER, receiverKeyPair));
+// const TEST_NEAR_ACCOUNT_RECEIVER = 'test.near.receiver';
+// const receiverKeyPair = createKeyPair();
+// const withWeb3Receiver = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT_RECEIVER, receiverKeyPair));
 
 // async function deployContract(web) {
 //     const accountId = web._provider.account.accountId;
@@ -241,15 +252,25 @@ describe('#web3.eth', () => {
         let blockHeight;
 
         beforeAll(withWeb3(async (web) => {
-            const { sync_info } = await testNearProvider.status();
-            const { latest_block_hash, latest_block_height } = sync_info;
-            blockHash = utils.base58ToHex(latest_block_hash);
-            blockHeight = latest_block_height;
+            if (net === 'testnet') {
+                console.log('-----Using testnet-----')
+                const base58BlockHash = '3cdkbRn1hpNLH5Ri6pipy7AEAKJscPD7TCgLFs94nWGB';
+
+                const block = await testNearProvider.block(base58BlockHash);
+                blockHash = utils.base58ToHex(base58BlockHash);
+                blockHeight = block.header.height;
+            } else {
+                const { sync_info } = await testNearProvider.status();
+                const { latest_block_hash, latest_block_height } = sync_info;
+                blockHash = utils.base58ToHex(latest_block_hash);
+                blockHeight = latest_block_height;
+            }
         }));
 
-        test('gets block by hash', withWeb3(async (web) => {
+        test.skip('gets block by hash', withWeb3(async (web) => {
             const block = await web.eth.getBlock(blockHash);
 
+            console.log('testblock', block);
             expect(block.hash).toEqual(blockHash);
             expect(block.number).toEqual(blockHeight);
             expect(Array.isArray(block.transactions)).toBe(true);
@@ -259,16 +280,18 @@ describe('#web3.eth', () => {
             expect(typeof block.timestamp === 'number').toBe(true);
         }));
 
-        // // broken because blockObj never awaits _getTxsFromChunks
-        // test.skip('gets block by hash with full tx objs', withWeb3(async (web) => {
-        //     const block = await web.eth.getBlock(blockHash, true);
-        //     expect(block.hash).toEqual(blockHash);
-        //     expect(block.number).toEqual(blockHeight);
-        //     expect(Array.isArray(block.transactions)).toBe(true);
-        //     if (block.transactions.length > 0) {
-        //         expect(typeof block.transactions[0] === 'object').toBe(true);
-        //     }
-        // }));
+        test('gets block by hash with full tx objs', withWeb3(async (web) => {
+            const block = await web.eth.getBlock(blockHash, true);
+
+            console.log('testblock hash', block)
+            expect(block.hash).toEqual(blockHash);
+            expect(block.number).toEqual(blockHeight);
+            expect(Array.isArray(block.transactions)).toBe(true);
+            if (block.transactions.length > 0) {
+                expect(typeof block.transactions[0] === 'object').toBe(true);
+                expect(typeof block.transactions[0].hash).toBe('string');
+            }
+        }));
 
         // test.skip('gets block by number', withWeb3(async (web) => {
         //     const block = await web.eth.getBlock(blockHeight);
