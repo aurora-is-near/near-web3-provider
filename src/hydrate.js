@@ -47,7 +47,7 @@ hydrate.block = async function(block, nearProvider) {
   try {
     // Create promise array of hydrate chunk promises
     const promiseArray = block.chunks.map((chunk) => {
-      return hydrateChunk(chunk, block, nearProvider);
+      return this.chunk(chunk, block, nearProvider);
     });
 
     // Hydrate the chunks
@@ -109,7 +109,7 @@ hydrate.transaction = async function(block, txIndex, nearProvider) {
  * Hydrate transactions aka gets the rest of the transaction values not
  * included when querying a chunk: receipts_outcome, status, transaction_outcome
  *
- * @param {Object} block NEAR block with filled transactions
+ * @param {Object} block hydrated NEAR block with filled transactions
  * @property {Array} block.transactions A block's txs. If block does not have
  * these, then call hydrate.block
  * @param {Object} nearProvider NearProvider instance
@@ -122,7 +122,7 @@ hydrate.allTransactions = async function(block, nearProvider) {
   );
 
   if (transactions.length <= 0) {
-    return block;
+    return [];
   }
 
   try {
@@ -131,9 +131,7 @@ hydrate.allTransactions = async function(block, nearProvider) {
 
     const transactions = await Promise.all(promiseArray);
 
-	block.transactions = transactions;
-
-    return block;
+    return transactions;
   } catch (e) {
     return new Error('hydrate.allTransactions:', e);
   }
