@@ -2,96 +2,149 @@ const fs = require('fs');
 const web3 = require('web3');
 const nearlib = require('nearlib');
 const utils = require('../src/utils');
-const NearProvider = require('../src/index');
+const NearProvider = require('../src');
 
-const TEST_NEAR_ACCOUNT = 'test.near';
+let url;
+const net = process.env.NEAR_TEST || 'local';
 
-const TEST_NEAR_ACCOUNT = 'test.near';
-const TEST_NEAR_ACCOUNT_RECEIVER = test.near.receiver;
+if (net === 'testnet') {
+    url = 'https://rpc.nearprotocol.com';
+} else {
+    url = 'http://localhost:3030';
+}
+
+console.log(`-----------------------
+Running tests on ${net} network
+URL: ${url}
+-----------------------`)
+
+const networkId = 'default'; // see NearProvider constructor, src/index.js
+const evmContract = 'evm';   // see NearProvider constructor, src/index.js
+const nearEvmFile = './artifacts/near_evm.wasm';
+const testNearProvider = new nearlib.providers.JsonRpcProvider(url);
+
+function createKeyPair() {
+    return nearlib.utils.KeyPair.fromRandom('ed25519');
+}
 
 function createWeb3Instance(accountId, keyPair) {
+    console.log('Creating web3 instance: ', accountId);
+
     const web = new web3();
-
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
-    keyStore.setKey('test', accountId, keyPair);
 
-    web.setProvider(new NearProvider('http://localhost:3030', keyStore, accountId));
+    keyStore.setKey(networkId, accountId, keyPair);
+    web.setProvider(new NearProvider(url, keyStore, accountId));
 
+    console.log('web3 provider created for account: ', web._provider.account.accountId);
     return web;
 }
 
-// Main/Sender Account. Majority of tests will use this instance of web3
-const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
-const senderKeyPair = nearlib.utils.KeyPair.fromString(keyPairString);
-const withWeb3 = (fn) => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, senderKeyPair));
+// Contract Account.
+const TEST_NEAR_CONTRACT_ACCOUNT = 'test.evm';
+const contractKeyPair = createKeyPair();
+const withWeb3Contract = (fn) => () => fn(createWeb3Instance(TEST_NEAR_CONTRACT_ACCOUNT, contractKeyPair));
 
+// Main/Sender Account. Majority of tests will use this instance of web3
+const TEST_NEAR_ACCOUNT = 'test.near';
+const mainKeyPair = createKeyPair();
+const withWeb3 = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, mainKeyPair));
 
 // Receiver Account. Create second account so we can have a place to send transactions
-const receiverKeyPair = nearlib.utils.KeyPair.fromRandom('receiver key');
-const withWeb3Receiver = fn(createWeb3Instance(TEST_NEAR_ACCOUNT_RECEIVER, receiverKeyPair));
-// const withWeb3 = (fn) => {
-//     const web = new web3();
+const TEST_NEAR_ACCOUNT_RECEIVER = 'test.near.receiver';
+const receiverKeyPair = createKeyPair();
+const withWeb3Receiver = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT_RECEIVER, receiverKeyPair));
 
-//     const accountId = 'test.near';
-//     const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
-//     const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
-//     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
-//     keyStore.setKey('test', accountId, keyPair);
+// async function deployContract(web) {
+//     const accountId = web._provider.account.accountId;
+//     console.log('Deploying EVM Contract on account: ', accountId);
 
-//     web.setProvider(new NearProvider('http://localhost:3030', keyStore, accountId));
-//     return () => fn(web);
-// };
+//     const evmCode = fs
+//         .readFileSync(nearEvmFile)
+//         .toString('hex');
+//     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
+//     const evmKeyPair = createKeyPair();
+
+//     // Set keypair
+//     try {
+//         await web._provider.keyStore.setKey(networkId, evmContract, evmKeyPair)
+//     } catch (e) {
+//         console.log('Setting key error', e);
+//     }
+
+//     try {
+//         console.log('web_provider', web._provider.account)
+
+//         const contract = await web._provider.account.createAndDeployContract(
+//             evmContract,                    // contractId
+//             contractKeyPair.getPublicKey(), // publicKey
+//             evmBytecode,                    // data
+//             0                               // amount. NEAR value
+//         )
+
+//         console.log('EVM Contract Deployed', contract);
+//         return true;
+//     } catch (e) {
+//         console.log('Error deploying EVM Contract', e);
+//     }
+// }
+
+// beforeAll(withWeb3(async (web) => {
+//     console.log('web3 with', web._provider);
+//     console.log('accountId', web._provider.accountId);
+
+//     // CREATE ACCOUNTS
+//     const options = {
+//         accountId: web._provider.accountId,
+//         masterAccount: 'test.near'
+//     }
+
+//     const config = {
+//         keyPath: '/Users/barbara/Code/nearprotocol/nearcore/testdir/validator_key.json',
+//         deps: {
+//             keyStore: web._provider.keyStore
+//         },
+//         networkId: networkId,
+//         masterAccount: 'test.near'
+//     }
+
+//     try {
+//         let near = await nearlib.connect(config);
+//         console.log('done')
+//     } catch (e) {
+//         console.log('error', e);
+//     }
+// }));
 
 
+// beforeAll(withWeb3(async (web) => {
+//     const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
+//     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
+//     const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+//     await web._provider.keyStore.setKey(this.networkId, this.evm_contract, keyPair);
+//     return web._provider.account.createAndDeployContract(
+//         web._provider.evm_contract,
+//         keyPair.getPublicKey(),
+//         evmBytecode,
+//         0  // NEAR value
+//     ).then(() => {
+//         console.log('deployed EVM contract');
+//     }).catch((e) => {
+//         console.log('EVM deployed error', e);
+//     });
+// }), 10000);
 
+// test.only('returns correct type - Boolean|Object', withWeb3(async (web) => {
+//     const sync = await web.eth.isSyncing();
+//     const syncType = typeof sync;
+//     expect(syncType).toBe('boolean' || 'object');
 
-// NEW BLOCK INFO
-// '0xaee2455a8605f67af54e7e7c6f3c216606c14d89c3180ad00fff41a178743b17'
-// 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN'
-// 1367550
-// Wed Feb 05 2020 11: 17: 47 GMT - 0700(Mountain Standard Time)
-
-// '9TWEeS11Up9nR9AobKWdKfzmF9j1TriB8TLbRCZqznia' which is block number
-// 1221180, from 2020-02-03T23:18:52.817928262Z
-const blockHash = '0x7da7a7223c6677bf0f2b775b60f76832fab71441280ba94eb98af68dd17a8367';
-const blockNumber = 1221180;
-// NB: txHash is hex equivalent of
-// 'CdyVerDt7BNr8jAbFuxKQB3rjogtr8R7aQJpuiMxMLzK' found at index 0 of
-// blockNumber 1221180
-
-// txHash is hex equivalent of '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy'
-// with accountId 'dinoaroma'
-// found in block 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN'
-const txHash = '0x6c409109338aa109c3b696ba855ff5543a70204ce127e5991fff45c9fd60051c';
-const txIndex = 0;
-    const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
-    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
-    const keyStore = new nearlib.keyStores.InMemoryKeyStore();
-    keyStore.setKey('test', TEST_NEAR_ACCOUNT, keyPair);
-
-    web.setProvider(new NearProvider('http://localhost:3030', keyStore, TEST_NEAR_ACCOUNT));
-    return () => fn(web);
-};
-
+//     if (syncType === 'boolean') {
+//         expect(sync).toBe(false);
+//     }
+// }));
 
 describe('#web3.eth', () => {
-
-    beforeAll(withWeb3(async (web) => {
-        const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
-        const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-        const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
-        await web._provider.keyStore.setKey(this.networkId, this.evm_contract, keyPair);
-        return web._provider.account.createAndDeployContract(
-            web._provider.evm_contract,
-            keyPair.getPublicKey(),
-            evmBytecode,
-            0  // NEAR value
-        ).then(() => {
-            console.log('deployed EVM contract');
-        }).catch(() => {
-            console.log('EVM already deployed');
-        });
-    }), 10000);
 
     describe('isSyncing | eth_syncing', () => {
         test('returns correct type - Boolean|Object', withWeb3(async (web) => {
@@ -180,7 +233,7 @@ describe('#web3.eth', () => {
         }));
     });
 
-    describe(`getBlock |
+    describe.only(`getBlock |
         eth_getBlockByHash,
         eth_getBlockByNumber`, () => {
 
@@ -188,9 +241,8 @@ describe('#web3.eth', () => {
         let blockHeight;
 
         beforeAll(withWeb3(async (web) => {
-            const { sync_info } = await web._provider.nearProvider.status();
-            let { latest_block_hash, latest_block_height } = sync_info;
-
+            const { sync_info } = await testNearProvider.status();
+            const { latest_block_hash, latest_block_height } = sync_info;
             blockHash = utils.base58ToHex(latest_block_hash);
             blockHeight = latest_block_height;
         }));
@@ -207,45 +259,45 @@ describe('#web3.eth', () => {
             expect(typeof block.timestamp === 'number').toBe(true);
         }));
 
-        // broken because blockObj never awaits _getTxsFromChunks
-        test.skip('gets block by hash with full tx objs', withWeb3(async (web) => {
-            const block = await web.eth.getBlock(blockHash, true);
-            expect(block.hash).toEqual(blockHash);
-            expect(block.number).toEqual(blockHeight);
-            expect(Array.isArray(block.transactions)).toBe(true);
-            if (block.transactions.length > 0) {
-                expect(typeof block.transactions[0] === 'object').toBe(true);
-            }
-        }));
+        // // broken because blockObj never awaits _getTxsFromChunks
+        // test.skip('gets block by hash with full tx objs', withWeb3(async (web) => {
+        //     const block = await web.eth.getBlock(blockHash, true);
+        //     expect(block.hash).toEqual(blockHash);
+        //     expect(block.number).toEqual(blockHeight);
+        //     expect(Array.isArray(block.transactions)).toBe(true);
+        //     if (block.transactions.length > 0) {
+        //         expect(typeof block.transactions[0] === 'object').toBe(true);
+        //     }
+        // }));
 
-        test('gets block by number', withWeb3(async (web) => {
-            const block = await web.eth.getBlock(blockHeight);
-            expect(block.hash).toEqual(blockHash);
-            expect(block.number).toEqual(blockHeight);
-            if (block.transactions.length > 0) {
-                expect(typeof block.transactions[0] === 'string').toBe(true);
-            }
-        }));
+        // test.skip('gets block by number', withWeb3(async (web) => {
+        //     const block = await web.eth.getBlock(blockHeight);
+        //     expect(block.hash).toEqual(blockHash);
+        //     expect(block.number).toEqual(blockHeight);
+        //     if (block.transactions.length > 0) {
+        //         expect(typeof block.transactions[0] === 'string').toBe(true);
+        //     }
+        // }));
 
-        // broken because blockObj never awaits _getTxsFromChunks
-        test.skip('gets block by number with full tx objs', withWeb3(async (web) => {
-            const block = await web.eth.getBlock(blockHeight, true);
-            expect(block.number).toEqual(blockHeight);
-            expect(typeof block.transactions[0] === 'object').toBe(true);
-        }));
+        // // broken because blockObj never awaits _getTxsFromChunks
+        // test.skip('gets block by number with full tx objs', withWeb3(async (web) => {
+        //     const block = await web.eth.getBlock(blockHeight, true);
+        //     expect(block.number).toEqual(blockHeight);
+        //     expect(typeof block.transactions[0] === 'object').toBe(true);
+        // }));
 
-        test('gets block by string - "latest"', withWeb3(async (web) => {
-            const blockString = 'latest';
+        // test.skip('gets block by string - "latest"', withWeb3(async (web) => {
+        //     const blockString = 'latest';
 
-            // wait for a new block
-            await new Promise(r => setTimeout(r, 1000));
-            const block = await web.eth.getBlock(blockString);
-            expect(block.number).toBeGreaterThan(blockHeight);
-            expect(Array.isArray(block.transactions)).toBe(true);
-            if (block.transactions.length > 0) {
-                expect(typeof block.transactions[0] === 'string').toBe(true);
-            }
-        }));
+        //     // wait for a new block
+        //     await new Promise(r => setTimeout(r, 1000));
+        //     const block = await web.eth.getBlock(blockString);
+        //     expect(block.number).toBeGreaterThan(blockHeight);
+        //     expect(Array.isArray(block.transactions)).toBe(true);
+        //     if (block.transactions.length > 0) {
+        //         expect(typeof block.transactions[0] === 'string').toBe(true);
+        //     }
+        // }));
     });
 
     describe(`getBlockTransactionCount |
@@ -255,13 +307,13 @@ describe('#web3.eth', () => {
         let blockHash;
         let blockHeight;
 
-        beforeAll(withWeb3(async (web) => {
-            const { sync_info } = await web._provider.nearProvider.status();
-            let { latest_block_hash, latest_block_height } = sync_info;
+        // beforeAll(withWeb3(async (web) => {
+        //     const { sync_info } = await web._provider.nearProvider.status();
+        //     let { latest_block_hash, latest_block_height } = sync_info;
 
-            blockHash = utils.base58ToHex(latest_block_hash);
-            blockHeight = latest_block_height;
-        }));
+        //     blockHash = utils.base58ToHex(latest_block_hash);
+        //     blockHeight = latest_block_height;
+        // }));
 
         // broken because no txns on regtest. TODO: make a tx in the beforeAll
         test.skip('gets block transaction count by hash', withWeb3(async (web) => {
