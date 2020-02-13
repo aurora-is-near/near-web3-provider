@@ -640,7 +640,8 @@ class NearProvider {
     async routeEthSendTransaction(params) {
         let outcome;
         let val = 0;
-        const {to, value, gas, data} = params[0];
+        
+        const {to, value, data} = params[0];
         if (value !== undefined) {
           val = value;
         }
