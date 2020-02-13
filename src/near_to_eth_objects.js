@@ -72,7 +72,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
 
         // DATA 32 bytes - hash of the transaction
-        hash: utils.base58ToHex(tx.hash),
+        hash: `${tx.hash}:${transaction.signer_id}`,
 
         // QUANTITY - the number of txs made by the sender prior to this one
         nonce: utils.decToHex(tx.nonce),
@@ -239,7 +239,7 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
  * @param {Object} nearTxObj NEAR transaction object
  * @returns {Object} returns ETH transaction receipt object
  */
-nearToEth.transactionReceiptObj = function(block, nearTxObj) {
+nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
     const responseHash = utils.base64ToString(nearTxObj.status.SuccessValue);
     const { transaction, transaction_outcome } = nearTxObj;
 
@@ -247,7 +247,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj) {
     const logs = transaction_outcome.outcome.logs;
 
     return {
-        transactionHash: utils.base58ToHex(transaction.hash),
+        transactionHash: `${transaction.hash}:${accountId}`,
         transactionIndex: '0x1',
         blockNumber: utils.decToHex(block.header.height),
         blockHash: utils.base58ToHex(block.header.hash),
