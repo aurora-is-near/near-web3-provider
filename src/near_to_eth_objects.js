@@ -37,43 +37,45 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 
     const { transaction_outcome, transaction } = tx;
 
-  	// const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
+      // const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
+      // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
     const value = transaction.actions.map(v => {
       const k = Object.keys(v)[0];
       return parseInt(v[k].deposit, 10);
     }).reduce((a, b) => a + b);
 
     const obj = {
+        // DATA 20 bytes - address of the sender
+        // from: sender,
+        // TODO: PUt this back to sender when we figure out contract stuff
+        from: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
+
+        // DATA 20 bytes - address of the receiver
+        // TODO: to: receiver
+        to: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
+
+        // QUANTITY - integer of the current gas price in wei
+        // TODO: Will this break with big numbers?
+        gasPrice: utils.decToHex(parseInt(tx.gas_price)),
+
+        // DATA - the data sent along with the transaction
+        // TODO: Would a comparison be for transaction.actions[i]?
+        input: '0x',
+
         // DATA 32 bytes - hash of the block where this transaction was in
         blockHash: utils.base58ToHex(transaction_outcome.block_hash),
 
         // QUANTITY block number where this transaction was in
         blockNumber: utils.decToHex(tx.block_height),
 
-        // DATA 20 bytes - address of the sender
-        // from: sender,
-        from: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
-
         // QUANTITY gas provided by the sender
         gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
-
-        // QUANTITY - integer of the current gas price in wei
-        // TODO: Will this break with big numbers?
-        gasPrice: utils.decToHex(parseInt(tx.gas_price)),
 
         // DATA 32 bytes - hash of the transaction
         hash: utils.base58ToHex(tx.hash),
 
-        // DATA - the data sent along with the transaction
-        // TODO: Would a comparison be for transaction.actions[i]?
-        input: '0x',
-
         // QUANTITY - the number of txs made by the sender prior to this one
         nonce: utils.decToHex(tx.nonce),
-
-        // DATA 20 bytes - address of the receiver
-        // TODO: to: receiver
-        to: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
 
         // QUANTITY - integer of the tx's index position in the block
         transactionIndex: utils.decToHex(txIndex),
@@ -81,6 +83,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         // QUANTITY - value transferred in wei (yoctoNEAR)
         value: utils.decToHex(value),
 
+        /** ------------ UNSUPPORTED DUMMY VALUES --------- */
         // QUANTITY - ECDSA recovery id
         v: '0x0',
         // QUANTITY - ECDSA signature r
