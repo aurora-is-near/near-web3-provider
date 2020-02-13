@@ -607,22 +607,15 @@ class NearProvider {
      * from this address
      */
     async routeEthGetTransactionCount(params) {
-        const address = params[0];
-        const block = params[1];
-        // TODO: transaction count.
+        const address = utils.remove0x(params[0]);
 
-        console.log({address, block});
-        // get other thing isntead
-        try {
-            // const query = await this.nearProvider.query('account/evm', '')
-            const account = new nearlib.Account(this.connection, this.accountId);
-            const details = await account.state();
-            console.log(details);
-            return '0x0';
-        } catch (e) {
-            console.log({e});
-            return '0x0';
-        }
+        console.log({address});
+        let result = await this._viewEvmContract(
+          'nonce_of_evm_address',
+          { address }
+        )
+        console.log({ result });
+        return `0x${result.toString()}`;
     }
 
     /**
@@ -640,7 +633,7 @@ class NearProvider {
     async routeEthSendTransaction(params) {
         let outcome;
         let val = 0;
-        
+
         const {to, value, data} = params[0];
         if (value !== undefined) {
           val = value;
