@@ -86,7 +86,7 @@ hydrate.block = async function(block, nearProvider) {
  * @param {Object} block NEAR block with filled transactions
  * @property {Array} block.transactions A block's transactions. If block does
  * not have these, then call hydrate.block
- * @param {Number|Tag} txIndex which tx to hydrate
+ * @param {Number|String} txIndex which tx to hydrate
  * @param {Object} nearProvider NearProvider instance
  * @returns {Object} hydrated transaction
  */
