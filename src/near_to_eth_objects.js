@@ -89,8 +89,6 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         s: '0x0'
     };
 
-    console.log({obj})
-
     return obj;
 };
 
@@ -126,7 +124,7 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
         let transactions;
 
         if (block.transactions.length <= 0) {
-            transaction = [];
+            transactions = [];
         } else {
             if (!returnTxObjects) {
                 console.log('Just hashes');
