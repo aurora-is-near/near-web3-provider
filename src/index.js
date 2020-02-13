@@ -509,7 +509,9 @@ class NearProvider {
             // NB: provider.txStatus requires txHash to be a Uint8Array of
             // the base58 tx hash. Since txHash is hex, it is converted to
             // base58, and then turned into a Buffer
-            const { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
+            let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
+
+            accountId = accountId || this.accountId;
 
             const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(utils.hexToUint8(txHash), accountId);
             const block = await this._getBlock(block_hash, true);

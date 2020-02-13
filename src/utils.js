@@ -175,21 +175,21 @@ utils.convertTimestamp = function(value) {
 };
 
 /**
- * Splits hex string into txHash and accountId
+ * Splits hex string into txHash and accountId if both are passed through
  * Used by eth_getTransactionByHash, eth_getTransactionReceipt
- * @param {String} value hex string in format <txHash>:<accountId>
+ * @param {String} value hex string in format <txHash>:<accountId> or txHash
  * @returns {Object} Returns txHash and accountId as strings
  */
 utils.getTxHashAndAccountId = function(value) {
-    assert(
-        value.includes(':'),
-        'Must pass in hash and accountId separated by ":" <txHash:accountId>'
-    );
-    // Split value into txHash and accountId
-    const [ txHash, accountId ] = value.split(':');
+    if (value.includes(':')) {
+        // Split value into txHash and accountId
+        const [txHash, accountId] = value.split(':');
 
-    // Return object for convenience so we don't need to keep track of index order
-    return { txHash, accountId };
+        // Return object for convenience so we don't need to keep track of index order
+        return { txHash, accountId };
+    } else {
+        return { txHash: value, accountId: '' };
+    }
 };
 
 /**
