@@ -506,8 +506,8 @@ class NearProvider {
             // base58, and then turned into a Buffer
             const { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
 
-            const tx = await this.nearProvider.txStatus(utils.hexToUint8(txHash), accountId);
-            const block = await this._getBlock(tx.transaction_outcome.block_hash, true);
+            const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(utils.hexToUint8(txHash), accountId);
+            const block = await this._getBlock(block_hash, true);
 
             const findTx = block.transactions.find((t) => t.hash === txHash);
 
@@ -529,18 +529,18 @@ class NearProvider {
      * @returns {Object} returns transaction object
      */
     // TODO: Fix to get transactions from chunks
-    async routeEthGetTransactionByBlockHashAndIndex(params) {
-        const blockHash = utils.hexToBase58(params[0]);
-        const txIndex = utils.hexToDec(params[1]);
+    async routeEthGetTransactionByBlockHashAndIndex([blockHash, txIndex]) {
+        blockHash = utils.hexToBase58(blockHash);
+        txIndex = utils.hexToDec(txIndex);
 
         assert(blockHash, 'Must pass in block hash as first argument');
         assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
 
         try {
-            const block = await this.nearProvider.block(blockHash);
-            const tx = nearToEth.transactionObj(block.chunks[txIndex], block.header.hash);
+            const block = await this._getBlock(blockHash, true);
 
-            return tx;
+            const tx = block.transactions[txIndex];
+            return tx || null;
         } catch (e) {
             return e;
         }
@@ -556,26 +556,19 @@ class NearProvider {
      * @param {Number} txIndex transaction's index position
      * @returns {Object} returns transaction object
      */
-    async routeEthGetTransactionByBlockNumberAndIndex(params) {
-        let blockHeight = params[0];
-        const txIndex = utils.hexToDec(params[1]);
+    async routeEthGetTransactionByBlockNumberAndIndex([blockHeight, txIndex]) {
+        txIndex = utils.hexToDec(txIndex);
 
+        assert(txIndex !== undefined, 'Must pass in tx index as second argument');
         assert(blockHeight, 'Must pass in block height as first argument');
-        assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
 
-        if (blockHeight === 'latest') {
-            const status = await this.nearProvider.status();
-            blockHeight = status.sync_info.latest_block_height;
-        } else {
-            blockHeight = utils.hexToDec(blockHeight);
-        }
+        blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
 
-        // TODO: Are chunks the same as transactions?
         try {
-            const block = await this.nearProvider.block(blockHeight);
-            const tx = nearToEth.transactionObj(block.chunks[txIndex], block.header.hash);
+            const block = await this._getBlock(blockHeight, true);
+            const tx = block.transactions[txIndex];
 
-            return tx;
+            return tx || null;
         } catch (e) {
             return e;
         }
