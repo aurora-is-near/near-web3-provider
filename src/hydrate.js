@@ -11,30 +11,30 @@ const hydrate = {};
  * @returns {Object} hydrated chunk with transactions and (sometimes) receipts
  */
 hydrate.chunk = async function(chunk, block, nearProvider) {
-  // NB: A chunk with no transactions is indicated by an empty chunk.tx_root
-  const hasNoTxs = utils.emptyResult;
+    // NB: A chunk with no transactions is indicated by an empty chunk.tx_root
+    const hasNoTxs = utils.emptyResult;
 
-  // Create promise function to hydrate each chunk ONLY if tx_root !== noTxs
-  // Calling this gets all the receipts[] and transactions[] in a chunk
-  try {
-    let hydratedChunk;
-    if (chunk.tx_root === hasNoTxs) {
-      hydratedChunk = chunk;
-      hydratedChunk.transactions = [];
-    } else {
-      hydratedChunk = await nearProvider.chunk(chunk.chunk_hash);
+    // Create promise function to hydrate each chunk ONLY if tx_root !== noTxs
+    // Calling this gets all the receipts[] and transactions[] in a chunk
+    try {
+        let hydratedChunk;
+        if (chunk.tx_root === hasNoTxs) {
+            hydratedChunk = chunk;
+            hydratedChunk.transactions = [];
+        } else {
+            hydratedChunk = await nearProvider.chunk(chunk.chunk_hash);
+        }
+
+        // Add for convenience and to prevent multiple queries
+        hydratedChunk.block_hash = block.header.hash;
+        hydratedChunk.block_height = block.header.height;
+        hydratedChunk.gas_price = block.header.gas_price;
+
+        return hydratedChunk;
+    } catch (e) {
+        return new Error('hydrate.chunk:', e);
     }
-
-    // Add for convenience and to prevent multiple queries
-    hydratedChunk.block_hash = block.header.hash;
-    hydratedChunk.block_height = block.header.height;
-    hydratedChunk.gas_price = block.header.gas_price;
-
-    return hydratedChunk;
-  } catch (e) {
-    return new Error('hydrate.chunk:', e);
-  }
-}
+};
 
 /**
  * Hydrate a block by getting all its transactions
@@ -44,39 +44,39 @@ hydrate.chunk = async function(chunk, block, nearProvider) {
  * @returns {Object} returns NEAR block with NEAR transactions array
  */
 hydrate.block = async function(block, nearProvider) {
-  console.log('---------hydrate.block');
+    console.log('---------hydrate.block');
 
-  try {
+    try {
     // Create promise array of hydrate chunk promises
-    const promiseArray = block.chunks.map((chunk) => {
-      return this.chunk(chunk, block, nearProvider);
-    });
+        const promiseArray = block.chunks.map((chunk) => {
+            return this.chunk(chunk, block, nearProvider);
+        });
 
-    // Hydrate the chunks
-    const hydratedChunks = await Promise.all(promiseArray);
+        // Hydrate the chunks
+        const hydratedChunks = await Promise.all(promiseArray);
 
-    let transactions = [];
+        let transactions = [];
 
-    // Get all the transactions from each chunk and push it into one array
-    hydratedChunks.forEach((chunk) => {
-      chunk.transactions.forEach((tx) => {
-        // Add these from hydrateChunk() for convenience
-        tx.block_height = chunk.block_height;
-        tx.gas_price = chunk.gas_price;
+        // Get all the transactions from each chunk and push it into one array
+        hydratedChunks.forEach((chunk) => {
+            chunk.transactions.forEach((tx) => {
+                // Add these from hydrateChunk() for convenience
+                tx.block_height = chunk.block_height;
+                tx.gas_price = chunk.gas_price;
 
-        transactions.push(tx);
-      });
-    });
+                transactions.push(tx);
+            });
+        });
 
-    // console.log({transactions})
+        // console.log({transactions})
 
-    let blockWithTxs = block;
-    blockWithTxs.transactions = transactions;
+        let blockWithTxs = block;
+        blockWithTxs.transactions = transactions;
 
 	  return blockWithTxs;
-  } catch (e) {
-    return e;
-  }
+    } catch (e) {
+        return e;
+    }
 };
 
 /**
@@ -92,23 +92,23 @@ hydrate.block = async function(block, nearProvider) {
  */
 
 hydrate.transaction = async function(block, txIndex, nearProvider) {
-	assert(
-		block.transactions,
-		'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'
-  );
+    assert(
+        block.transactions,
+        'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'
+    );
 
-  try {
-    const tx = block.transactions[txIndex];
+    try {
+        const tx = block.transactions[txIndex];
 
-    const fullTx = await nearProvider.txStatus(utils.base58ToUint8(tx.hash), tx.signer_id);
+        const fullTx = await nearProvider.txStatus(utils.base58ToUint8(tx.hash), tx.signer_id);
 
-    // TODO: Clean this up later.
-    const hydratedTx = Object.assign(tx, fullTx);
+        // TODO: Clean this up later.
+        const hydratedTx = Object.assign(tx, fullTx);
 
-    return hydratedTx;
-  } catch (e) {
-    return e;
-  }
+        return hydratedTx;
+    } catch (e) {
+        return e;
+    }
 };
 
 /**
@@ -122,27 +122,27 @@ hydrate.transaction = async function(block, txIndex, nearProvider) {
  * @returns {Object[]} array of hydrated transactions
  */
 hydrate.allTransactions = async function(block, nearProvider) {
-  console.log('-----------hydrate.allTransactions')
-  assert(
-    block.transactions,
-    'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'
-  );
+    console.log('-----------hydrate.allTransactions');
+    assert(
+        block.transactions,
+        'hydrate.transaction: block must have transactions. Call hydrate.block on block before passing in.'
+    );
 
-  if (block.transactions.length <= 0) {
-    return [];
-  }
+    if (block.transactions.length <= 0) {
+        return [];
+    }
 
-  try {
-    const promiseArray = block.transactions.map((tx, txIndex) => {
-      return this.transaction(block, txIndex, nearProvider)
-    });
+    try {
+        const promiseArray = block.transactions.map((tx, txIndex) => {
+            return this.transaction(block, txIndex, nearProvider);
+        });
 
-    const transactions = await Promise.all(promiseArray);
+        const transactions = await Promise.all(promiseArray);
 
-    return transactions;
-  } catch (e) {
-    return e;
-  }
-}
+        return transactions;
+    } catch (e) {
+        return e;
+    }
+};
 
 module.exports = hydrate;

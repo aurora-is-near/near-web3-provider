@@ -362,7 +362,7 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
     });
 
-    describe.only(`getBlockTransactionCount |
+    describe(`getBlockTransactionCount |
         eth_getBlockTransactionCountByHash,
         eth_getBlockTransactionCountByNumber`, () => {
 
@@ -379,14 +379,19 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
 
         // broken on local because no txns on regtest.
-        test.skip('gets block tx count by number', withWeb3(async (web) => {
+        test('gets block tx count by number', withWeb3(async (web) => {
             const count = await web.eth.getBlockTransactionCount(blockHeight);
-            expect(typeof count === 'number');
-            expect(count).toEqual(8);
+            expect(count).not.toBeNaN();
+            expect(typeof count).toBe('number');
+            if (net === 'testnet') {
+                expect(count).toEqual(1);
+            } else {
+                expect(count).toBeGreaterThanOrEqual(0);
+            }
         }));
     });
 
-    describe('getTransaction | eth_getTransactionByHash', () => {
+    describe.skip('getTransaction | eth_getTransactionByHash', () => {
         // broken on local because no txns on regtest.
         test.skip('gets transaction by hash', withWeb3(async(web) => {
             const tx = await web.eth.getTransaction(txHash + ':dinoaroma');
@@ -395,7 +400,7 @@ describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         }));
     });
 
-    describe('getTransactionCount | eth_getTransactionCount', () => {
+    describe.skip('getTransactionCount | eth_getTransactionCount', () => {
         // TODO: call, make tx, call again to see if incremented
         // CONSIDER: should this return the Ethereum account nonce?
         test.skip('returns transaction count', withWeb3(async (web) => {

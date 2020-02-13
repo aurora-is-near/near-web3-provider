@@ -30,7 +30,7 @@ class NearProvider {
         await this.keyStore.setKey(this.networkId, accountId, keyPair);
         this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
         this.signer = new nearlib.InMemorySigner(this.keyStore);
-        this.connection = new nearlib.Connection(networkId, this.nearProvider, this.signer);
+        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
     }
 
     async _viewEvmContract(method, methodArgs) {
@@ -50,13 +50,16 @@ class NearProvider {
     /**
      * Calls a block and fills it up
      */
-    async _getBlock (blockHeight, returnTxObjects) {
-        const block = await this.nearProvider.block(blockHeight);
+    async _getBlock(blockHeight, returnTxObjects) {
+        try {
+            const block = await this.nearProvider.block(blockHeight);
+            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
 
-        const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
-
-        return fullBlock;
-    }
+            return fullBlock;
+        } catch (e) {
+            return e;
+        }
+    };
 
     unsupportedMethodErrorMsg(method) {
         return `NearProvider: ${method} is unsupported.`;
@@ -158,17 +161,13 @@ class NearProvider {
             return '0x0';
         }
 
-        case 'eth_getPastLogs': {
-            return this.routeEthGetPastLogss(params);
-        }
-
         /**-----------UNSUPPORTED METHODS------------**/
         case 'eth_sign': {
             throw new Error(this.unsupportedMethodErrorMsg(method));
         }
 
         case 'eth_getPastLogs': {
-          throw new Error(this.unsupportedMethodErrorMsg(method));
+            throw new Error(this.unsupportedMethodErrorMsg(method));
         }
 
         case 'eth_pendingTransactions': {
@@ -385,9 +384,9 @@ class NearProvider {
         const address = utils.remove0x(params[0]);
 
         let result = await this._viewEvmContract(
-          'get_storage_at',
-          { address, key }
-        )
+            'get_storage_at',
+            { address, key }
+        );
         return `0x${result}`;
     }
 
@@ -419,7 +418,7 @@ class NearProvider {
      */
     async routeEthGetBlockByHash([blockHash, returnTxObjects]) {
         try {
-            console.log('gethash', blockHash)
+            console.log('gethash', blockHash);
             assert(blockHash, 'Must pass in blockHash');
             blockHash = utils.hexToBase58(blockHash);
             const block = await this._getBlock(blockHash, returnTxObjects);
@@ -442,34 +441,10 @@ class NearProvider {
      */
     async routeEthGetBlockByNumber([blockHeight, returnTxObjects]) {
         try {
-            const enums = ['genesis', 'latest', 'earliest', 'pending'];
+            blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
+            const block = await this._getBlock(blockHeight, returnTxObjects);
 
-            if (!utils.isHex(blockHeight) && typeof blockHeight === 'string') {
-                assert(enums.find((e) => e === blockHeight),
-                    'Must pass in a valid block description: "genesis", "latest", "earliest", "pending"');
-            }
-
-            switch (blockHeight) {
-                case 'latest' || 'pending': {
-                    const { sync_info } = await this.nearProvider.status();
-                    blockHeight = sync_info.latest_block_height;
-                    break;
-                }
-
-                case 'earliest' || 'genesis': {
-                    blockHeight = 0;
-                    break;
-                }
-
-                default: {
-                    blockHeight = utils.hexToDec(blockHeight);
-                    break;
-                }
-            }
-
-            const fullBlock = await this._getBlock(blockHash, returnTxObjects);
-
-            return fullBlock;
+            return block;
         } catch (e) {
             return e;
         }
@@ -505,24 +480,13 @@ class NearProvider {
      * @param {String} blockHeight 32-byte block hash
      * @returns {Quantity} Integer of the number of txs in this block
      */
-    // TODO: Handle other enum strings
-    async routeEthGetBlockTransactionCountByNumber(params) {
-        console.log('number');
-        let blockHeight = params[0];
-
-        if (blockHeight === 'latest') {
-            const status = await this.nearProvider.status();
-            blockHeight = status.sync_info.latest_block_height;
-        } else {
-            blockHeight = utils.hexToDec(blockHeight);
-        }
-
-        // TODO: Are chunks the same as transactions?
+    async routeEthGetBlockTransactionCountByNumber([blockHeight]) {
         try {
-            const block = await this.nearProvider.block(blockHeight);
-            const transactionCount = block.header.chunks_included;
+            blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
+            const block = await this._getBlock(blockHeight);
 
-            return utils.decToHex(transactionCount);
+            const txCount = block.transactions.length;
+            return utils.decToHex(txCount);
         } catch (e) {
             return e;
         }
@@ -639,9 +603,9 @@ class NearProvider {
 
         console.log({address});
         let result = await this._viewEvmContract(
-          'nonce_of_evm_address',
-          { address }
-        )
+            'nonce_of_evm_address',
+            { address }
+        );
         console.log({ result });
         return `0x${result.toString()}`;
     }
@@ -664,7 +628,7 @@ class NearProvider {
 
         const {to, value, data} = params[0];
         if (value !== undefined) {
-          val = value;
+            val = value;
         }
 
         if (to === undefined) {
@@ -719,11 +683,11 @@ class NearProvider {
         const {to, /* value, */ data} = params[0];
 
         let result = await this._viewEvmContract(
-          'call_contract',
-          {
-            contract_address: utils.remove0x(to),
-            encoded_input: utils.remove0x(data)
-          });
+            'call_contract',
+            {
+                contract_address: utils.remove0x(to),
+                encoded_input: utils.remove0x(data)
+            });
         return '0x' + result;
     }
 }

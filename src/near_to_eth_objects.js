@@ -4,10 +4,10 @@
 const assert = require('bsert');
 const utils = require('./utils');
 const hydrate = require('./hydrate');
-const bn = require('bn.js');
+const BN = require('bn.js');
 
 const nearToEth = {
-	hydrate
+    hydrate
 };
 
 /**
@@ -37,11 +37,11 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 
     const { transaction_outcome, transaction } = tx;
 
-      // const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
-      // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
+    // const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
+    // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
     const value = transaction.actions.map(v => {
-      const k = Object.keys(v)[0];
-      return parseInt(v[k].deposit, 10);
+        const k = Object.keys(v)[0];
+        return parseInt(v[k].deposit, 10);
     }).reduce((a, b) => a + b);
 
     const obj = {
@@ -104,7 +104,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
  * @returns {Object} returns ETH block object
  */
 nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
-    console.log('-----nearToEth.blockObj')
+    console.log('-----nearToEth.blockObj');
     try {
         block = await this.hydrate.block(block, nearProvider);
 
@@ -133,7 +133,7 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
                 console.log('Just hashes');
                 transactions = block.transactions.map((tx) => utils.base58ToHex(tx.hash));
             } else {
-                console.log('everything')
+                console.log('everything');
                 const hydratedTransactions = await hydrate.allTransactions(block, nearProvider);
 
                 const promiseArray = hydratedTransactions.map((tx, txIndex) => {
