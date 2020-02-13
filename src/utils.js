@@ -214,9 +214,11 @@ utils.nearAccountToEvmAddress = function(accountID) {
 utils.convertBlockHeight = async function(blockHeight, nearProvider) {
     try {
         const enums = ['genesis', 'latest', 'earliest', 'pending'];
+        const notHex = !this.isHex(blockHeight);
+        const isAnEnum = enums.find((e) => e === blockHeight);
 
-        if (!this.isHex(blockHeight) && typeof blockHeight === 'string') {
-            assert(enums.find((e) => e === blockHeight),
+        if (notHex && typeof blockHeight === 'string') {
+            assert(isAnEnum,
                 'Must pass in a valid block description: "genesis", "latest", "earliest", "pending"');
         }
 
