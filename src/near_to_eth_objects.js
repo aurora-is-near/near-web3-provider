@@ -96,12 +96,15 @@ nearToEth.transactionObj = async function(tx, txIndex, near) {
 
 /**
  * Maps NEAR Block to ETH Block Object
- * @param {Object|String} block NEAR block. If 'empty', return empty block
+ * @param {Object|String} block a hydrated NEAR block. If 'empty', return empty block
  * @param {Boolean} returnTxObjects (optional) default false. if true, return
  * entire transaction object, other just hashes
+ * @param {Object} nearProvider NearProvider instance
  * @returns {Object} returns ETH block object
  */
-nearToEth.blockObj = function(block, returnTxObjects, near) {
+nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
+    console.log('-----nearToEth.blockObj')
+
     if (typeof block === 'string' && block === 'empty') {
         return {
             number: null,
@@ -119,21 +122,7 @@ nearToEth.blockObj = function(block, returnTxObjects, near) {
 
     const { header } = block;
 
-    /**
-	 * Get the maximum gas limit allowed in this block. Since gas limit is listed
-	 * in each chunk, get the gas limit in each chunk and take the max.
-	 * @param {Object} chunks all of a blocks chunks
-	 * @returns {Number} Returns max gas limit
-	 */
-    function getMaxGas(chunks) {
-        return chunks.map((c) => c.gas_limit).sort()[0];
-    }
-
-    const transactions = this._getTxsFromChunks(block, returnTxObjects, near);
-
-
-
-    // call all the chunks and get the transactions
+    const transactions = await getTransactions(block, returnTxObjects, nearProvider);
 
     return {
         // QUANTITTY the block number. 'null' when it's pending block
@@ -180,17 +169,51 @@ nearToEth.blockObj = function(block, returnTxObjects, near) {
         gasLimit: utils.decToHex(getMaxGas(block.chunks)),
 
         // QUANTITY the total used gas by all transactions in this block
-        gasUsed: null,
+        gasUsed: utils.decToHex(getGasUsed(block.chunks)),
 
         // QUANTITY the unix timestamp for when the block was collated
         timestamp: utils.convertTimestamp(header.timestamp),
 
         // ARRAY Array of transaction objects, or 32 bytes transaction hashes
-        transactions: [],
+        transactions: transactions,
 
         // ARRAY Array of uncle hashes
         uncles: []
     };
+
+    /**
+     * Get the maximum gas limit allowed in this block. Since gas limit is
+     * listed in each chunk, get the gas limit in each chunk and take the max.
+     * @param {Object} chunks all of a blocks chunks
+     * @returns {Number} Returns max gas limit
+     */
+    function getMaxGas (chunks) {
+        return chunks.map((c) => c.gas_limit).sort()[0];
+    }
+
+    /**
+     * Get the total gas used. gas_used is listed on each chunk
+     */
+    function getGasUsed (chunks) {
+        return chunks.map((c) => c.gas_used).reduce((a, b) => a + b);
+    }
+
+    async function getTransactions (block, returnTxObjects, nearProvider) {
+        try {
+            let transactions = [];
+
+            if (!returnTxObjects) {
+                transactions = transactions.map((tx) => tx.transaction.hash);
+            } else {
+                transactions = await this.hydrate.allTransactions(block, nearProvider);
+            }
+
+            return transactions;
+        } catch (e) {
+            return e;
+        }
+    }
+
 };
 
 /**
