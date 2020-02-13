@@ -13,19 +13,11 @@ const BN = require('bn.js');
  * or
  * $ export NEAR_TEST_ENV=testnet
  *
- *
- * The majority of these tests will only work when using
- * testnet because transactions need to exist for tests to be useful.
- * Handling the variables for different nets has not been completed.
- *
- * Until we add making transactions on local testnet, then
- * any of the BLOCK & TRANSACTION QUERIES will not work.
+ * Need to setup making transactions
  *
  * Hashes are hardcoded. New transactions need to be made and the
  * hashesupdated whenever testnet resets.
  *
- * On the other hand, evm_contracts will only work on local, but they are
- * borked right now
  * ------------------------------------------------
  */
 
@@ -69,12 +61,11 @@ async function waitForABlock() {
 
 function createWeb3Instance(accountId, keyPair) {
     // console.log('Creating web3 instance: ', accountId);
-
     const web = new web3();
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
 
-    keyStore.setKey(networkId, accountId, keyPair);
-    web.setProvider(new NearProvider(url, keyStore, accountId, networkId));
+    keyStore.setKey('test', accountId, keyPair);
+    web.setProvider(new NearProvider(url, keyStore, accountId));
 
     // console.log('web3 provider created for account: ', web._provider.account.accountId);
     return web;
@@ -100,7 +91,19 @@ const mainKeyPair = createKeyPair();
 //     console.log('web3 provider created for account: ', web._provider.account.accountId);
 //     return () => fn(web);
 // }
-const withWeb3 = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, mainKeyPair));
+// const withWeb3 = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, mainKeyPair));
+
+const withWeb3 = (fn) => {
+    const web = new web3();
+
+    const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
+    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
+    const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+    keyStore.setKey('test', TEST_NEAR_ACCOUNT, keyPair);
+
+    web.setProvider(new NearProvider('http://localhost:3030', keyStore, TEST_NEAR_ACCOUNT));
+    return () => fn(web);
+};
 
 // Receiver Account. Create second account so we can have a place to send transactions
 // const TEST_NEAR_ACCOUNT_RECEIVER = 'test.near.receiver';
@@ -167,10 +170,9 @@ async function deployContract(web) {
 //     }
 // }));
 
-describe.only('\n---- BASIC QUERIES ----', () => {
+describe('\n---- BASIC QUERIES ----', () => {
     // beforeAll(withWeb3(async (web) => await deployContract(web)));
     beforeAll(withWeb3(async (web) => {
-
         const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
         const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
         const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
@@ -179,10 +181,7 @@ describe.only('\n---- BASIC QUERIES ----', () => {
         try {
             await web._provider.keyStore.setKey(networkId, 'evm', keyPair);
             console.log('set key')
-        } catch (e) {
-            return e;
-        }
-        try {
+
             const contract = await web._provider.account.createAndDeployContract(
                 'evm',
                 keyPair.getPublicKey(),
@@ -235,7 +234,7 @@ describe.only('\n---- BASIC QUERIES ----', () => {
     });
 });
 
-describe.skip('\n---- CONTRACT INTERACTION ----', () => {
+describe('\n---- CONTRACT INTERACTION ----', () => {
     describe('getAccounts | eth_accounts', () => {
         test('returns accounts', withWeb3(async (web) => {
             try {
