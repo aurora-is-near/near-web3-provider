@@ -422,9 +422,9 @@ class NearProvider {
             console.log('gethash', blockHash)
             assert(blockHash, 'Must pass in blockHash');
             blockHash = utils.hexToBase58(blockHash);
-            const fullBlock = await this._getBlock(blockHash, returnTxObjects);
+            const block = await this._getBlock(blockHash, returnTxObjects);
 
-            return fullBlock;
+            return block;
         } catch (e) {
             return e;
         }
@@ -487,9 +487,10 @@ class NearProvider {
     async routeEthGetBlockTransactionCountByHash([blockHash]) {
         try {
             blockHash = utils.hexToBase58(blockHash);
-            const block = await this.nearProvider.block(blockHash);
-            const transactionCount = block.header.chunks_included;
-            return utils.decToHex(transactionCount);
+            const block = await this._getBlock(blockHash);
+            const txCount = block.transactions.length;
+
+            return utils.decToHex(txCount);
         } catch (e) {
             return e;
         }
