@@ -8,8 +8,8 @@
   "main": "src/index.js",
   "scripts": {
     "test": "jest test",
-    "lint": "eslint test/ && eslint src/**/*.js",
-    "lint:fix": "eslint test/ --fix && eslint src/**/*.js --fix"
+    "lint": "eslint test/ && eslint src/**/*.js && eslint src/",
+    "lint:fix": "eslint test/ --fix && eslint src/**/*.js --fix && eslint src/ --fix"
   },
   "author": "NEAR Inc <hello@nearprotocol.com>",
   "contributors": [
