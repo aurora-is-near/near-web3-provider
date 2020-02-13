@@ -417,7 +417,6 @@ class NearProvider {
         }
     }
 
-
     /**
      * Returns block object
      * web3.eth.getBlock accepts either a hash, number, or string.
@@ -429,15 +428,14 @@ class NearProvider {
      * @returns {Object} returns block object
      */
     async routeEthGetBlockByNumber([blockHeight, returnTxObjects]) {
-        const enums = ['genesis', 'latest', 'earliest', 'pending'];
-
-        if (typeof blockHeight === 'string') {
-            assert(enums.find(blockHeight), 'Must pass in a valid block description: "genesis", "latest", "earliest", "pending"');
-        } else {
-            assert(typeof blockHeight === 'number', 'Must pass in block number');
-        }
-
         try {
+            const enums = ['genesis', 'latest', 'earliest', 'pending'];
+
+            if (!utils.isHex(blockHeight) && typeof blockHeight === 'string') {
+                assert(enums.find((e) => e === blockHeight),
+                    'Must pass in a valid block description: "genesis", "latest", "earliest", "pending"');
+            }
+
             switch (blockHeight) {
                 case 'latest' || 'pending': {
                     const { sync_info } = await this.nearProvider.status();
@@ -459,8 +457,6 @@ class NearProvider {
             const block = await this.nearProvider.block(blockHeight);
 
             const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
-
-            console.log({fullBlock})
 
             return fullBlock;
         } catch (e) {
