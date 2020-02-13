@@ -9,6 +9,7 @@ const BN = require('bn.js');
  * TESTS IN FLUX
  *
  * SPECIFY WHICH NET BY SETTING process.env.NEAR_TEST_ENV
+ * (default)
  * $ export NEAR_TEST_ENV=local
  * or
  * $ export NEAR_TEST_ENV=testnet
@@ -99,9 +100,10 @@ const withWeb3 = (fn) => {
     const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
     const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+    // I don't know why this has to be 'test'
     keyStore.setKey('test', TEST_NEAR_ACCOUNT, keyPair);
 
-    web.setProvider(new NearProvider('http://localhost:3030', keyStore, TEST_NEAR_ACCOUNT));
+    web.setProvider(new NearProvider(url, keyStore, TEST_NEAR_ACCOUNT));
     return () => fn(web);
 };
 
@@ -177,7 +179,6 @@ describe('\n---- BASIC QUERIES ----', () => {
         const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
         const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
         console.log('networkId variable', networkId)
-        console.log('this.networkId', this)
         try {
             await web._provider.keyStore.setKey(networkId, 'evm', keyPair);
             console.log('set key')
@@ -187,7 +188,7 @@ describe('\n---- BASIC QUERIES ----', () => {
                 keyPair.getPublicKey(),
                 evmBytecode,
                 0)  // NEAR value
-            console.log('deployed EVM contract');
+            console.log('deployed EVM contract', contract);
         } catch (e) {
             console.log('EVM deployed error', e);
         }
@@ -195,12 +196,20 @@ describe('\n---- BASIC QUERIES ----', () => {
 
     describe('isSyncing | eth_syncing', () => {
         test('returns correct type - Boolean|Object', withWeb3(async (web) => {
-            const sync = await web.eth.isSyncing();
-            const syncType = typeof sync;
-            expect(syncType).toBe('boolean' || 'object');
+            try {
+                const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+                const newAccount = await web._provider.account.createAccount('test.sync', keyPair.getPublicKey(), 2);
 
-            if (syncType === 'boolean') {
-                expect(sync).toBe(false);
+                console.log({newAccount})
+                const sync = await web.eth.isSyncing();
+                const syncType = typeof sync;
+                expect(syncType).toBe('boolean' || 'object');
+
+                if (syncType === 'boolean') {
+                    expect(sync).toBe(false);
+                }
+            } catch (e) {
+                return e;
             }
         }));
 
@@ -240,6 +249,7 @@ describe('\n---- CONTRACT INTERACTION ----', () => {
             try {
                 const accounts = await web.eth.getAccounts();
                 expect(Array.isArray(accounts)).toBe(true);
+                // TODO: Test accounts
                 // console.log({accounts})
                 // expect(accounts[0]).toEqual('0xCBdA96B3F2B8eb962f97AE50C3852CA976740e2B');
             } catch (e) {
@@ -271,7 +281,6 @@ describe('\n---- CONTRACT INTERACTION ----', () => {
         }));
     });
 
-    // Broken without contract deploy
     describe('getCode | eth_getCode', () => {
         // TODO: deploy a contract and test
         test('gets code', withWeb3(async (web) => {
