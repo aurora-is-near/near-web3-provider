@@ -5,8 +5,32 @@ const utils = require('../src/utils');
 const NearProvider = require('../src');
 const BN = require('bn.js');
 
+/**------------------------------------------------
+ * TESTS IN FLUX
+ *
+ * SPECIFY WHICH NET BY SETTING process.env.NEAR_TEST_ENV
+ * $ export NEAR_TEST_ENV=local
+ * or
+ * $ export NEAR_TEST_ENV=testnet
+ *
+ *
+ * The majority of these tests will only work when using
+ * testnet because transactions need to exist for tests to be useful.
+ * Handling the variables for different nets has not been completed.
+ *
+ * Until we add making transactions on local testnet, then
+ * any of the BLOCK & TRANSACTION QUERIES will not work.
+ *
+ * Hashes are hardcoded. New transactions need to be made and the
+ * hashesupdated whenever testnet resets.
+ *
+ * On the other hand, evm_contracts will only work on local, but they are
+ * borked right now
+ * ------------------------------------------------
+ */
+
 let url;
-const net = process.env.NEAR_TEST || 'local';
+const net = process.env.NEAR_TEST_ENV || 'local';
 
 if (net === 'testnet') {
     url = 'https://rpc.nearprotocol.com';
@@ -161,16 +185,6 @@ const withWeb3 = (fn) => () => fn(createWeb3Instance(TEST_NEAR_ACCOUNT, mainKeyP
 //         console.log('EVM deployed error', e);
 //     });
 // }), 10000);
-
-// test.only('returns correct type - Boolean|Object', withWeb3(async (web) => {
-//     const sync = await web.eth.isSyncing();
-//     const syncType = typeof sync;
-//     expect(syncType).toBe('boolean' || 'object');
-
-//     if (syncType === 'boolean') {
-//         expect(sync).toBe(false);
-//     }
-// }));
 
 describe('\n---- BASIC QUERIES ----', () => {
     describe('isSyncing | eth_syncing', () => {
