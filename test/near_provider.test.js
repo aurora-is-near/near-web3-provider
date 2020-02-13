@@ -5,16 +5,19 @@ const utils = require('../src/utils');
 const { NearProvider } = require('../src/index');
 
 const TEST_NEAR_ACCOUNT = 'test.near';
+const NETWORK_ID = 'local';
+const EVM_CONTRACT = 'evm';
 
 const withWeb3 = (fn) => {
+
     const web = new web3();
 
     const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
     const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
-    keyStore.setKey('test', TEST_NEAR_ACCOUNT, keyPair);
+    keyStore.setKey(NETWORK_ID, TEST_NEAR_ACCOUNT, keyPair);
 
-    web.setProvider(new NearProvider('http://localhost:3030', keyStore, TEST_NEAR_ACCOUNT));
+    web.setProvider(new NearProvider('http://localhost:3030', keyStore, TEST_NEAR_ACCOUNT, NETWORK_ID));
     return () => fn(web);
 };
 
@@ -25,7 +28,10 @@ describe('#web3.eth', () => {
         const evmCode = fs.readFileSync('./artifacts/near_evm.wasm').toString('hex');
         const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
         const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
-        await web._provider.keyStore.setKey(this.networkId, this.evm_contract, keyPair);
+        await web._provider.keyStore.setKey(
+            web._provider.networkId,
+            web._provider.evm_contract,
+            keyPair);
         return web._provider.account.createAndDeployContract(
             web._provider.evm_contract,
             keyPair.getPublicKey(),
@@ -33,8 +39,12 @@ describe('#web3.eth', () => {
             0  // NEAR value
         ).then(() => {
             console.log('deployed EVM contract');
-        }).catch(() => {
-            console.log('EVM already deployed');
+        }).catch((e) => {
+            if (e.type === 'AccountAlreadyExists') {
+              console.log('EVM already deployed');
+            } else {
+              console.log(e)
+            }
         });
     }), 10000);
 
