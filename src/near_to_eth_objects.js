@@ -240,17 +240,25 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
  * @returns {Object} returns ETH transaction receipt object
  */
 nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
-  const { transaction, transaction_outcome, status } = nearTxObj;
     let contractAddress = null;
-    const responseData = utils.base64ToString(status.SuccessValue);
+    let destination = null;
 
+    const { transaction, transaction_outcome, status } = nearTxObj;
+    const responseData = utils.base64ToString(status.SuccessValue);
+    const functionCall = transaction.actions[0].FunctionCall;
+
+    // if it's deploy, get the address
     if (responseData) {
       const responsePayload = responseData.slice(1, -1);
-      // if it's deploy, get the address
-      const functionCall = transaction.actions[0].FunctionCall;
       if (functionCall && functionCall.method_name == 'deploy_code') {
         contractAddress = responsePayload;
       }
+    }
+
+    // if it's a call, get the destination address
+    if (functionCall && functionCall.method_name == 'call_contract') {
+      const args = JSON.parse(utils.base64ToString(functionCall.args));
+      destination = args.contract_address;
     }
 
     const gas_burnt = transaction_outcome.outcome.gas_burnt;
@@ -265,7 +273,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
         blockNumber: utils.decToHex(block.header.height),
         blockHash: block.header.hash,
         from: utils.nearAccountToEvmAddress(transaction.signer_id),
-        to: `0x${'00'.repeat(20)}`,
+        to: destination ? `0x${destination}` : undefined,
         contractAddress: contractAddress,
         gasUsed: utils.decToHex(gas_burnt),
         logs: logs,

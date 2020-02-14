@@ -143,7 +143,7 @@ describe('\n---- PROVIDER ----', () => {
               gas: 0,
               data: `0x${zombieCode}`
           });
-          // console.log(deployResult)
+          console.log(deployResult)
         }));
 
         describe('getAccounts | eth_accounts', () => {
