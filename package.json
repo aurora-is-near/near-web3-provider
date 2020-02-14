@@ -1,6 +1,6 @@
 {
   "name": "near-web3-provider",
-  "version": "0.1.0-denver",
+  "version": "0.2.0-denver",
   "description": "NEAR Web3 integration",
   "engines": {
     "node": ">= 11"
