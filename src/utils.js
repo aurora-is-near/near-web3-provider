@@ -223,21 +223,21 @@ utils.convertBlockHeight = async function(blockHeight, nearProvider) {
         }
 
         switch (blockHeight) {
-            case 'latest' || 'pending': {
-                const { sync_info } = await nearProvider.status();
-                blockHeight = sync_info.latest_block_height;
-                break;
-            }
+        case 'latest' || 'pending': {
+            const { sync_info } = await nearProvider.status();
+            blockHeight = sync_info.latest_block_height;
+            break;
+        }
 
-            case 'earliest' || 'genesis': {
-                blockHeight = 0;
-                break;
-            }
+        case 'earliest' || 'genesis': {
+            blockHeight = 0;
+            break;
+        }
 
-            default: {
-                blockHeight = this.hexToDec(blockHeight);
-                break;
-            }
+        default: {
+            blockHeight = this.hexToDec(blockHeight);
+            break;
+        }
         }
 
         return blockHeight;

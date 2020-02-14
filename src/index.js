@@ -1,7 +1,6 @@
-const bs58 = require('bs58');
-const nearlib = require('nearlib');
 const BN = require('bn.js');
 const assert = require('bsert');
+const nearlib = require('nearlib');
 
 const NEAR_NET_VERSION = '99';
 
@@ -61,7 +60,7 @@ class NearProvider {
         } catch (e) {
             return e;
         }
-    };
+    }
 
     unsupportedMethodErrorMsg(method) {
         return `NearProvider: ${method} is unsupported.`;
@@ -520,10 +519,10 @@ class NearProvider {
 
             return findTx;
         } catch (e) {
-            if (e.type = 'TimeoutError') {
-              // NB: Near RPC won't respond null. It'll timeout.
-              //     So if it times out, the tx doesn't exist
-              return null;
+            if (e.type == 'TimeoutError') {
+                // NB: Near RPC won't respond null. It'll timeout.
+                //     So if it times out, the tx doesn't exist
+                return null;
             }
             return e;
         }
@@ -641,7 +640,7 @@ class NearProvider {
                 this.evm_contract,
                 'deploy_code',
                 { 'bytecode': utils.remove0x(data) },
-                2**52,
+                GAS_AMOUNT.toString(),
                 val.toString()
             );
         } else {
@@ -649,7 +648,7 @@ class NearProvider {
                 this.evm_contract,
                 'call_contract',
                 { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                2**52,
+                GAS_AMOUNT.toString(),
                 val.toString()
             );
         }
@@ -689,13 +688,13 @@ class NearProvider {
         const val = value === undefined ? '0x0' : value;
 
         let result = await this._viewEvmContract(
-          'view_call_contract',
-          {
-            contract_address: utils.remove0x(to),
-            encoded_input: utils.remove0x(data),
-            sender: utils.remove0x(sender),
-            value: parseInt(val, 16)
-          });
+            'view_call_contract',
+            {
+                contract_address: utils.remove0x(to),
+                encoded_input: utils.remove0x(data),
+                sender: utils.remove0x(sender),
+                value: parseInt(val, 16)
+            });
         return '0x' + result;
     }
 }

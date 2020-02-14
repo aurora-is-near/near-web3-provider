@@ -201,6 +201,7 @@ describe('\n---- PROVIDER ----', () => {
     describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         let blockHash;
         let blockHeight;
+        let transactionHash;
 
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
 
@@ -212,7 +213,10 @@ describe('\n---- PROVIDER ----', () => {
             const newBlock = await getLatestBlockInfo();
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
-            // TODO: Create txs
+            const txResult = await web.eth.sendTransaction(
+                {from: '00'.repeat(20), to: '00'.repeat(20), value: 0, gas: 0, data: '0x00'}
+            );
+            transactionHash = txResult.transactionHash;
         }));
 
         describe('getBlockNumber | eth_blockNumber', () => {
@@ -330,18 +334,15 @@ describe('\n---- PROVIDER ----', () => {
                 }
             }), 11000);
 
-            test.only('it gets a transaction by hash', withWeb3(async(web) => {
-              const { transactionHash } = await web.eth.sendTransaction(
-                {from: '00'.repeat(20), to: '00'.repeat(20), value: 0, gas: 0, data: "0x00"}
-              );
-              try {
-                const tx = await web.eth.getTransaction(transactionHash);
-                expect(tx).toBeOk();
-                expect(tx.contractAddress).toBeNull();
-                expect(tx.status).toBe(true);
-              } catch (e) {
-                return e;
-              }
+            test('it gets a transaction by hash', withWeb3(async(web) => {
+                try {
+                    const tx = await web.eth.getTransaction(transactionHash);
+                    expect(tx).toBeOk();
+                    expect(tx.contractAddress).toBeNull();
+                    expect(tx.status).toBe(true);
+                } catch (e) {
+                    return e;
+                }
             }));
         });
 

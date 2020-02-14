@@ -4,7 +4,6 @@
 const assert = require('bsert');
 const utils = require('./utils');
 const hydrate = require('./hydrate');
-const BN = require('bn.js');
 
 const nearToEth = {
     hydrate
@@ -261,7 +260,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
         gasUsed: utils.decToHex(gas_burnt),
         logs: logs,
         logsBloom: `0x${'00'.repeat(256)}`,
-        status: '0x1',
+        status: responseHash ? '0x1' : '0x0'
     };
 };
 
