@@ -1,10 +1,10 @@
 const assert = require('bsert');
 const bs58 = require('bs58');
-const web3 = require('web3');
+const web3Utils = require('web3-utils');
 
 const utils = {};
 
-utils.keccak256 = web3.utils.keccak256;
+utils.keccak256 = web3Utils.keccak256;
 
 /**
  * base58 for 0s. Indicates empty result
