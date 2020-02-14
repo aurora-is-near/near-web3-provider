@@ -709,7 +709,6 @@ class NearProvider {
                 ? from
                 : utils.nearAccountToEvmAddress(this.accountId);
 
-            // TODO: the contract supports this. We need to figure out how to serialize it
             const val = value
                 ? new BN(utils.remove0x(value), 16)
                 : new BN(0);
