@@ -35,7 +35,6 @@ class NearProvider {
     }
 
     async _viewEvmContract(method, methodArgs) {
-        // TODO: clarify methodArgs passed in should be { argName: arg }
         try {
             const result = await this.account.viewFunction(
                 this.evm_contract,
@@ -593,7 +592,6 @@ class NearProvider {
         let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
         let tx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
         let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
-        // TODO: compute proper tx status: accumulate logs and gas.
         const result = nearToEth.transactionReceiptObj(block, tx, accountId);
         return result;
     }
@@ -633,6 +631,8 @@ class NearProvider {
 
         const {to, value, data} = params[0];
         let val = value === undefined ? new BN(0) : new BN(utils.remove0x(value), 16);
+
+        // TODO: differentiate simple sends
 
         if (to === undefined) {
             // Contract deployment.

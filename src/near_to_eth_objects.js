@@ -17,7 +17,7 @@ nearToEth.syncObj = function (syncInfo) {
         startingBlock: '0x0',
         currentBlock: utils.decToHex(syncInfo.latest_block_height),
         highestBlock: utils.decToHex(syncInfo.latest_block_height),
-        // TODO: The following are not listed in the RPC docs but are expected in web3
+        // NB: The following are not listed in the RPC docs but are expected in web3
         knownStates: '0x0',
         pulledStates: '0x0'
     };
@@ -63,7 +63,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         to: `0x${destination}`,
 
         // QUANTITY - integer of the current gas price in wei
-        // TODO: Will this break with big numbers?
+        // TODO: This will break with big numbers?
         gasPrice: utils.decToHex(parseInt(tx.gas_price)),
 
         // DATA - the data sent along with the transaction
