@@ -279,7 +279,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
         blockNumber: utils.decToHex(block.header.height),
         blockHash: block.header.hash,
         from: utils.nearAccountToEvmAddress(transaction.signer_id),
-        to: destination ? `0x${destination}` : transaction.receiver_id,
+        to: destination ? `0x${destination}` : undefined,
         contractAddress: contractAddress,
         gasUsed: utils.decToHex(gas_burnt),
         logs: logs,

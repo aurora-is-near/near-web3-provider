@@ -103,7 +103,7 @@ class NearProvider {
 
         case 'eth_getStorageAt': {
             return this.routeEthGetStorageAt(params);
-        }``
+        }
 
         case 'eth_getCode': {
             return this.routeEthGetCode(params);
