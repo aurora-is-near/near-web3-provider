@@ -7,17 +7,49 @@ Use it to connect your Ethereum frontend or Truffle to NEAR Protocol.
 
 ## Description
 
-NEAR Protocol is a sharded, proof-of-stake blockchain. Keeping that in mind, some Ethereum concepts are naturally not shared with NEAR; for example, there is no concept of uncle blocks, pending blocks, or block difficulty.
+NEAR Protocol is a sharded, proof-of-stake blockchain. Keeping that in mind,
+some Ethereum concepts are naturally not shared with NEAR; for example, there
+is no concept of uncle blocks, pending blocks, or block difficulty.
 
-As a sharded blockchain, the structure of NEAR blocks is also different. In Ethereum, blocks have transactions. In NEAR, blocks have chunks, and chunks have transactions.
+As a sharded blockchain, the structure of NEAR blocks is also different. In
+Ethereum, blocks have transactions. In NEAR, blocks have chunks, and chunks
+have transactions.
 
-`near-web3-provider` has been adapted to follow `web3` as closely as possible, but where there are no equivalents, empty values have been passed through. Other return values have been adapted to account for the difference in block structure (for example, the root of the transaction trie comes from a chunk rather than a block). If a method has no direct translation, an `Unsupported method` error is returned.
+`near-web3-provider` has been adapted to follow `web3` as closely as possible,
+but where there are no equivalents, empty values have been passed through.
+Other return values have been adapted to account for the difference in block
+structure (for example, the root of the transaction trie comes from a chunk
+rather than a block). If a method has no direct translation, an
+`Unsupported method` error is returned.
 
 ## Install
 
 ```bash
 npm install near-web3-provider
 ```
+
+## Running Tests
+
+Tests require a running local `nearcore`.
+
+Install Rust:
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Install and run NEARCore:
+```
+git clone https://github.com/nearprotocol/nearcore
+cd nearcore
+./scripts/start_unittest.py --local
+```
+
+Run tests
+```
+npm run test
+```
+
+Tests currently take ~40 seconds to run.
 
 ## Requirements
 
@@ -65,24 +97,28 @@ module.exports = {
 
 ## Limitations and differences from Ethereum providers
 
-* Any call that accepts blockHeight as an argument will function as `latest`,
+* Many calls that accepts blockHeight as an argument will function as `latest`,
   regardless of the actual argument. This is a Near RPC limitation.
-* `eth_call` does not support `from` or `value` arguments. This is a Near RPC
+* `eth_call` does not support the `value` argument. This is a Near RPC
   limitation.
 * `eth_estimateGas` will always return `0x0`. Near RPC does not seem to support
   gas estimation for calls.
 * Many fields in Ethereum data structures do not have a direct correspondance
   to Near data structures. Some attributes of transaction and block objects
   will be unreliable.
-* Some fields are just unimplemented. For example, tx receipts currently always
-  have a 0x1 status, regardless of the success of the transaction.
+* Some fields are just unimplemented. Always consult implementation in
+  `near_to_eth.js`. E.g. tx index is constant, and not reliable.
+* Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible
+  correspondance to Near block structure
 
 
 ## API
 
 TODO: Add in API methods and differences with web3.
 
-`eth_getTransactionByBlockHashAndIndex` - how can you get the transaction by index if it is nested inside chunks? should we unfold chunks until that index is found? keep a count and only get transactions up until that point.
+`eth_getTransactionByBlockHashAndIndex` - how can you get the transaction by
+index if it is nested inside chunks? should we unfold chunks until that index
+is found? keep a count and only get transactions up until that point.
 -------------------------
 
 ## Development
@@ -99,11 +135,15 @@ All data should be hex encoded either as a **QUANTITY** or **UNFORMATTED DATA**,
 * `eth_getStorageAt`
 * `eth_call`
 
-`{Quantity}` - integers, numbers. encoded as hex, prefix with "0x", in the most compact representation with the exception of zero "0x0" (e.g. no leading zeros)
+`{Quantity}` - integers, numbers. encoded as hex, prefix with "0x", in the most
+  compact representation with the exception of zero "0x0" (e.g. no leading
+  zeros)
 
-`{UnformattedData}` - byte arrays, account addresses, hashes, bytecode arrays. encoded as hex, prefix with "0x", two hex digits per byte
+`{UnformattedData}` - byte arrays, account addresses, hashes, bytecode arrays.
+encoded as hex, prefix with "0x", two hex digits per byte
 
-`{Tag}` - enum string. Almost always refers to the block height: 'genesis', 'latest', 'earliest', or 'pending'
+`{Tag}` - enum string. Almost always refers to the block height: 'genesis',
+'latest', 'earliest', or 'pending'
 
 ------------------------------------------
 
@@ -499,7 +539,6 @@ Transaction look-up requires both the hash and the account ID.
 
 `eth_syncing`
 
-- [ ] Syncing always returns `false` even though values are updating. What exactly does this property refer to?
 - [ ] Chain information for `startingBlock`, `highestBlock`, `knownStates`, `pulledStates`
 - [ ] Expected return object:
     ```
