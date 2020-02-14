@@ -34,7 +34,8 @@
   "jest": {
     "testEnvironment": "node",
     "coverageDirectory": "./coverage/",
-    "collectCoverage": true
+    "collectCoverage": true,
+    "testTimeout": 30000
   },
   "keywords": [
     "blockchain",
