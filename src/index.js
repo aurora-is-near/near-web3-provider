@@ -3,6 +3,7 @@ const assert = require('bsert');
 const nearlib = require('nearlib');
 
 const NEAR_NET_VERSION = '99';
+const NEAR_NET_VERSION_TEST = '98';
 
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
@@ -14,6 +15,9 @@ class NearProvider {
         this.networkId = networkId || process.env.NODE_ENV || 'default';
         this.evm_contract = evmContractName || 'evm';
         this.url = url;
+        this.version = networkId === 'local' || networkId === 'test'
+            ? NEAR_NET_VERSION_TEST
+            : NEAR_NET_VERSION;
         this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
 
         this.keyStore = keyStore;
@@ -74,7 +78,7 @@ class NearProvider {
          * @returns {String}
          */
         case 'net_version': {
-            return NEAR_NET_VERSION;
+            return this.version;
         }
 
         case 'net_listening': {
