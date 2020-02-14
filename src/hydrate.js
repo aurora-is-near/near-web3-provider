@@ -72,7 +72,7 @@ hydrate.block = async function(block, nearProvider) {
         let blockWithTxs = block;
         blockWithTxs.transactions = transactions;
 
-	  return blockWithTxs;
+        return blockWithTxs;
     } catch (e) {
         return e;
     }

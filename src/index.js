@@ -1,7 +1,6 @@
-const bs58 = require('bs58');
-const nearlib = require('nearlib');
 const BN = require('bn.js');
 const assert = require('bsert');
+const nearlib = require('nearlib');
 
 const NEAR_NET_VERSION = '99';
 
@@ -36,7 +35,6 @@ class NearProvider {
     }
 
     async _viewEvmContract(method, methodArgs) {
-        // TODO: clarify methodArgs passed in should be { argName: arg }
         try {
             const result = await this.account.viewFunction(
                 this.evm_contract,
@@ -61,7 +59,7 @@ class NearProvider {
         } catch (e) {
             return e;
         }
-    };
+    }
 
     unsupportedMethodErrorMsg(method) {
         return `NearProvider: ${method} is unsupported.`;
@@ -503,12 +501,10 @@ class NearProvider {
     async routeEthGetTransactionByHash([txHashAndAccountId]) {
         try {
             // NB: provider.txStatus requires txHash to be a Uint8Array of
-            // the base58 tx hash. Since txHash is hex, it is converted to
-            // base58, and then turned into a Buffer
+            //     the base58 tx hash. Since txHash is hex, it is converted to
+            //     base58, and then turned into a Buffer
             let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
-
             accountId = accountId || this.accountId;
-
             const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(
                 utils.base58ToUint8(txHash),
                 accountId
@@ -518,9 +514,13 @@ class NearProvider {
 
             return findTx;
         } catch (e) {
+            if (e.type == 'TimeoutError') {
+                // NB: Near RPC won't respond null. It'll timeout.
+                //     So if it times out, the tx doesn't exist
+                return null;
+            }
             return e;
         }
-
     }
 
     /**
@@ -586,11 +586,8 @@ class NearProvider {
      */
     async routeEthGetTransactionReceipt([txHashAndAccountId]) {
         let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
-
         let tx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
         let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
-
-        // TODO: compute proper tx status: accumulate logs and gas.
         const result = nearToEth.transactionReceiptObj(block, tx, accountId);
         return result;
     }
@@ -598,8 +595,6 @@ class NearProvider {
     /**
      * Returns the number of transactions SENT from an address
      * @param {String} address 20-byte address
-     * @param {Quantity|Tag} block (optional) block number, or the
-     * string "latest", "earliest", or "pending"
      * @returns {Quantity} Integer of the number of transactions sent
      * from this address
      */
@@ -627,12 +622,11 @@ class NearProvider {
      */
     async routeEthSendTransaction(params) {
         let outcome;
-        let val = 0;
 
         const {to, value, data} = params[0];
-        if (value !== undefined) {
-            val = value;
-        }
+        let val = value === undefined ? new BN(0) : new BN(utils.remove0x(value), 16);
+
+        // TODO: differentiate simple sends
 
         if (to === undefined) {
             // Contract deployment.
@@ -640,7 +634,7 @@ class NearProvider {
                 this.evm_contract,
                 'deploy_code',
                 { 'bytecode': utils.remove0x(data) },
-                2**52,
+                GAS_AMOUNT.toString(),
                 val.toString()
             );
         } else {
@@ -648,11 +642,10 @@ class NearProvider {
                 this.evm_contract,
                 'call_contract',
                 { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                2**52,
+                GAS_AMOUNT.toString(),
                 val.toString()
             );
         }
-
         return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
@@ -684,18 +677,20 @@ class NearProvider {
      * @returns {String} the return value of the executed contract
      */
     async routeEthCall(params) {
-        const {to, value, data} = params[0];
-        const sender = params[0].from;
-        const val = value === undefined ? '0x0' : value;
+        const {to, from, value, data} = params[0];
+        const sender = from ? from : utils.nearAccountToEvmAddress(this.accountId);
 
+        // TODO: the contract supports this. We need to figure out how to serialize it
+        // let val = value ? new BN(utils.remove0x(value), 16): new BN(0);
+        // console.log(val.toString())
         let result = await this._viewEvmContract(
-          'view_call_contract',
-          {
-            contract_address: utils.remove0x(to),
-            encoded_input: utils.remove0x(data),
-            sender: utils.remove0x(sender),
-            value: parseInt(val, 16)
-          });
+            'view_call_contract',
+            {
+                contract_address: utils.remove0x(to),
+                encoded_input: utils.remove0x(data),
+                sender: utils.remove0x(sender),
+                value: 0  // TODO
+            });
         return '0x' + result;
     }
 }
