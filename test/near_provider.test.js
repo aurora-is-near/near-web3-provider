@@ -134,11 +134,12 @@ describe('\n---- PROVIDER ----', () => {
     });
 
     describe('\n---- CONTRACT INTERACTION ----', () => {
-        let zombieAddress;
         let zombieABI;
+        let zombieCode;
+        let zombieAddress;
 
         beforeAll(withWeb3(async (web) => {
-          const zombieCode = fs.readFileSync(zombieCodeFile).toString();
+          zombieCode = fs.readFileSync(zombieCodeFile).toString();
           const deployResult = await web.eth.sendTransaction({
               from: '00'.repeat(20),
               to: undefined,
@@ -243,6 +244,19 @@ describe('\n---- PROVIDER ----', () => {
                 expect(callRes).toBeInstanceOf(Array);
                 expect(callRes.length).toStrictEqual(1);
                 expect(callRes[0]).toStrictEqual('0');
+            }), 11000);
+
+            test('can deploy', withWeb3(async (web) => {
+              let zombies = new web.eth.Contract(zombieABI);
+              try {
+                let result = await zombies.deploy({data: `0x${zombieCode}`})
+                    .send({from: web._provider.accountEvmAddress});
+                expect(result._address).toBeDefined();
+                expect(result._address.length).toStrictEqual(42);
+                expect(result._address.slice(0, 2)).toStrictEqual('0x');
+              } catch (e) {
+                return e;
+              }
             }), 11000);
         });
 

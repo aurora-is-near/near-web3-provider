@@ -49,7 +49,7 @@ Run tests
 npm run test
 ```
 
-Tests currently take ~40 seconds to run.
+Tests currently take ~50 seconds to run.
 
 ## Requirements
 
