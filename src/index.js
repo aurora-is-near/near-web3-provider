@@ -105,7 +105,7 @@ class NearProvider {
 
         case 'eth_getStorageAt': {
             return this.routeEthGetStorageAt(params);
-        }
+        }``
 
         case 'eth_getCode': {
             return this.routeEthGetCode(params);
@@ -333,6 +333,7 @@ class NearProvider {
      * controls
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
+    // TODO: Is this useful? will web3 let us pass back Near accountIds?
     async routeEthAccounts() {
         try {
             const networkId = this.connection.networkId;
@@ -358,9 +359,6 @@ class NearProvider {
     /**
      * Gets the balance of an address at a given block
      * @param {String} address Address to check for balance
-     * @param {Quantity|Tag} block Optional. Integer block
-     * number, or the string "latest", "earliest", or "pending".
-     * Default is "latest"
      * @returns {Quantity} integer of the current balance in wei
      */
     async routeEthGetBalance(params) {
@@ -380,7 +378,6 @@ class NearProvider {
      * Returns the value from a storage position at a given address.
      * @param {String} address 20-byte address of the storage
      * @param {Quantity} position The index position of the storage
-     * @param {Quantity} block (optional) Block
      * @returns {String} The value at this storage position
      */
     async routeEthGetStorageAt(params) {
@@ -398,7 +395,6 @@ class NearProvider {
     /**
      * Gets the code at a specific address
      * @param {String} address 20-byte address to get the code from
-     * @param {Quantity} block (optional)
      */
     async routeEthGetCode(params) {
         const address = utils.remove0x(params[0]);
