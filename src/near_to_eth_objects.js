@@ -330,8 +330,3 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
 };
 
 module.exports = nearToEth;
-
-
-// get the block
-// spread the chunks
-// get list of txs from there
