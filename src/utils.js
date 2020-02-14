@@ -12,40 +12,6 @@ utils.keccak256 = web3Utils.keccak256;
 utils.emptyResult = '11111111111111111111111111111111';
 
 /**
- * Converts string to hex string
- * A JavaScript code unit is 16 bits wide. Therefore the hex string form will
- * be 4 digits per code unit.
- * @param {String} value value to convert to hex string
- * @returns {String} value as hex string
- */
-utils.toHex = function(value) {
-    assert(typeof value === 'string', 'toHex: must pass in string');
-
-    let hex;
-    let result = '';
-
-    for (let i = 0; i < value.length; i++) {
-        hex = value.charCodeAt(i).toString(16);
-        result += (`000${hex}`).slice(-4);
-    }
-
-    return result;
-}
-
-/**
- * Prepends 0x to string
- * @param {String} value string to prepend 0x to
- * @returns {String} 0x + string
- */
-utils.with0x = function(value) {
-    assert(typeof value === 'string', 'prepend0x: must pass in string');
-    console.log({value})
-    const with0x = `0x${value}`;
-    console.log({with0x})
-    return `0x${value}`;
-}
-
-/**
  * Remove 0x if prepended
  * @param {String} value value to check and modify
  * @return {String} string without 0x
