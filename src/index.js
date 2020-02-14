@@ -577,8 +577,10 @@ class NearProvider {
         try {
             txIndex = utils.hexToDec(txIndex);
 
-            assert(txIndex !== undefined, 'Must pass in tx index as second argument');
-            assert(blockHeight, 'Must pass in block height as first argument');
+            assert(txIndex !== undefined,
+                'Must pass in tx index as second argument');
+            assert(blockHeight,
+                'Must pass in block height as first argument');
 
             blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
 
@@ -593,7 +595,7 @@ class NearProvider {
 
     /**
      * Returns the receipt of a transaction by transaction hash
-     * @param {String} txHash transaction hash
+     * @param {String} txHashAndAccountId transaction hash (base58hash:accountId)
      * @returns {Object} returns transaction receipt object or null
      */
     async routeEthGetTransactionReceipt([txHashAndAccountId]) {
