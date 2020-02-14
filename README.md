@@ -121,7 +121,7 @@ Mining, hashrates, `ssh,` and `db` methods are not supported.
 
 * Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible correspondance to Near block structure
 
-## API
+## API Overview
 
 Unless specified, NearProvider returns the values specified in the web3 documentation for each method.
 
@@ -143,6 +143,22 @@ Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to c
 * `value` - Transaction values/amounts are denominated in yoctoNEAR
 
 * `to`, `from`, `address` - Addresses are the EVM hash of a Near AccountId
+
+---
+
+## API Methods
+
+### web3.eth.getProtocolVersion
+```
+web3.eth.getProtocolVersion([callback])
+```
+Returns the Near protocol version of the node.
+
+#### Returns
+`Promise` returns `String`: the protocol version.
+
+#### Differences | Limitations
+* Returns the Near protocol version instead of the Ethereum protocol version
 
 ---
 
