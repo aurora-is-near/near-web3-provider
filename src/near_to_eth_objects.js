@@ -187,31 +187,31 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
             timestamp: utils.convertTimestamp(header.timestamp),
 
             // ARRAY Array of transaction objects, or 32 bytes transaction hashes
-            transactions: transactions,
+            transactions: transactions
 
             /**------------UNSUPPORTED VALUES--------- */
             // DATA sha3 of the uncles data in the block
-            sha3Uncles: '',
+            // sha3Uncles: '',
 
             // DATA the bloom filter for the logs of the block. null when its pending block
-            logsBloom: '',
+            // logsBloom: '',
 
             // ARRAY Array of uncle hashes
-            uncles: [],
+            // uncles: [],
 
             // DATA the root of the final state trie of the block
-            stateRoot: '',
+            // stateRoot: '',
 
             // DATA the address of the beneficiary to whom the mining rewards were given
-            miner: '',
+            // miner: '',
 
             // QUANTITY integer of the difficulty for this block
-            difficulty: null,
+            // difficulty: null,
 
             // QUANTITY integer of the total difficulty of the chain until this block
             // totalDifficulty: null,
             // DATA the extra data field of this block
-            extraData: '',
+            // extraData: '',
         };
     } catch (e) {
         return e;
