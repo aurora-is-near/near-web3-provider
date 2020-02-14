@@ -15,16 +15,16 @@ const { NearProvider } = require('../src/index');
  * ------------------------------------------------
  */
 
-let url = 'http://localhost:3030';
+const NEAR_NODE_URL = 'http://localhost:3030';
 const networkId = 'local'; // see NearProvider constructor, src/index.js
 const nearEvmFile = './artifacts/near_evm.wasm';
 const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
-const testNearProvider = new nearlib.providers.JsonRpcProvider(url);
+const testNearProvider = new nearlib.providers.JsonRpcProvider(NEAR_NODE_URL);
 
 console.log(`-----------------------
 Running tests on ${networkId} network
-URL: ${url}
+NEAR_NODE_URL: ${NEAR_NODE_URL}
 -----------------------`);
 
 
@@ -49,6 +49,8 @@ async function waitForABlock() {
 
 // Main/Sender Account. Majority of tests will use this instance of web3
 const LOCAL_NEAR_ACCOUNT = 'test.near';
+// I don't know why but this has to be 'test'
+const LOCAL_NEAR_NETWORK_ID = 'test';
 
 const withWeb3 = (fn) => {
     const web = new web3();
@@ -57,37 +59,55 @@ const withWeb3 = (fn) => {
     const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
 
-    // I don't know why this has to be 'test'
-    keyStore.setKey('test', LOCAL_NEAR_ACCOUNT, keyPair);
+    keyStore.setKey(LOCAL_NEAR_NETWORK_ID, LOCAL_NEAR_ACCOUNT, keyPair);
+    web.setProvider(new NearProvider(NEAR_NODE_URL, keyStore, LOCAL_NEAR_ACCOUNT));
 
-    web.setProvider(new NearProvider(url, keyStore, LOCAL_NEAR_ACCOUNT));
     return () => fn(web);
 };
 
-describe('\n---- PROVIDER ----', () => {
-    beforeAll(withWeb3(async (web) => {
-        const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
-        const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-        const keyPair = createKeyPair();
-        console.log('networkId variable', networkId);
-        try {
-            await web._provider.keyStore.setKey(networkId, 'evm', keyPair);
-            const contract = await web._provider.account.createAndDeployContract(
-                'evm',
-                keyPair.getPublicKey(),
-                evmBytecode,
-                0);  // NEAR value
-            console.log('deployed EVM contract', contract);
-        } catch (e) {
-            if (e.type === 'ActionError::AccountAlreadyExists') {
-                console.log('EVM already deployed');
-            } else {
-                console.log('EVM deploy error', e);
-            }
+async function deployContract(web) {
+    const evmAccountId = 'evm';
+    const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
+    const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
+    const keyPair = createKeyPair();
+    console.log('networkId variable', networkId);
+    try {
+        await web._provider.keyStore.setKey(networkId, evmAccountId, keyPair);
+        const contract = await web._provider.account.createAndDeployContract(
+            evmAccountId,
+            keyPair.getPublicKey(),
+            evmBytecode,
+            0);  // NEAR value
+        console.log('deployed EVM contract', contract);
+    } catch (e) {
+        if (e.type === 'ActionError::AccountAlreadyExists') {
+            console.log('EVM already deployed');
+        } else {
+            console.log('EVM deploy error', e);
         }
-    }));
+    }
+}
+
+describe('\n---- PROVIDER ----', () => {
+    beforeAll(withWeb3(async (web) => deployContract(web)));
 
     describe('\n---- BASIC QUERIES ----', () => {
+        describe('getProtocolVersion | eth_getProtocolVersion', () => {
+            test('returns protocol version', withWeb3(async (web) => {
+                try {
+                    // Get current version
+                    const { version: { version } } = await testNearProvider.status();
+                    const getVersion = await web.eth.getProtocolVersion();
+
+                    expect(typeof version).toStrictEqual('string');
+                    expect(web3.utils.toHex(version)).toStrictEqual(getVersion);
+                } catch (e) {
+                    expect(e).toBeNull();
+                    return e;
+                }
+            }));
+        });
+
         describe('isSyncing | eth_syncing', () => {
             test('returns correct type - Boolean|Object', withWeb3(async (web) => {
                 try {
