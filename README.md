@@ -5,23 +5,6 @@
 NEAR Protocol Web3 provider.
 Use it to connect your Ethereum frontend or Truffle to NEAR Protocol.
 
-## Description
-
-NEAR Protocol is a sharded, proof-of-stake blockchain. Keeping that in mind,
-some Ethereum concepts are naturally not shared with NEAR; for example, there
-is no concept of uncle blocks, pending blocks, or block difficulty.
-
-As a sharded blockchain, the structure of NEAR blocks is also different. In
-Ethereum, blocks have transactions. In NEAR, blocks have chunks, and chunks
-have transactions.
-
-`near-web3-provider` has been adapted to follow `web3` as closely as possible,
-but where there are no equivalents, empty values have been passed through.
-Other return values have been adapted to account for the difference in block
-structure (for example, the root of the transaction trie comes from a chunk
-rather than a block). If a method has no direct translation, an
-`Unsupported method` error is returned.
-
 ## Install
 
 ```bash
@@ -60,14 +43,14 @@ Tests currently take ~50 seconds to run.
 You can use this provider wherever a Web3 provider is needed.
 
 ```javascript
-const nearlib = require('nearlib');
-const NearProvider = require("near-web3-provider");
+const { NearProvider, nearlib } = require('near-web3-provider');
 
+const nearNetworkId = '<local, default, test, etc>'; // default is 'default'
 const accountId = '<account id to use for tx>';
 const keyStore = new nearlib.keyStores.<one of keyStores>;
 
 const web = new Web3();
-web.setProvider(new NearProvider("<url to NEAR RPC>", keyStore, accountId));
+web.setProvider(new NearProvider("<url to NEAR RPC>", keyStore, accountId, nearNetworkId));
 web.eth.net.isListening();
 ```
 
@@ -76,11 +59,23 @@ web.eth.net.isListening();
 Add to your `truffle-config.json`:
 
 ```javascript
+// Import NearProvider and nearlib
 const { NearProvider, nearlib } = require('near-web3-provider');
+
+// Specify which NEAR network to use
 const nearNetworkId = '<local, default, test, etc>';
 
-// Use standard near-shell structure for storing keys.
-const keyStore = new nearlib.keyStores.UnencryptedFileSystemKeyStore('neardev');
+// If developing against a local node, use http://localhost:3030
+const url = 'https://rpc.nearprotocol.com';
+
+// Specify where to store keys
+const keyDir = 'neardev';
+
+// Use standard near-shell structure for storing keys. See note below for other options.
+const keyStore = new nearlib.keyStores.UnencryptedFileSystemKeyStore(keyDir);
+
+// Account ID
+const accountId = 'test.account';
 
 module.exports = {
   networks: {
@@ -88,480 +83,429 @@ module.exports = {
         network_id: "99",
         skipDryRun: true,
         provider: function() {
-            return new NearProvider("https://rpc.nearprotocol.com", keyStore, 'accounttest', nearNetworkId)
+            return new NearProvider(url, keyStore, accountId, nearNetworkId)
         },
     }
   }
 }
 ```
+See [key store documentation](https://github.com/nearprotocol/nearlib/blob/master/lib/key_stores/index.d.ts) for other options.
 
-## Limitations and differences from Ethereum providers
+## Differences from Ethereum providers
 
-* Many calls that accepts blockHeight as an argument will function as `latest`,
-  regardless of the actual argument. This is a Near RPC limitation.
-* `eth_call` does not support the `value` argument. This is a Near RPC
-  limitation.
+NEAR Protocol is a sharded, proof-of-stake blockchain. Keeping that in mind, some Ethereum concepts are naturally not shared with NEAR; for example, there is no concept of uncle blocks, pending blocks, or block difficulty.
+
+As a sharded blockchain, the structure of NEAR blocks is also different. In Ethereum, blocks have transactions. In NEAR, blocks have chunks, and chunks have transactions.
+
+`near-web3-provider` has been adapted to follow the [Ethereum JSON RPC API](https://github.com/ethereum/wiki/wiki/json-rpc) and its [`web3` equivalents](https://web3js.readthedocs.io/en/v1.2.4/web3-eth.html#) as closely as possible. Where there are no equivalents, empty values have been passed through. Other return values have been adapted to account for the difference in block structure (for example, the root of the transaction trie comes from a chunk rather than a block).
+
+Mining, hashrates, `ssh,` and `db` methods are not supported.
+
+### Limitations
+
+* [Methods](https://github.com/ethereum/wiki/wiki/json-rpc#the-default-block-parameter) that have an extra default block parameter will function as `latest`, regardless of the actual argument. This is a Near RPC limitation.
+
+* `eth_call` does not support `from` or `value` arguments. This is a Near RPC limitation.
+
 * `eth_estimateGas` will always return `0x0`. Near RPC does not seem to support
   gas estimation for calls.
+
 * Many fields in Ethereum data structures do not have a direct correspondance
   to Near data structures. Some attributes of transaction and block objects
   will be unreliable.
-* Some fields are just unimplemented. Always consult implementation in
-  `near_to_eth.js`. E.g. tx index is constant, and not reliable.
-* Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible
-  correspondance to Near block structure
 
+* Some fields are just unimplemented. For example, tx receipts currently always
+  have a `0x1` status, regardless of the success of the transaction.
+
+* Some fields are just unimplemented. Always consult implementation in `near_to_eth_objects.js`. E.g. tx index is constant, and not reliable.
+
+* Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible correspondance to Near block structure
 
 ## API
 
-TODO: Add in API methods and differences with web3.
+Unless specified, NearProvider returns the values specified in the web3 documentation for each method.
 
-`eth_getTransactionByBlockHashAndIndex` - how can you get the transaction by
-index if it is nested inside chunks? should we unfold chunks until that index
-is found? keep a count and only get transactions up until that point.
+If a method has no direct translation, an `Unsupported method` error is returned.
+
+### Hash Conversions and Equivalents
+
+Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to convert between the two. With the exception of transaction hashes, Near hashes are converted to Ethereum-compatible hashes when using `web3`.
+
+### Important Format Changes
+
+* `blockHash` - a block hash is the hash equivalent of a Near block hash (denoted in `base58`)
+
+* `transactionHash` - a transaction hash is the combination of a Near transaction hash (in `base58`) concatenanted with the accountId of the transaction's sender, and separated by `:`
+  * `<base58TxHash>:<senderAccountId>`
+
+* `gas` - Gas is denominated in yoctoNEAR
+
+* `value` - Transaction values/amounts are denominated in yoctoNEAR
+
+* `to`, `from`, `address` - Addresses are the EVM hash of a Near AccountId
+
+---
+
+### web3.eth.isSyncing
+```
+web3.eth.isSyncing
+```
+Checks if the node is currently syncing and returns either a syncing object, or false.
+
+#### Returns
+`Promise` returns `Object|Boolean` - a syncing object, or `false`.
+
+* `startingBlock` - Unsupported, returns `0x0`
+* `currentBlock` - Returns the latest block height
+* `highestBlock` - Returns the latest block height
+* `knownStates` - Unsupported, returns `0x0`
+* `pulledStates` - Unsupported, returns `0x0`
+
+#### Differences | Limitations
+* This will almost always return `false`
+* If a syncing object does return, the values are generally not useful
+
+---
+
+### web3.eth.getGasPrice
+```
+web3.eth.getGasPrice()
+```
+
+Returns the current gas price in yoctoNEAR.
+
+#### Returns
+`Promise` returns `String` - Number string of the current gas price in yoctoNEAR.
+
+#### Differences | Limitations
+* The gas price is returned in yoctoNEAR instead of wei
+* At the moment, the gas price is determined from the most recent block. web3 typically determines the gas price by the last few blocks median gas price.
+
+---
+
+### web3.eth.getAccounts
+```
+web3.eth.getAccounts()
+```
+
+Returns a list of accounts the node controls.
+
+#### Returns
+`Promise` returns `Array` - An array of addresses controlled by node.
+
+#### Differences | Limitations
+* Addresses are the EVM hash of a Near AccountId
+
+---
+
+### web3.eth.getBlockNumber
+```
+web3.eth.getBlockNumber()
+```
+
+Returns the current block number
+
+#### Returns
+`Promise` returns `Number` - The number of the most recent block.
+
+---
+
+### web3.eth.getBalance
+
+```
+web3.eth.getBalance(address)
+```
+
+Returns the balance of an address.
+
+#### Parameters
+1. `String` `address` - The address to get the balance of. This is the EVM address equivalent of a Near AccountId
+
+#### Returns
+`Promise` returns `String` - The current balance for the given address in yoctoNEAR.
+
+#### Differences | Limitations
+* Due to Near RPC limitations, the balance of the address will always be from the latest block.
+* Address is the EVM hash of a Near AccountId
+
+---
+
+### web3.eth.getStorageAt
+
+```
+web3.eth.getStorageAt(address, position)
+```
+
+Get the storage at a specific position of an address.
+
+#### Parameters
+1. `String` `address` - The address to get the storage from. This is the EVM address equivalent of a Near AccountId
+2. `Number|String|BN|BigNumber` `position` - the index position of the storage
+
+#### Returns
+`Promise` returns `String` - The value in storage at the given position.
+
+#### Differences | Limitations
+* Due to Near RPC limitations, the balance of the address will always be from the latest block.
+* Address is the EVM hash of a Near AccountId
+
+---
+
+### web3.eth.getCode
+
+```
+web3.eth.getCode(address)
+```
+
+Get the code at a specific address
+
+#### Parameters
+1. `String` `address` - The address to get the code from.
+
+#### Returns
+`Promise` returns `String` - The data at given address `address`.
+
+#### Differences | Limitations
+* Due to Near RPC limitations, the balance of the address will always be from the latest block.
+* Address is the EVM hash of a Near AccountId
+
 -------------------------
 
-## Development
-
-### ETH JSON-RPC Datatypes
-
-See [JSON-RPC Wiki](https://github.com/ethereum/wiki/wiki/json-rpc#hex-value-encoding) for additional details.
-
-All data should be hex encoded either as a **QUANTITY** or **UNFORMATTED DATA**, with the exception of **TAG** parameters for the following methods:
-
-* `eth_getBalance`
-* `eth_getCode`
-* `eth_getTransactionCount`
-* `eth_getStorageAt`
-* `eth_call`
-
-`{Quantity}` - integers, numbers. encoded as hex, prefix with "0x", in the most
-  compact representation with the exception of zero "0x0" (e.g. no leading
-  zeros)
-
-`{UnformattedData}` - byte arrays, account addresses, hashes, bytecode arrays.
-encoded as hex, prefix with "0x", two hex digits per byte
-
-`{Tag}` - enum string. Almost always refers to the block height: 'genesis',
-'latest', 'earliest', or 'pending'
-
-------------------------------------------
-
-### NEAR Provider
-
-See [JSON-RPC-PROVIDER.js](https://github.com/nearprotocol/nearlib/blob/master/lib/providers/json-rpc-provider.js)
-
-`this.nearProvider` has the following methods:
-
-- block
-- query
-- sendJsonRpc
-- sendTransaction
-- status
-- chunk
-- getNetwork  // Can't call this method. Get method unfound
-- tx
-
-All of them, except for `getNetwork`, use `sendJsonRpc` internally.
-
-#### `status`
-Returns: `Promise<NodeStatusResult>`
-
-Use: `this.nearProvider.status()`
-
-```typescript
-{
-  chain_id: string;
-  rpc_addr: string;
-  sync_info: SyncInfo {
-    latest_block_hash: string;
-    latest_block_height: number;
-    latest_block_time: string;
-    latest_state_root: string;
-    syncing: boolean;
-  },
-  validators: string[];
-}
-```
-
-#### `block`
-Can pass in height or hash.
-
-Returns:  `Promise<BlockResult>`
-
-Use: `this.nearProvider.block('GR4SfjKvcyobdaQjEKwfJ3nPAawraJfuzv2LvJ9Dgj3W')`
-
-Result:
-```
-{
-    "jsonrpc": "2.0",
-    "result": {
-        "author": "test.near",
-        "header": {
-            "height": 200,
-            "epoch_id": "3P9esaeouqspDKGNbpctQQpUJSmQWW8wvNK2ZRuRz9sM",
-            "next_epoch_id": "J4cdcT1YgrXR3oL5aydQ5YdZB1RU12ZMvh6nXN7hwcEY",
-            "hash": "gKo96eh3FWMHZDjnhyGfwsWzgdy1gqk2zkCKBbNVKA2",
-            "prev_hash": "Bsq4o4jj23yyPrcrn7Pfg9ViW1qFSJiZUsyG2MTB99R",
-            "prev_state_root": "2ZBSXHB2Ns978Nkn8Y6xM29e2oUQ3UUcM3fLJRyH3Nmg",
-            "chunk_receipts_root": "9ETNjrt6MkwTgSVMMbpukfxRshSD1avBUUa4R4NuqwHv",
-            "chunk_headers_root": "5apuFWLzqV6FzWaswbfwGfr3kM9EKrgCFbU2rLeB4ugp",
-            "chunk_tx_root": "7tkzFg8RHBmMw1ncRJZCCZAizgq4rwCftTKYLce8RU8t",
-            "outcome_root": "7tkzFg8RHBmMw1ncRJZCCZAizgq4rwCftTKYLce8RU8t",
-            "chunks_included": 1,
-            "challenges_root": "11111111111111111111111111111111",
-            "timestamp": 1580148379676946000,
-            "total_weight": "48558810001000000000",
-            "score": "48329319001000000000",
-            "validator_proposals": [],
-            "chunk_mask": [
-                true
-            ],
-            "gas_price": "0",
-            "rent_paid": "0",
-            "validator_reward": "0",
-            "total_supply": "2050000585045717755487124441863319",
-            "challenges_result": [],
-            "last_quorum_pre_vote": "Bsq4o4jj23yyPrcrn7Pfg9ViW1qFSJiZUsyG2MTB99R",
-            "last_quorum_pre_commit": "UrbEyXhfR79xcbgm2fjUWY9FYV9y8Kq8v97gcY5CUtP",
-            "next_bp_hash": "5pLJp76bJLZUJb4EMJ26eniVXs6hfSxYaGoN1pNzMRbP",
-            "approvals": [
-                [
-                    "test.near",
-                    "Bsq4o4jj23yyPrcrn7Pfg9ViW1qFSJiZUsyG2MTB99R",
-                    "DinZ61U9SyNuma3k7BHGMytbPE6YcYdUGVrjBGu4a6Rw",
-                    "ed25519:5JcH6p2XrkQ3qARtJhrt2YTKfE79C4sKFHYR3mzeZZiyARAG1EnRMbfY6DuH9Yq4cGBtvd9BHAwpuLgnxnTEW4hw"
-                ]
-            ],
-            "signature": "ed25519:zWjveBubFGgQ8g9YTrm53oQgRG3MmQgqHKEjP1LEFBVoMLh9maCb3EmwhkPR5EkJr9a5PASUZX2k6s6RtmD1f8K"
-        },
-        "chunks": [
-            {
-                "chunk_hash": "xJ9JPyon4FcgwgR1mtw6uca3pSCFKGNUxoXqFJGKwHX",
-                "prev_block_hash": "Bsq4o4jj23yyPrcrn7Pfg9ViW1qFSJiZUsyG2MTB99R",
-                "outcome_root": "11111111111111111111111111111111",
-                "prev_state_root": "Ack57j2N2DY61wwaxvVqsxg9wCbzvz9CKyJ7ThVmEa9B",
-                "encoded_merkle_root": "D7vyy5n5oKyZUBEWbj4VdyRktH4ZzBx1JnDMDaS8sDAG",
-                "encoded_length": 8,
-                "height_created": 200,
-                "height_included": 200,
-                "shard_id": 0,
-                "gas_used": 0,
-                "gas_limit": 1000000000000000,
-                "rent_paid": "0",
-                "validator_reward": "0",
-                "balance_burnt": "0",
-                "outgoing_receipts_root": "H4Rd6SGeEBTbxkitsCdzfu9xL9HtZ2eHoPCQXUeZ6bW4",
-                "tx_root": "11111111111111111111111111111111",
-                "validator_proposals": [],
-                "signature": "ed25519:ZMKngxCT1D58NF7yEb5zrbNBKZTVi4T6EtewmUwvdg44a9HMqSpPjXwH6os2EZupgMektZhKbAMiQ2sEpqgLUGs"
-            }
-        ]
-    }
-}
-```
-
-`this.nearProvider.sendJsonRpc('method', { params: [] })`
-
-## Order of Doing Anything on the NEAR platform
-1. Establish a connection
-2. Establish authentication aka Create an account
-   1. All transactions on the network must be signed by a valid NEAR account, no exceptions
-
-`node-fetch`
-A path-relative URL (/file/under/root)
-
-#### `query`
-
-`query(path: string, data: bytes)`: queries information in the state machine / database. Where path can be:
-
-`account/<account_id>` - returns view of account information
-```
-await this.nearProvider.query('account/bobblehead', '')
-
-// returns
-{
-  amount: '10000000902566790513495899',
-  block_height: 1075115,
-  code_hash: '11111111111111111111111111111111',
-  locked: '0',
-  storage_paid_at: 1073873,
-  storage_usage: 387
-}
-```
-
-`access_key/<account_id>` - returns all access keys for given account.
-```
-await this.nearProvider.query('access_key/bobblehead', '')
-
-// returns
-{
-  block_height: 1075138,
-  keys: [
-    {
-      access_key: {
-        nonce: 0,
-        permission: 'FullAccess'
-      },
-      public_key: 'ed25519:3HYEby4caWr8WjqWr7BCNNQZodRWu9SiY8hxQWkDcuLb'
-    },
-    {
-      access_key: {
-        nonce: 3,
-        permission: { FunctionCall: [Object] }
-      },
-      public_key: 'ed25519:3jKYS46fruMcxiGrT13bjbJ2uSLTj2CpGK5YBgUZqPKV'
-    },
-    {
-      access_key: {
-        nonce: 3,
-        permission: 'FullAccess'
-      },
-      public_key: 'ed25519:8GLrqwhsjUYqE7J7CyVni5FjY8Ls8WfvRXiXf9m6m8Y6'
-    }
-  ]
-}
-```
-
-`access_key/<account_id>/<public_key>` - returns details about access key for given account with this public key. If there is no such access key, returns nothing.
-```
-const query = await this.nearProvider.query('access_key/bobblehead/ed25519:3jKYS46fruMcxiGrT13bjbJ2uSLTj2CpGK5YBgUZqPKV', '')
-// returns
-{
-  block_height: 1075403,
-  nonce: 3,
-  permission: {
-    FunctionCall: {
-      allowance: '99901254745459870000',
-      method_names: [],
-      receiver_id: 'studio-4jpg4qvj5'
-    }
-  }
-}
-
-const query = await this.nearProvider.query('access_key/bobblehead/ed25519:8GLrqwhsjUYqE7J7CyVni5FjY8Ls8WfvRXiXf9m6m8Y6', '')
-// returns
-{
-  block_height: 1075507,
-  nonce: 3,
-  permission: 'FullAccess'
-}
-```
-
-`contract/<account_id>` - returns full state of the contract (might be expensive if contract has large state).
-```
-const query = await this.nearProvider.query('contract/bobblehead', '')
-
-// returns
-{
-  block_height: 1075579,
-  values: {}
-}
-```
-
-`call/<account_id>/<method name>` - calls <method name> in contract <account_id> as view function with data as parameters.
-[evm-contract](https://github.com/summa-tx/near-evm/blob/master/src/lib.rs)
-```
-const contractId = 'EVM-CONTRACT-ID'
-const query = await this.nearProvider.query(`call/${contractId}`/${methodName})
+### web3.eth.getBlock
 
 ```
-
-```
-const account = new nearlib.Account(this.connection, 'bobblehead')
-const details = await account.getAccountDetails()
-// details result
-{
-  authorizedApps: [{
-    contractId: 'studio-4jpg4qvj5',
-    amount: '99901254745459870000',
-    publicKey: 'ed25519:3jKYS46fruMcxiGrT13bjbJ2uSLTj2CpGK5YBgUZqPKV'
-  }],
-  transactions: []
-}
+web3.eth.getBlock(blockHashOrBlockNumber [, returnTransactionObjects])
 ```
 
--------------
+Returns a block matching the block number or block hash
 
-### Notes/Questions
+#### Parameters
+1. `String|Number|BN|BigNumber` - The block number or block hash. Or the string `'genesis'`, `'latest'`, `'earliest'`, or `'pending'`
+2. `Boolean` - (optional, default `false`) If specified `true`, the returned block will contain all transactions as objects. By default it is `false` so, there is no need to explictly specify false. And, if `false` it will only contain the transaction hashes.
 
-#### EVM Contract Calling
+#### Returns
 
-I've tried `this.nearProvider.query('call/evm/utils.near_account_id_to_evm_address/', JSON.stringify(accountId))`
+`Promise` returns `Object` - The block object
+* `number` - The block number
+* `hash` - Hash equivalent of the base58 Near block hash
+* `parentHash` - Hash equivalent of the base58 Near block's parent block hash
+* `nonce` - Always returns `null`. This is typically the hash of the generated proof-of-work. There is no equivalent concept in Near.
+* `transactionsRoot` - Always returns `0x0000...`. Since transactions are on chunks and chunks are on block, there is no equivalent of a transaction trie of the block
+* `size` - Returns the weight of the block
+* `gasLimit` - The maximum gas allowed in this block. Returned in yoctoNEAR
+* `gasUsed` - The total used gas by all chunks in this block. A chunk may have a transaction, but that transaction may be processed in a different chunk.
+* `timestamp` - The unix timestamp for when the block was collated
+* `transactions` - Array of transaction objects, or the 32 byte transaction hashes equivalent of the base58 Near transaction hashes.
+* `sha3Uncles` - Unsupported, undefined/null value returned
+* `logsBloom` - Unsupported, undefined/null value returned
+* `stateRoot` - Unsupported, undefined/null value returned
+* `miner` - Unsupported, undefined/null value returned
+* `difficulty` - Unsupported, undefined/null value returned
+* `totalDifficulty` - Unsupported, undefined/null value returned
+* `extraData` - Unsupported, undefined/null value returned
+* `uncles` - Unsupported, undefined/null value returned
 
-This returns:
+#### Differences | Limitations
+* Passing through `'genesis'` or `'earliest'` will return block 0
+* Passing through `'latest'` or `'pending'` will return the latest block. There is no concept of pending blocks.
+* See [Important Format Changes](###Important%20Format%20Changes) for information on `hash`, `gas`, `transactions`
+---
 
-```
-Querying call/evm/utils.near_account_id_to_evm_address} failed: wasm execution failed with error: FunctionCallError(CompilationError(PrepareError(GasInstrumentation))).
-{
-  "block_height": 1079329,
-  "error": "wasm execution failed with error: FunctionCallError(CompilationError(PrepareError(GasInstrumentation)))",
-  "logs": []
-}
-```
-
-- [ ] Do I need to pass gas in? How much gas and where?
-- [ ] How should I call evm contract methods?
-- [ ] Is the contract deployed to NEAR under `evm`?
-
-`utils.evm_account_to_internal_address` - will this map ETH addresses to near account IDs?
-
-#### Accounts
-
-- Do accounts need to be created with NEAR first and then converted to an EVM address or vice versa or it doesn't matter?
-
-#### Chain Information
-
-- Where can you get chain information? `nearlib` doesn't provide access to chain data.
-  - `nearcore` has it, but it's in Rust. How to get? [chain reference](https://github.com/nearprotocol/nearcore/tree/master/chain/chain/src)
-- Need chain information for ETH Sync Object
-
-#### Transactions and Chunks
-
-- Why don't I see transactions even though I've sent money back and forth between accounts? What counts as a transaction? accountId @liau has 3 sent transactions and 4 received, but I don't see any of them.
-
-  ```js
-  const account = new nearlib.Account(this.connection, 'liau')
-  const details = await account.getAccountDetails();
-
-  // returns
-  { authorizedApps: [], transactions: [] }
-
-  ```
-
-  ```js
-  const account = new nearlib.Account(this.connection, 'liau')
-  const details = await account.state();
-
-  // returns
-  {
-    amount: '10000000972015914912415159',
-    block_height: 1131560,
-    code_hash: '11111111111111111111111111111111',
-    locked: '0',
-    storage_paid_at: 1131308,
-    storage_usage: 264
-  }
-  ```
-
-#### Chunks
-
-Blocks contain chunks, and chunks contain transactions.
-
-Chunk: `29QUPr3jsmT5JccVjFCBbPnoYMct2P8p3G9ntZVVH8Qr`
+### web3.eth.getBlockTransactionCount
 
 ```
-  {
-      "header": {
-          "balance_burnt": "0",
-          "chunk_hash": "29QUPr3jsmT5JccVjFCBbPnoYMct2P8p3G9ntZVVH8Qr",
-          "encoded_length": 8,
-          "encoded_merkle_root": "D7vyy5n5oKyZUBEWbj4VdyRktH4ZzBx1JnDMDaS8sDAG",
-          "gas_limit": 1000000000000000,
-          "gas_used": 0,
-          "height_created": 1465617,
-          "height_included": 0,
-          "outcome_root": "11111111111111111111111111111111",
-          "outgoing_receipts_root": "6m2bJP9TiEtxqHSzLygPCQqiGdgYQQYaSYTFeP2gEUQj",
-          "prev_block_hash": "D7LAQwt9N3W1iB8Pm59BoftTNGVE6qqrebDogtD7vEKV",
-          "prev_state_root": "32Wh26Ld31R6aXggpL3RHNEmcrKNjHyNX2HBJRtP4Vp7",
-          "rent_paid": "0",
-          "shard_id": 0,
-          "signature": "ed25519:42PcsC7y6NWbc1rhEbtAWYokrYnKf3u5kLiXuXcqZdd6YHmpz8QRQsMo7qXTUDJkhGreUCZZMuRfdxkcCAuaaBAU",
-          "tx_root": "11111111111111111111111111111111",
-          "validator_proposals": [],
-          "validator_reward": "0"
-      },
-      "receipts": [],
-      "transactions": []
-  }
+web3.eth.getBlockTransactionCount(blockHashOrBlockNumber)
 ```
 
->  Note: `tx` on the RPC is the same as `txStatus` on provider
+Returns the number of transactions in a given block.
 
-Transaction look-up requires both the hash and the account ID.
+#### Parameters
+1. `{String|Number|BN|BigNumber}` - The block number or block hash. Or the string `'genesis'`, `'latest'`, `'earliest'`, or `'pending'`
 
->  Note: Passing through an empty account ID can still return a transaction, but not always.
+#### Returns
+`Promise` returns `Number` - The number of transactions in the given block.
 
-`txStatus` for hash `8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy` and accountId: `dinoaroma"`
+### Differences | Limitations
+* Blocks have chunks and chunks have transactions; all the transactions are collected from a block's chunks and counted. Conceptually this is the same thing, but note that transactions do not actually reside in blocks.
 
-```
-{
-	receipts_outcome: [{
-		block_hash: 'Cmg4AWrjLo8AfgtyLMAb3YUnMujfgRg2qH9DFxzzRuvN',
-		id: 'DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm',
-		outcome: {
-			gas_burnt: 937144500000,
-			logs: [],
-			receipt_ids: [],
-			status: { SuccessValue: '' }
-		},
-		proof: []
-	}],
+---
 
-	status: {
-    SuccessValue: ''
-  },
-
-	transaction: {
-		actions: [{
-      Transfer: {
-        deposit: '1000000000000000000000000'
-      }
-    }],
-    hash: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
-    nonce: 2,
-    public_key: 'ed25519:Cev7YwHpPHsH7mJDuUdcHxobvVSNzTHMBgpTYYYEUv26',
-    receiver_id: 'bobblehead',
-    signature:
-		'ed25519:5wQqUxSwhZgw75oamBrFdRCno4tixejWiHA64LyzLGAwjp7pJAR795VctkAHsa2sybk7AzUWQDs1bg7eCdh4hrUU',
-    signer_id: 'dinoaroma'
-	},
-
-	transaction_outcome: {
-		block_hash: 'G5CCPBoQqPpqYf4e1SrQmJtymDsfnUCkFbKJAK1khbjp',
-		id: '8Ha8nvE7t1wHB8h5GdzMCnbDfCs9Zg1XeSLHo1umCVPy',
-		outcome: {
-			gas_burnt: 937144500000,
-			logs: [],
-			receipt_ids: ['DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm'],
-			status: {
-        SuccessReceiptId: 'DdDYjCEG5w49nmf5Da42Vk7HyriwSCE9tD8qaUJrcckm'
-      }
-		},
-		proof: []
-	}
-}
+### web3.eth.getTransaction
 
 ```
+web3.eth.getTransaction(transactionHash)
+```
 
-#### Method Questions
+Returns a transaction matching the given transaction hash.
 
-`eth_syncing`
+#### Parameters
+1. `String` `transactionHash` - the transaction hash
 
-- [ ] Chain information for `startingBlock`, `highestBlock`, `knownStates`, `pulledStates`
-- [ ] Expected return object:
+#### Returns
+
+`Promise` returns `Object` - A transaction object
+
+* `hash` - Hash of the transaction `<nearTxHash>:<accountId>` (transaction's sender's accountId)
+* `nonce` - The number of transactions made by the sender prior to this one
+* `blockHash` - hash equivalent of the block where this transaction was in.
+* `blockNumber` - Block number where this transaction was in
+* `transactionIndex` - integer of the transactions index position in the block.
+* `from` - EVM Address of the sender
+* `to` - EVM address of the receiver
+* `value` - Value transfered in yoctoNEAR
+* `gasPrice` - Gas price set by the block in yoctoNEAR
+* `gas` - Gas consumed by the sender in yoctoNEAR
+* `input` - Unsupported, null value provided
+
+#### Differences | Limitations
+
+* Due to the Near protocol, getting a transaction's status requires knowing both the transaction hash _and_ the Near AccountId of the transaction's signer. To allow for this, transaction hashes in NearProvider are the base58 transaction hashes concatenated with the `signer_id` of the transaction, and separated with a `:`.
+
+  Example:
     ```
-    const blockInfo = {
-      startingBlock: '0x0',
-      currentBlock: decToHex(sync_info.latest_block_height),
-      highestBlock: '0x0',
-      // Not listed in RPC docs but expected in web3
-      knownStates: '0x0',
-      pulledStates: '0x0'
-  };
+    // A Near transaction hash (base58)
+    const nearTxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
+
+    // A Near AccountId. In particular, the AccountId of the transaction's signer
+    const signerId = 'test.near'
+
+    // Concatenate and separate with ':'
+    const txHash = `${nearTxHash}:${signerId};
+
+    console.log(txHash);
+
+    // ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P:test.near
     ```
+* See [Important Format Changes](###Important%20Format%20Changes) for additional information.
 
-#### ETH to NEAR and NEAR to ETH values
+---
 
-No conversion. All inputs in nearlib are denominated in yoctoNEAR (1 NEAR = 10^24 yoctoNEAR)
+### web3.eth.getTransactionFromBlock
 
-[NEAR divisibility is a yoctonear 10^24](https://docs.nearprotocol.com/docs/roles/developer/examples/nearlib/guides#send-yourself-money)
+```
+`web3.eth.getTransactionFromBlock(hashStringOrNumber, indexNumber)
+```
 
-#### Timestamp
+Returns a transaction based on a block hash or number and the transaction's index position.
 
-NEAR timestamp is 1000000 the size of a normal date. Had to do some weird stuff to be able to pass an acceptable hex value. Is this going to be an issue?
+#### Parameters
+1. `{String|Number|BN|BigNumber}` `hashStringOrNumber` The block number or block hash. Or the string `'genesis'`, `'latest'`, `'earliest'`, or `'pending'`
+2. `{Number}` `indexNumber` - The transaction's index position
 
-#### Storage
+#### Returns
+`Promise` returns `Object` - A transaction object. See [web3.eth.getTransaction](###web3.eth.getTransaction).
 
-I don't understand `storage_paid_at` and `storage_usage` and if they have an ETH equivalent.
+#### Differences | Limitations
+See [web3.eth.getTransaction](###web3.eth.getTransaction).
+
+---
+
+### web3.eth.getTransactionReceipt
+
+```
+web3.eth.getTransactionReceipt(hash)
+```
+
+Returns the receipt of a transaction by transaction hash.
+
+#### Parameters
+1. `String` `transactionHash` - the transaction hash. See [web3.eth.getTransaction](###web3.eth.getTransaction####Differences).
+
+#### Returns
+
+`Promise` returns `Object` - A transaction receipt object
+
+* `status` - Returns `true` if the transaction was successful, `false` if the EVM reverted the transaction
+* `blockHash` Hash of the block where this transaction was in.
+* `blockNumber` - Block number where this transaction was in.
+* `transactionHash` - Hash of the transaction.
+* `transactionIndex` - Integer of the transactions index position in the block.
+* `from` - Address of the sender.
+* `to` - Address of the receiver. null when its a contract creation transaction.
+* `contractAddress` - The contract address created, if the transaction was a contract creation, otherwise null.
+* `cumulativeGasUsed` - The total amount of gas used when this transaction was executed in the block.
+* `gasUsed`- The amount of gas used by this specific transaction alone.
+* `logs` - Array of log objects, which this transaction generated.
+
+#### Differences | Limitations
+See [web3.eth.getTransaction](###web3.eth.getTransaction####Differences).
+
+---
+
+### web3.eth.getTransactionCount
+
+```
+web3.eth.getTransactionCount(address)
+```
+
+Get the numbers of transactions sent from this address.
+
+#### Parameters
+1. `String` `address` - The address to get the numbers of transactions from. Address is the EVM address of a Near AccountId
+
+#### Returns
+`Promise` returns `Number` - The number of transactions sent from the given address
+
+#### Differences | Limitations
+* Specifically, returns the nonce of transactions sent from the address. Near will only return the total transactions; selecting a block is not supported.
+
+---
+
+### web3.eth.sendTransaction
+
+```js
+web3.eth.sendTransaction(transactionObject
+```
+
+Sends a transaction to the network.
+
+#### Parameters
+
+1. `Object` - the transaction object to send:
+
+   * `to` - `String`: EVM destination address
+   * `value` - `Number|String|BN|BigNumber`: amount of yoctoNEAR to attach
+   * `gas` - `Number`: amount of gas to use for the transaction in yoctoNEAR
+   * `data` - `String`: the encoded call data
+
+#### Returns
+
+Returns the `transactionHash` of the transaction: `<base58TxHash>:<accountId>`
+
+#### Differences | Limitations
+* The sender is the default accountId. At this time, another account cannot be specified.
+* All other optional properties on the transaction object are unsupported
+
+---
+
+### web3.eth.sendSignedTransaction
+
+Unsupported at the moment, always returns `0x0`.
+
+---
+
+### web3.eth.call (in progress)
+
+```
+web3.eth.signTransaction(transactionObject)
+```
+
+Executes a new message call immediately without creating a transaction on the block chain.
+
+#### Parameters
+
+1. `Object` - A transaction object, see [web3.eth.sendTransaction](###web3.eth.sendTransaction), with the difference that only the `to` field is required.
+
+#### Returns
+`Promise` returns `String`: The returned data of the call, e.g. a smart contract functions return value.
+
+#### Differences | Limitations
+* Due to Near RPC limitations, this will always be called on the latest block.
+
+---
+
+## To Do
+- [ ] Update hardcoded `transactionIndex`
+- [ ] Make sure all errors are handled
+- [ ] Expose `utils.nearAccountToEvmAddress`, otherwise users will not be able to pass through the EVM Address equivalent
+- [ ] Expose conversion utils like `base58ToHex`, `hexToBase58`
