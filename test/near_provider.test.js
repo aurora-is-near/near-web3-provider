@@ -18,6 +18,8 @@ const { NearProvider } = require('../src/index');
 let url = 'http://localhost:3030';
 const networkId = 'local'; // see NearProvider constructor, src/index.js
 const nearEvmFile = './artifacts/near_evm.wasm';
+const zombieCodeFile = './artifacts/zombieAttack.bin';
+const zombieABIFile = './artifacts/zombieAttack.abi';
 const testNearProvider = new nearlib.providers.JsonRpcProvider(url);
 
 console.log(`-----------------------
@@ -132,6 +134,18 @@ describe('\n---- PROVIDER ----', () => {
     });
 
     describe('\n---- CONTRACT INTERACTION ----', () => {
+        beforeAll(withWeb3(async (web) => {
+          const zombieCode = fs.readFileSync(zombieCodeFile).toString();
+          const deployResult = await web.eth.sendTransaction({
+              from: '00'.repeat(20),
+              to: undefined,
+              value: 0,
+              gas: 0,
+              data: `0x${zombieCode}`
+          });
+          // console.log(deployResult)
+        }));
+
         describe('getAccounts | eth_accounts', () => {
             test('returns accounts', withWeb3(async (web) => {
                 try {
@@ -205,17 +219,19 @@ describe('\n---- PROVIDER ----', () => {
 
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
 
-        // TODO: These are for testnet. Make it so local testnet works
-        const txHash = utils.base58ToHex(base58TxHash);
         const txIndex = 0;
 
         beforeAll(withWeb3(async (web) => {
             const newBlock = await getLatestBlockInfo();
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
-            const txResult = await web.eth.sendTransaction(
-                {from: '00'.repeat(20), to: '00'.repeat(20), value: 0, gas: 0, data: '0x00'}
-            );
+            const txResult = await web.eth.sendTransaction({
+                from: '00'.repeat(20),
+                to: '00'.repeat(20),
+                value: 0,
+                gas: 0,
+                data: '0x00'
+            });
             transactionHash = txResult.transactionHash;
         }));
 
@@ -240,7 +256,6 @@ describe('\n---- PROVIDER ----', () => {
                 expect(Array.isArray(block.transactions)).toBe(true);
                 if (block.transactions.length > 0) {
                     expect(typeof block.transactions[0]).toBe('string');
-                    expect(block.transactions[0]).toEqual(utils.base58ToHex(base58TxHash));
                 }
                 expect(typeof block.timestamp).toBe('number');
             }));
@@ -254,7 +269,6 @@ describe('\n---- PROVIDER ----', () => {
                 if (block.transactions.length > 0) {
                     expect(typeof block.transactions[0] === 'object').toBe(true);
                     expect(typeof block.transactions[0].hash).toBe('string');
-                    expect(block.transactions[0].hash).toEqual(utils.base58ToHex(base58TxHash));
                 }
             }));
 
@@ -280,7 +294,6 @@ describe('\n---- PROVIDER ----', () => {
                 if (block.transactions.length > 0) {
                     expect(typeof block.transactions[0] === 'object').toBe(true);
                     expect(typeof block.transactions[0].hash).toBe('string');
-                    expect(block.transactions[0].hash).toEqual(utils.base58ToHex(base58TxHash));
                 }
             }));
 
@@ -355,7 +368,6 @@ describe('\n---- PROVIDER ----', () => {
                 expect(typeof tx).toBe('object');
                 if (tx) {
                     expect(typeof tx.hash).toBe('string');
-                    expect(tx.hash).toEqual(txHash);
                 }
             }));
 
@@ -365,7 +377,6 @@ describe('\n---- PROVIDER ----', () => {
                 expect(typeof tx).toBe('object');
                 if (tx) {
                     expect(typeof tx.hash).toBe('string');
-                    expect(tx.hash).toEqual(txHash);
                 }
             }));
 

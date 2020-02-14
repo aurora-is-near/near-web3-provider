@@ -240,14 +240,24 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
  * @returns {Object} returns ETH transaction receipt object
  */
 nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
-    const responseHash = utils.base64ToString(nearTxObj.status.SuccessValue);
-    const { transaction, transaction_outcome } = nearTxObj;
+  const { transaction, transaction_outcome, status } = nearTxObj;
+    let contractAddress = null;
+    const responseData = utils.base64ToString(status.SuccessValue);
+
+    if (responseData) {
+      const responsePayload = responseData.slice(1, -1);
+      // if it's deploy, get the address
+      const functionCall = transaction.actions[0].FunctionCall;
+      if (functionCall && functionCall.method_name == 'deploy_code') {
+        contractAddress = responsePayload;
+      }
+    }
 
     const gas_burnt = transaction_outcome.outcome.gas_burnt;
     const logs = transaction_outcome.outcome.logs;
 
-    // TODO:
-    const contractAddress = null;
+    // console.log({transaction, transaction_outcome})
+    // console.log(transaction_outcome.outcome.receipt_ids)
 
     return {
         transactionHash: `${transaction.hash}:${accountId}`,
@@ -260,7 +270,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
         gasUsed: utils.decToHex(gas_burnt),
         logs: logs,
         logsBloom: `0x${'00'.repeat(256)}`,
-        status: responseHash ? '0x1' : '0x0'
+        status: responseData ? '0x1' : '0x0'
     };
 };
 
