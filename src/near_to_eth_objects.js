@@ -39,6 +39,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 
     const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
     // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
+
     const value = transaction.actions.map(v => {
         const k = Object.keys(v)[0];
         return parseInt(v[k].deposit, 10);
@@ -52,7 +53,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 
         // DATA 20 bytes - address of the receiver
         // TODO: to: receiver
-        to: '0xFb4d271F3056aAF8Bcf8aeB00b5cb4B6C02c7368',
+        to: `0x${'00'.repeat(20)}`,
 
         // QUANTITY - integer of the current gas price in wei
         // TODO: Will this break with big numbers?
@@ -63,7 +64,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         input: '0x',
 
         // DATA 32 bytes - hash of the block where this transaction was in
-        blockHash: utils.base58ToHex(transaction_outcome.block_hash),
+        blockHash: transaction_outcome.block_hash,
 
         // QUANTITY block number where this transaction was in
         blockNumber: utils.decToHex(tx.block_height),
@@ -246,17 +247,22 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
     const gas_burnt = transaction_outcome.outcome.gas_burnt;
     const logs = transaction_outcome.outcome.logs;
 
+    // TODO:
+    const contractAddress = null;
+
     return {
         transactionHash: `${transaction.hash}:${accountId}`,
         transactionIndex: '0x1',
         blockNumber: utils.decToHex(block.header.height),
-        blockHash: utils.base58ToHex(block.header.hash),
-        contractAddress: '0x' + responseHash.slice(1, responseHash.length - 1),
+        blockHash: block.header.hash,
+        from: utils.nearAccountToEvmAddress(transaction.signer_id),
+        to: `0x${'00'.repeat(20)}`,
+        contractAddress: contractAddress,
         gasUsed: utils.decToHex(gas_burnt),
         logs: logs,
+        logsBloom: `0x${'00'.repeat(256)}`,
         status: '0x1',
     };
-
 };
 
 module.exports = nearToEth;

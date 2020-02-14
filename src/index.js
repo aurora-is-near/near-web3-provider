@@ -507,12 +507,10 @@ class NearProvider {
     async routeEthGetTransactionByHash([txHashAndAccountId]) {
         try {
             // NB: provider.txStatus requires txHash to be a Uint8Array of
-            // the base58 tx hash. Since txHash is hex, it is converted to
-            // base58, and then turned into a Buffer
+            //     the base58 tx hash. Since txHash is hex, it is converted to
+            //     base58, and then turned into a Buffer
             let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
-
             accountId = accountId || this.accountId;
-
             const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(
                 utils.base58ToUint8(txHash),
                 accountId
@@ -522,9 +520,13 @@ class NearProvider {
 
             return findTx;
         } catch (e) {
+            if (e.type = 'TimeoutError') {
+              // NB: Near RPC won't respond null. It'll timeout.
+              //     So if it times out, the tx doesn't exist
+              return null;
+            }
             return e;
         }
-
     }
 
     /**
@@ -590,10 +592,8 @@ class NearProvider {
      */
     async routeEthGetTransactionReceipt([txHashAndAccountId]) {
         let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
-
         let tx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
         let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
-
         // TODO: compute proper tx status: accumulate logs and gas.
         const result = nearToEth.transactionReceiptObj(block, tx, accountId);
         return result;
@@ -631,12 +631,9 @@ class NearProvider {
      */
     async routeEthSendTransaction(params) {
         let outcome;
-        let val = 0;
 
         const {to, value, data} = params[0];
-        if (value !== undefined) {
-            val = value;
-        }
+        let val = value === undefined ? new BN(0) : new BN(utils.remove0x(value), 16);
 
         if (to === undefined) {
             // Contract deployment.
@@ -656,7 +653,6 @@ class NearProvider {
                 val.toString()
             );
         }
-
         return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
