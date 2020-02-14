@@ -368,7 +368,7 @@ class NearProvider {
                 'balance_of_evm_address',
                 { address }
             );
-            return utils.decToHex(balance);
+            return '0x' + new BN(balance, 10).toString(16);
         } catch (e) {
             return e;
         }
@@ -687,15 +687,14 @@ class NearProvider {
         const sender = from ? from : utils.nearAccountToEvmAddress(this.accountId);
 
         // TODO: the contract supports this. We need to figure out how to serialize it
-        // let val = value ? new BN(utils.remove0x(value), 16): new BN(0);
-        // console.log(val.toString())
+        let val = value ? new BN(utils.remove0x(value), 16): new BN(0);
         let result = await this._viewEvmContract(
             'view_call_contract',
             {
                 contract_address: utils.remove0x(to),
                 encoded_input: utils.remove0x(data),
                 sender: utils.remove0x(sender),
-                value: 0  // TODO
+                value: val.toString()
             });
         return '0x' + result;
     }
