@@ -34,7 +34,17 @@ nearToEth.syncObj = function (syncInfo) {
 nearToEth.transactionObj = async function(tx, txIndex) {
     assert(typeof tx === 'object' && tx.hash, 'nearToEth.transactionObj: must pass in tx object');
 
+    let destination = null;
+    let data = null;
     const { transaction_outcome, transaction } = tx;
+
+    const functionCall = transaction.actions[0].FunctionCall;
+    // if it's a call, get the destination address
+    if (functionCall && functionCall.method_name == 'call_contract') {
+      const args = JSON.parse(utils.base64ToString(functionCall.args));
+      destination = args.contract_address;
+      data = args.encoded_input;
+    }
 
     const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
     // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
@@ -47,20 +57,17 @@ nearToEth.transactionObj = async function(tx, txIndex) {
     const obj = {
         // DATA 20 bytes - address of the sender
         // from: sender,
-        // TODO: PUt this back to sender when we figure out contract stuff
         from: sender,
 
         // DATA 20 bytes - address of the receiver
-        // TODO: to: receiver
-        to: `0x${'00'.repeat(20)}`,
+        to: `0x${destination}`,
 
         // QUANTITY - integer of the current gas price in wei
         // TODO: Will this break with big numbers?
         gasPrice: utils.decToHex(parseInt(tx.gas_price)),
 
         // DATA - the data sent along with the transaction
-        // TODO: Would a comparison be for transaction.actions[i]?
-        input: '0x',
+        input: '0x' + data ? data : '',
 
         // DATA 32 bytes - hash of the block where this transaction was in
         blockHash: transaction_outcome.block_hash,
@@ -262,10 +269,9 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
     }
 
     const gas_burnt = transaction_outcome.outcome.gas_burnt;
-    const logs = transaction_outcome.outcome.logs;
 
-    // console.log({transaction, transaction_outcome})
-    // console.log(transaction_outcome.outcome.receipt_ids)
+    // TODO: translate logs
+    const logs = transaction_outcome.outcome.logs;
 
     return {
         transactionHash: `${transaction.hash}:${accountId}`,
