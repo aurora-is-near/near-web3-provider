@@ -128,13 +128,14 @@ describe('\n---- PROVIDER ----', () => {
             test('returns gasPrice', withWeb3(async (web) => {
                 const gasPrice = await web.eth.getGasPrice();
                 expect(typeof gasPrice).toBe('string');
-                expect(gasPrice).toEqual('0');
+                expect(gasPrice).toStrictEqual('0');
             }));
         });
     });
 
     describe('\n---- CONTRACT INTERACTION ----', () => {
         let zombieAddress;
+        let zombieABI;
 
         beforeAll(withWeb3(async (web) => {
           const zombieCode = fs.readFileSync(zombieCodeFile).toString();
@@ -146,6 +147,7 @@ describe('\n---- PROVIDER ----', () => {
               data: `0x${zombieCode}`
           });
           zombieAddress = deployResult.contractAddress;
+          zombieABI = JSON.parse(fs.readFileSync(zombieABIFile).toString());
         }));
 
         describe('getAccounts | eth_accounts', () => {
@@ -155,7 +157,7 @@ describe('\n---- PROVIDER ----', () => {
                     expect(Array.isArray(accounts)).toBe(true);
                     // TODO: Test accounts
                     // console.log({accounts})
-                    // expect(accounts[0]).toEqual('0xCBdA96B3F2B8eb962f97AE50C3852CA976740e2B');
+                    // expect(accounts[0]).toStrictEqual('0xCBdA96B3F2B8eb962f97AE50C3852CA976740e2B');
                 } catch (e) {
                     console.log(e);
                 }
@@ -170,7 +172,7 @@ describe('\n---- PROVIDER ----', () => {
                     'latest'
                 );
                 expect(typeof balance).toBe('string');
-                expect(balance).toEqual('0');
+                expect(balance).toStrictEqual('0');
             }));
         });
 
@@ -181,7 +183,7 @@ describe('\n---- PROVIDER ----', () => {
                 const position = 0;
                 let storagePosition = await web.eth.getStorageAt(address, position);
                 expect(typeof storagePosition).toBe('string');
-                expect(storagePosition).toEqual(`0x${'00'.repeat(32)}`);
+                expect(storagePosition).toStrictEqual(`0x${'00'.repeat(32)}`);
             }));
         });
 
@@ -191,7 +193,7 @@ describe('\n---- PROVIDER ----', () => {
                 const address = utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT);
                 const code = await web.eth.getCode(address);
                 expect(typeof code).toBe('string');
-                expect(code).toEqual('0x');
+                expect(code).toStrictEqual('0x');
 
             }));
         });
@@ -218,8 +220,30 @@ describe('\n---- PROVIDER ----', () => {
                     data: '0x4412e1040000000000000000000000002222222222222222222222222222222222222222'
                   }
                 );
-                expect(result).toEqual(`0x${'00'.repeat(31)}20${'00'.repeat(32)}`);
+                expect(result).toStrictEqual(`0x${'00'.repeat(31)}20${'00'.repeat(32)}`);
             }));
+        });
+
+        describe('web3 Contract Abstraction', () => {
+            test('can instantiate and run view functions', withWeb3(async (web) => {
+                let zombies = new web.eth.Contract(zombieABI, zombieAddress);
+                let callRes = await zombies.methods.getZombiesByOwner(`0x${'22'.repeat(20)}`).call();
+                expect(callRes).toBeInstanceOf(Array);
+                expect(callRes.length).toStrictEqual(0);
+            }));
+
+            test('can make transactions', withWeb3(async (web) => {
+              let zombies = new web.eth.Contract(zombieABI, zombieAddress);
+                let txRes = await zombies.methods.createRandomZombie("george")
+                    .send({from: web._provider.accountEvmAddress});
+                expect(txRes).toBeInstanceOf(Object);
+                expect(txRes.from).toStrictEqual(web._provider.accountEvmAddress);
+
+                let callRes = await zombies.methods.getZombiesByOwner(web._provider.accountEvmAddress).call();
+                expect(callRes).toBeInstanceOf(Array);
+                expect(callRes.length).toStrictEqual(1);
+                expect(callRes[0]).toStrictEqual('0');
+            }), 11000);
         });
 
     });
@@ -252,7 +276,7 @@ describe('\n---- PROVIDER ----', () => {
                 await waitForABlock();
                 let blockNumber = await web.eth.getBlockNumber();
                 expect(blockNumber).not.toBeNaN();
-                expect(blockNumber).toBeGreaterThan(blockHeight);
+                expect(blockNumber).toBeGreaterThanOrEqual(blockHeight);
             }));
         });
 
@@ -263,8 +287,8 @@ describe('\n---- PROVIDER ----', () => {
             test('gets block by hash', withWeb3(async (web) => {
                 const block = await web.eth.getBlock(blockHash);
 
-                expect(block.hash).toEqual(blockHash);
-                expect(block.number).toEqual(blockHeight);
+                expect(block.hash).toStrictEqual(blockHash);
+                expect(block.number).toStrictEqual(blockHeight);
                 expect(Array.isArray(block.transactions)).toBe(true);
                 if (block.transactions.length > 0) {
                     expect(typeof block.transactions[0]).toBe('string');
@@ -275,8 +299,8 @@ describe('\n---- PROVIDER ----', () => {
             test('gets block by hash with full tx objs', withWeb3(async (web) => {
                 const block = await web.eth.getBlock(blockHash, true);
 
-                expect(block.hash).toEqual(blockHash);
-                expect(block.number).toEqual(blockHeight);
+                expect(block.hash).toStrictEqual(blockHash);
+                expect(block.number).toStrictEqual(blockHeight);
                 expect(Array.isArray(block.transactions)).toBe(true);
                 if (block.transactions.length > 0) {
                     expect(typeof block.transactions[0] === 'object').toBe(true);
@@ -287,8 +311,8 @@ describe('\n---- PROVIDER ----', () => {
             test('gets block by number', withWeb3(async (web) => {
                 try {
                     const block = await web.eth.getBlock(blockHeight);
-                    expect(block.hash).toEqual(blockHash);
-                    expect(block.number).toEqual(blockHeight);
+                    expect(block.hash).toStrictEqual(blockHash);
+                    expect(block.number).toStrictEqual(blockHeight);
                     if (block.transactions.length > 0) {
                         expect(typeof block.transactions[0]).toBe('string');
                     }
@@ -300,8 +324,8 @@ describe('\n---- PROVIDER ----', () => {
             test('gets block by number with full tx objs', withWeb3(async (web) => {
                 const block = await web.eth.getBlock(blockHeight, true);
 
-                expect(block.hash).toEqual(blockHash);
-                expect(block.number).toEqual(blockHeight);
+                expect(block.hash).toStrictEqual(blockHash);
+                expect(block.number).toStrictEqual(blockHeight);
                 expect(Array.isArray(block.transactions)).toBe(true);
                 if (block.transactions.length > 0) {
                     expect(typeof block.transactions[0] === 'object').toBe(true);
