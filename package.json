@@ -2,6 +2,7 @@
   "name": "near-web3-provider",
   "version": "0.2.0-denver",
   "description": "NEAR Web3 integration",
+  "repository": "https://github.com/nearprotocol/near-web3-provider",
   "engines": {
     "node": ">= 11"
   },
@@ -23,10 +24,11 @@
     "bsert": "0.0.10",
     "nearlib": "^0.21.0",
     "tweetnacl": "^1.0.3",
-    "web3": "^1.2.4",
-    "web3-provider-engine": "^15.0.4"
+    "web3-provider-engine": "^15.0.4",
+    "web3-utils": "^1.2.6"
   },
   "devDependencies": {
+    "web3": "^1.2.6",
     "eslint": "^6.8.0",
     "eslint-plugin-jest": "^23.7.0",
     "jest": "^25.1.0"
