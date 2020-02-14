@@ -611,7 +611,7 @@ class NearProvider {
             'nonce_of_evm_address',
             { address }
         );
-        return `0x${result.toString()}`;
+        return `0x${new BN(result, 10).toString(16)}`;
     }
 
     /**
