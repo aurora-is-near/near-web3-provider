@@ -683,17 +683,19 @@ class NearProvider {
      * @returns {String} the return value of the executed contract
      */
     async routeEthCall(params) {
-        const {to, value, data} = params[0];
-        const sender = params[0].from;
-        const val = value === undefined ? '0x0' : value;
+        const {to, from, value, data} = params[0];
+        const sender = from ? from : utils.nearAccountToEvmAddress(this.accountId);
 
+        // TODO: the contract supports this. We need to figure out how to serialize it
+        // let val = value ? new BN(utils.remove0x(value), 16): new BN(0);
+        // console.log(val.toString())
         let result = await this._viewEvmContract(
             'view_call_contract',
             {
                 contract_address: utils.remove0x(to),
                 encoded_input: utils.remove0x(data),
                 sender: utils.remove0x(sender),
-                value: parseInt(val, 16)
+                value: 0  // TODO
             });
         return '0x' + result;
     }

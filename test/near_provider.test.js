@@ -134,6 +134,8 @@ describe('\n---- PROVIDER ----', () => {
     });
 
     describe('\n---- CONTRACT INTERACTION ----', () => {
+        let zombieAddress;
+
         beforeAll(withWeb3(async (web) => {
           const zombieCode = fs.readFileSync(zombieCodeFile).toString();
           const deployResult = await web.eth.sendTransaction({
@@ -143,7 +145,7 @@ describe('\n---- PROVIDER ----', () => {
               gas: 0,
               data: `0x${zombieCode}`
           });
-          console.log(deployResult)
+          zombieAddress = deployResult.contractAddress;
         }));
 
         describe('getAccounts | eth_accounts', () => {
@@ -207,7 +209,17 @@ describe('\n---- PROVIDER ----', () => {
         });
 
         describe('call | eth_call', () => {
-
+            test('calls view functions', withWeb3(async (web) => {
+                // this data blob calls getZombiesByOwner
+                // with an argument of an address consisting of 22
+                let result = await web.eth.call(
+                  {
+                    to: zombieAddress,
+                    data: '0x4412e1040000000000000000000000002222222222222222222222222222222222222222'
+                  }
+                );
+                expect(result).toEqual(`0x${'00'.repeat(31)}20${'00'.repeat(32)}`);
+            }));
         });
 
     });
