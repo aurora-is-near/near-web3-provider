@@ -86,7 +86,7 @@ class NearProvider {
             }
 
             case 'eth_protocolVersion': {
-                return this.routeEthGetProtocolVersion(params);
+                return this.routeEthProtocolVersion(params);
             }
 
             case 'eth_syncing': {
@@ -307,7 +307,7 @@ class NearProvider {
      * Returns the current NEAR protocol version
      * @returns {String} the current NEAR protocol version
      */
-    async routeEthGetProtocolVersion() {
+    async routeEthProtocolVersion() {
         try {
             const { version } = await this.nearProvider.status();
             return web3Utils.toHex(version.version);

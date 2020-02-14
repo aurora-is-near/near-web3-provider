@@ -65,6 +65,7 @@ const withWeb3 = (fn) => {
     return () => fn(web);
 };
 
+// TODO: Better way to check if contract is deployed
 async function deployContract(web) {
     const evmAccountId = 'evm';
     const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
@@ -92,7 +93,7 @@ describe('\n---- PROVIDER ----', () => {
     beforeAll(withWeb3(async (web) => deployContract(web)));
 
     describe('\n---- BASIC QUERIES ----', () => {
-        describe('getProtocolVersion | eth_getProtocolVersion', () => {
+        describe('getProtocolVersion | eth_protocolVersion', () => {
             test('returns protocol version', withWeb3(async (web) => {
                 try {
                     // Get current version
