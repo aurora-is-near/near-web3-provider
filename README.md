@@ -509,3 +509,4 @@ Executes a new message call immediately without creating a transaction on the bl
 - [ ] Make sure all errors are handled
 - [ ] Expose `utils.nearAccountToEvmAddress`, otherwise users will not be able to pass through the EVM Address equivalent
 - [ ] Expose conversion utils like `base58ToHex`, `hexToBase58`
+- [ ] Add documentation about accessing provider methods (point to Near docs, talk about relevant ones)
