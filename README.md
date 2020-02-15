@@ -146,7 +146,27 @@ Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to c
 
 ---
 
-## API Methods
+## API - Unsupported Methods
+
+* `web3.eth.getCoinbase`
+* `web3.eth.isMining`
+* `web3.eth.getHashrate`
+* `web3.eth.getBlockUncleCount`
+* `web3.eth.getUncle`
+* `web3.eth.getPendingTransactions`
+* `web3.eth.sign`
+* `web3.eth.estimateGas`
+* `web3.eth.getPastLogs`
+* `web3.eth.getWork`
+* `web3.eth.submitWork`
+* `web3.eth.requestAccounts`
+* `web3.eth.getChainId`
+* `web3.eth.getNodeInfo`
+* `web3.eth.getProof`
+
+---
+
+## API - Supported Methods
 
 ### web3.eth.getProtocolVersion
 ```
@@ -399,7 +419,7 @@ Returns a transaction matching the given transaction hash.
 ### web3.eth.getTransactionFromBlock
 
 ```
-`web3.eth.getTransactionFromBlock(hashStringOrNumber, indexNumber)
+web3.eth.getTransactionFromBlock(hashStringOrNumber, indexNumber)
 ```
 
 Returns a transaction based on a block hash or number and the transaction's index position.
@@ -522,7 +542,7 @@ Executes a new message call immediately without creating a transaction on the bl
 
 ## To Do
 - [ ] Update hardcoded `transactionIndex`
-- [ ] Make sure all errors are handled
+- [x] Make sure all errors are handled
 - [ ] Expose `utils.nearAccountToEvmAddress`, otherwise users will not be able to pass through the EVM Address equivalent
 - [ ] Expose conversion utils like `base58ToHex`, `hexToBase58`
-- [ ] Add documentation about accessing provider methods (point to Near docs, talk about relevant ones)
+- [ ] Add documentation about accessing provider methods (point to Near docs, explain relevant methods)
