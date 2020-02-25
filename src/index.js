@@ -55,11 +55,14 @@ class NearProvider {
     /**
      * Calls a block and fills it up
      */
-    async _getBlock(blockHeight, returnTxObjects) {
+    async _getBlock(blockHeight, returnTxObjects, returnNearBlock) {
         try {
             const block = await this.nearProvider.block(blockHeight);
             const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
 
+            if (returnNearBlock) {
+                return [fullBlock, block];
+            }
             return fullBlock;
         } catch (e) {
             return e;
@@ -249,7 +252,7 @@ class NearProvider {
             });
         }, (err) => {
             console.error(err);
-            new Error(`NearProvider: ${err}`);
+            return new Error(`NearProvider: ${err}`);
         });
     }
 
@@ -615,17 +618,25 @@ class NearProvider {
 
     /**
      * Returns the receipt of a transaction by transaction hash
-     * @param {String} txHashAndAccountId transaction hash (base58hash:accountId)
+     * @param {String} fullTxHash transaction hash (base58hash:accountId)
      * @returns {Object} returns transaction receipt object or null
      */
-    async routeEthGetTransactionReceipt([txHashAndAccountId]) {
+    async routeEthGetTransactionReceipt([fullTxHash]) {
+        console.log('eth_getTransactionReceipt: ', fullTxHash);
         try {
-            let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
-            let tx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
-            let block = await this.nearProvider.block(tx.transaction_outcome.block_hash);
-            const result = nearToEth.transactionReceiptObj(block, tx, accountId);
+            assert(fullTxHash, 'Must pass in transaction hash');
+            const { txHash, accountId } = utils.getTxHashAndAccountId(fullTxHash);
+
+            const fullTx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
+
+            const [block, nearBlock] = await this._getBlock(fullTx.transaction_outcome.block_hash, false, true);
+            const txIndex = block.transactions.indexOf(fullTxHash);
+
+            const result = nearToEth.transactionReceiptObj(nearBlock, fullTx, txIndex, accountId);
+
             return result;
         } catch (e) {
+            console.log('get transaction receipt error', e);
             return e;
         }
     }
@@ -655,6 +666,10 @@ class NearProvider {
      * the data field contains code, pass it through
      * web3.eth.sendTransaction
      *
+     * NB: Internally, eth_sendTransaction generates a transaction receipt
+     * object, so this method is intrinsically connected to
+     * eth_getTransactionReceipt. If the latter has errors, this method will
+     * error.
      * @param    {Object} txObj transaction object
      * @property {String} params.to EVM destination address
      * @property {String} params.value amount of yoctoNEAR to attach
@@ -663,6 +678,7 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeEthSendTransaction([txObj]) {
+        console.log('eth_sendTransaction', txObj);
         try {
             let outcome;
 
@@ -691,6 +707,7 @@ class NearProvider {
                     val.toString()
                 );
             }
+            // console.log('outcome', outcome);
             return `${outcome.transaction_outcome.id}:${this.accountId}`;
         } catch (e) {
             return e;
