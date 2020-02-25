@@ -578,7 +578,6 @@ class NearProvider {
             assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
 
             const block = await this._getBlock(blockHash, true);
-
             const tx = block.transactions[txIndex];
             return tx || null;
         } catch (e) {
@@ -622,7 +621,6 @@ class NearProvider {
      * @returns {Object} returns transaction receipt object or null
      */
     async routeEthGetTransactionReceipt([fullTxHash]) {
-        console.log('eth_getTransactionReceipt: ', fullTxHash);
         try {
             assert(fullTxHash, 'Must pass in transaction hash');
             const { txHash, accountId } = utils.getTxHashAndAccountId(fullTxHash);
@@ -678,7 +676,6 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeEthSendTransaction([txObj]) {
-        console.log('eth_sendTransaction', txObj);
         try {
             let outcome;
 
@@ -707,7 +704,6 @@ class NearProvider {
                     val.toString()
                 );
             }
-            // console.log('outcome', outcome);
             return `${outcome.transaction_outcome.id}:${this.accountId}`;
         } catch (e) {
             return e;

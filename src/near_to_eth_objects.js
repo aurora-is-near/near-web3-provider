@@ -180,7 +180,6 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
             /**---------------- TODO: --------------- */
 
             // DATA hash of the generated proof-of-work. null when its pending block
-            // TODO: What is this equivalent?
             nonce: null,
 
             // DATA the root of the transaction trie of the block
@@ -261,8 +260,6 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
  * @returns {Object} returns ETH transaction receipt object
  */
 nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, accountId) {
-    console.log('Getting transactionReceiptObj');
-
     let contractAddress = null;
     let destination = null;
 
