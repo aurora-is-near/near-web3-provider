@@ -251,6 +251,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
     let destination = null;
 
     const { transaction, transaction_outcome, status } = nearTxObj;
+
     const responseData = utils.base64ToString(status.SuccessValue);
     const functionCall = transaction.actions[0].FunctionCall;
 
@@ -270,19 +271,45 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
 
     const gas_burnt = transaction_outcome.outcome.gas_burnt;
 
-    // TODO: translate logs
-    const logs = transaction_outcome.outcome.logs;
+    const blockNumber = utils.decToHex(block.header.height);
+    const blockHash = block.header.hash;
+
+    // TODO: more accurate translation of logs
+
+    const nearLogs = nearTxObj.receipts_outcome.map(({ outcome }) => outcome.logs).reduce((a, b) => a.concat(b));
+    //console.log('near logs', nearLogs);
+    let logs = nearLogs.map((log, i) => {
+        return {
+            logIndex: '0x' + i.toString(16),
+            blockNumber,
+            blockHash,
+            transactionIndex: '0x0',
+            address: contractAddress || destination,
+            data: '0x' + log.replace(/.*evm log: /, ''),
+            topics: []
+        };
+    });
+
+    logs = logs.filter(({ data }) => {
+        const buf = Buffer.from(data.replace(/^0x/, ''), 'hex');
+        if (buf.includes('NEARDebug')) {
+            console.log(buf.toString('utf-8'), bug.toString('hex'));
+            return false;
+        }
+        return true;
+    });
+    //console.log('eth logs', logs);
 
     return {
         transactionHash: `${transaction.hash}:${accountId}`,
         transactionIndex: '0x1',
-        blockNumber: utils.decToHex(block.header.height),
-        blockHash: block.header.hash,
+        blockNumber,
+        blockHash,
         from: utils.nearAccountToEvmAddress(transaction.signer_id),
         to: destination ? `0x${destination}` : undefined,
-        contractAddress: contractAddress,
+        contractAddress,
         gasUsed: utils.decToHex(gas_burnt),
-        logs: logs,
+        logs,
         logsBloom: `0x${'00'.repeat(256)}`,
         status: responseData ? '0x1' : '0x0'
     };
