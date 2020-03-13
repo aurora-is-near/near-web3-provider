@@ -675,37 +675,62 @@ class NearProvider {
      * @property {String} params.data the encoded call data
      * @returns  {String} The resulting txid
      */
+    // TODO: Account for passed in gas
     async routeEthSendTransaction([txObj]) {
+        // console.log({txObj})
         try {
             let outcome;
-
+            let val;
             const { to, value, data } = txObj;
-            let val = value === undefined
-                ? new BN(0)
-                : new BN(utils.remove0x(value), 16);
+            console.log({value})
+            if (value === undefined) {
+                console.log('value undefined')
+                val = new BN(0)
+            } else {
+                console.log('value defined zzzz')
+                const remove = utils.remove0x(value)
+                console.log({remove})
+                val = new BN(remove, 16)
+                console.log({val})
+            }
+            // value === undefined
+            //     ? new BN(0)
+            //     : new BN(utils.remove0x(value), 16);
+            console.log('val here', val)
 
             // TODO: differentiate simple sends
+            const functionCallData = {
+                contractId: this.evm_contract,
+                methodName: 'deploy_code',
+                args: { 'bytecode': utils.remove0x(data) },
+                gas: GAS_AMOUNT,
+                amount: val
+            }
+            console.log('functionCallData', functionCallData)
 
             if (to === undefined) {
+                console.log('Deploying contract')
                 // Contract deployment.
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'deploy_code',
-                    { 'bytecode': utils.remove0x(data) },
-                    GAS_AMOUNT.toString(),
-                    val.toString()
+                    { bytecode: utils.remove0x(data) },
+                    GAS_AMOUNT,
+                    val
                 );
             } else {
+                console.log('calling contract')
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'call_contract',
                     { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
                     GAS_AMOUNT.toString(),
-                    val.toString()
+                    val
                 );
             }
             return `${outcome.transaction_outcome.id}:${this.accountId}`;
         } catch (e) {
+            console.log('send transaction e', e)
             return e;
         }
     }
