@@ -121,9 +121,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 // TODO: Is this chunks.gas_used or accumulated gas_burnt for each tx?
 nearToEth._getGasUsed = function(chunks) {
     const gasUsed = chunks.map((c) => c.gas_used);
-    // console.log({gasUsed})
     const accumulated = gasUsed.reduce((a, b) => a + b);
-    // console.log({accumulated})
     return accumulated;
 }
 
@@ -136,7 +134,6 @@ nearToEth._getGasUsed = function(chunks) {
  * @returns {Object} returns ETH block object
  */
 nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
-    // console.log('-----nearToEth.blockObj');
     try {
         block = await this.hydrate.block(block, nearProvider);
 
@@ -162,10 +159,8 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
             transactions = [];
         } else {
             if (!returnTxObjects) {
-                // console.log('Just hashes');
                 transactions = block.transactions.map((tx) => `${tx.hash }:${ tx.signer_id }`);
             } else {
-                // console.log('everything');
                 const hydratedTransactions = await hydrate.allTransactions(block, nearProvider);
 
                 const promiseArray = hydratedTransactions.map((tx, txIndex) => {
@@ -281,7 +276,6 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
       destination = args.contract_address;
     } else {
         const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
-        console.log({receiver})
         destination = receiver;
     }
 
