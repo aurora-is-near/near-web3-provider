@@ -1,6 +1,6 @@
 {
   "name": "near-web3-provider",
-  "version": "0.2.0-denver",
+  "version": "0.3.0",
   "description": "NEAR Web3 integration",
   "repository": "https://github.com/nearprotocol/near-web3-provider",
   "engines": {
@@ -15,9 +15,10 @@
   "author": "NEAR Inc <hello@nearprotocol.com>",
   "contributors": [
     "Barbara Liau <barbara@summa.one>",
-    "James Prestwich <james@summa.one>"
+    "James Prestwich <james@summa.one>",
+    "Mark Tyneway <mark.tyneway@gmail.com>"
   ],
-  "license": "GPL-3.0",
+  "license": "AGPL-3.0",
   "dependencies": {
     "bn.js": "^5.0.0",
     "bs58": "^4.0.1",
@@ -48,6 +49,7 @@
     "distributed applications",
     "web3",
     "ethereum",
+    "near",
     "nearprotocol",
     "sharded"
   ]
