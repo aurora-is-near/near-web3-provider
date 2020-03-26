@@ -677,26 +677,19 @@ class NearProvider {
      */
     // TODO: Account for passed in gas
     async routeEthSendTransaction([txObj]) {
-        // console.log({txObj})
         try {
             let outcome;
             let val;
             const { to, value, data } = txObj;
-            console.log({value})
             if (value === undefined) {
-                console.log('value undefined')
                 val = new BN(0)
             } else {
-                console.log('value defined zzzz')
                 const remove = utils.remove0x(value)
-                console.log({remove})
                 val = new BN(remove, 16)
-                console.log({val})
             }
             // value === undefined
             //     ? new BN(0)
             //     : new BN(utils.remove0x(value), 16);
-            console.log('val here', val)
 
             // TODO: differentiate simple sends
             const functionCallData = {
@@ -706,10 +699,8 @@ class NearProvider {
                 gas: GAS_AMOUNT,
                 amount: val
             }
-            console.log('functionCallData', functionCallData)
 
             if (to === undefined) {
-                console.log('Deploying contract')
                 // Contract deployment.
                 outcome = await this.account.functionCall(
                     this.evm_contract,
@@ -719,7 +710,6 @@ class NearProvider {
                     val
                 );
             } else {
-                console.log('calling contract')
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'call_contract',
@@ -730,7 +720,6 @@ class NearProvider {
             }
             return `${outcome.transaction_outcome.id}:${this.accountId}`;
         } catch (e) {
-            console.log('send transaction e', e)
             return e;
         }
     }
