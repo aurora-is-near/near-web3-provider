@@ -634,7 +634,6 @@ class NearProvider {
 
             return result;
         } catch (e) {
-            console.log('get transaction receipt error', e);
             return e;
         }
     }
