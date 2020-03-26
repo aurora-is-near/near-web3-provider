@@ -8,28 +8,41 @@ Use it to connect your Ethereum frontend or Truffle to NEAR Protocol.
 ## Install
 
 ```bash
-npm install near-web3-provider
+$ npm install near-web3-provider
 ```
 
 ## Running Tests
 
-Tests require a running local `nearcore`.
+Tests require [running a local `nearcore`](https://docs.nearprotocol.com/docs/local-setup/local-dev-testnet).
 
-Install Rust:
+Install Rustup:
 ```
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Install and run NEARCore:
+Add wasm target to your toolchain:
 ```
-git clone https://github.com/nearprotocol/nearcore
-cd nearcore
-./scripts/start_unittest.py --local
+$ rustup target add wasm32-unknown-unknown
+```
+
+Install and run NEARCore using Docker:
+```
+$ git clone https://github.com/nearprotocol/nearcore
+$ cd nearcore
+$ make docker-nearcore
+$ ./scripts/start_localnet.py
+```
+
+To run NEARcore without Docker
+```
+$ git clone https://github.com/nearprotocol/nearcore
+$ cd nearcore
+$ ./scripts/start_localnet.py --nodocker
 ```
 
 Run tests
 ```
-npm run test
+$ npm run test
 ```
 
 Tests currently take ~50 seconds to run.
