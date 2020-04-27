@@ -1,10 +1,10 @@
 const assert = require('bsert');
 const bs58 = require('bs58');
-const web3 = require('web3');
+const web3Utils = require('web3-utils');
 
 const utils = {};
 
-utils.keccak256 = web3.utils.keccak256;
+utils.keccak256 = web3Utils.keccak256;
 
 /**
  * base58 for 0s. Indicates empty result
@@ -13,8 +13,8 @@ utils.emptyResult = '11111111111111111111111111111111';
 
 /**
  * Remove 0x if prepended
- * @param {string} value value to check and modify
- * @return {string} string without 0x
+ * @param {String} value value to check and modify
+ * @return {String} string without 0x
  */
 utils.remove0x = function(value) {
     assert(typeof value === 'string', 'remove0x: must pass in string');
@@ -28,8 +28,8 @@ utils.remove0x = function(value) {
 
 /**
  * Checks if string is hex
- * @param {string} value value to check
- * @returns {boolean} true if value is hex, false if not
+ * @param {String} value value to check
+ * @returns {Boolean} true if value is hex, false if not
  */
 utils.isHex = function(value) {
     assert(typeof value === 'string', 'isHex: must pass in string');
@@ -40,7 +40,7 @@ utils.isHex = function(value) {
 /**
  * Converts number to hex
  * @param {Number|Object} value number to convert to hex.
- * @returns {string} hex string equivalent of number
+ * @returns {String} hex string equivalent of number
  */
 utils.decToHex = function(value) {
     assert(
@@ -56,7 +56,7 @@ utils.decToHex = function(value) {
  * Deserializes a hex string into a Uint8Array
  *
  * @param {Uint8Array}    hexStr The value as a hex string
- * @returns {string}      The value as a u8a
+ * @returns {String}      The value as a u8a
  */
 utils.deserializeHex = function(hexStr) {
     if (!hexStr) {
@@ -96,8 +96,8 @@ utils.deserializeHex = function(hexStr) {
 
 /**
  * Converts hex to number
- * @param {string} value hex string to convert to number
- * @returns {number} number equivalent of hex string
+ * @param {String} value hex string to convert to number
+ * @returns {Number} number equivalent of hex string
  */
 utils.hexToDec = function(value) {
     assert(typeof value === 'string', 'hexToDec: must pass in hex string');
@@ -108,8 +108,8 @@ utils.hexToDec = function(value) {
 
 /**
  * Converts base58 object to hex string
- * @param {string|array|buffer|arrayBuffer} value base58 object
- * @returns {string} hex string equivalent of base58 object
+ * @param {String|Array|Buffer|ArrayBuffer} value base58 object
+ * @returns {String} hex string equivalent of base58 object
  */
 utils.base58ToHex = function(value) {
     return '0x' + Buffer.from(bs58.decode(value)).toString('hex');
@@ -117,8 +117,8 @@ utils.base58ToHex = function(value) {
 
 /**
  * Converts hex string to base58 string
- * @param {string} value hex string
- * @returns {string} returns base58 string equivalent of hex string
+ * @param {String} value hex string
+ * @returns {String} returns base58 string equivalent of hex string
  */
 utils.hexToBase58 = function(value) {
     assert(typeof value === 'string', 'hexToBase58: must pass in hex string');
@@ -130,8 +130,8 @@ utils.hexToBase58 = function(value) {
 
 /**
  * Converts base64 object to hex string
- * @param {string|array|buffer|arrayBuffer} value base64 object
- * @returns {string} hex string equivalent of base64 object
+ * @param {String|Array|Buffer|ArrayBuffer} value base64 object
+ * @returns {String} hex string equivalent of base64 object
  */
 utils.base64ToHex = function(value) {
     return '0x' + Buffer.from(value, 'base64').toString('hex');
@@ -139,8 +139,8 @@ utils.base64ToHex = function(value) {
 
 /**
  * Converts base64 object to string
- * @param {string|array|buffer|arrayBuffer} value base64 object
- * @returns {string} string equivalent of base64 object
+ * @param {String|Array|Buffer|ArrayBuffer} value base64 object
+ * @returns {String} string equivalent of base64 object
  */
 utils.base64ToString = function(value) {
     return Buffer.from(value, 'base64').toString();
@@ -160,8 +160,8 @@ utils.base58ToUint8 = function(value) {
 };
 /**
  * Convert timestamp in NEAR to hex
- * @param {number} value NEAR timestamp
- * @returns {string} hex string equivalent of timestamp
+ * @param {Number} value NEAR timestamp
+ * @returns {String} hex string equivalent of timestamp
  */
 utils.convertTimestamp = function(value) {
     assert(typeof value === 'number', 'convertTimestamp: must pass in number');

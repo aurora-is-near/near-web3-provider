@@ -8,28 +8,41 @@ Use it to connect your Ethereum frontend or Truffle to NEAR Protocol.
 ## Install
 
 ```bash
-npm install near-web3-provider
+$ npm install near-web3-provider
 ```
 
 ## Running Tests
 
-Tests require a running local `nearcore`.
+Tests require [running a local `nearcore`](https://docs.nearprotocol.com/docs/local-setup/local-dev-testnet).
 
-Install Rust:
+Install Rustup:
 ```
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Install and run NEARCore:
+Add wasm target to your toolchain:
 ```
-git clone https://github.com/nearprotocol/nearcore
-cd nearcore
-./scripts/start_unittest.py --local
+$ rustup target add wasm32-unknown-unknown
+```
+
+Install and run NEARCore using Docker:
+```
+$ git clone https://github.com/nearprotocol/nearcore
+$ cd nearcore
+$ make docker-nearcore
+$ ./scripts/start_localnet.py
+```
+
+To run NEARcore without Docker
+```
+$ git clone https://github.com/nearprotocol/nearcore
+$ cd nearcore
+$ ./scripts/start_localnet.py --nodocker
 ```
 
 Run tests
 ```
-npm run test
+$ npm run test
 ```
 
 Tests currently take ~50 seconds to run.
@@ -121,7 +134,7 @@ Mining, hashrates, `ssh,` and `db` methods are not supported.
 
 * Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible correspondance to Near block structure
 
-## API
+## API Overview
 
 Unless specified, NearProvider returns the values specified in the web3 documentation for each method.
 
@@ -143,6 +156,42 @@ Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to c
 * `value` - Transaction values/amounts are denominated in yoctoNEAR
 
 * `to`, `from`, `address` - Addresses are the EVM hash of a Near AccountId
+
+---
+
+## API - Unsupported Methods
+
+* `web3.eth.getCoinbase`
+* `web3.eth.isMining`
+* `web3.eth.getHashrate`
+* `web3.eth.getBlockUncleCount`
+* `web3.eth.getUncle`
+* `web3.eth.getPendingTransactions`
+* `web3.eth.sign`
+* `web3.eth.estimateGas`
+* `web3.eth.getPastLogs`
+* `web3.eth.getWork`
+* `web3.eth.submitWork`
+* `web3.eth.requestAccounts`
+* `web3.eth.getChainId`
+* `web3.eth.getNodeInfo`
+* `web3.eth.getProof`
+
+---
+
+## API - Supported Methods
+
+### web3.eth.getProtocolVersion
+```
+web3.eth.getProtocolVersion([callback])
+```
+Returns the Near protocol version of the node.
+
+#### Returns
+`Promise` returns `String`: the protocol version.
+
+#### Differences | Limitations
+* Returns the Near protocol version instead of the Ethereum protocol version
 
 ---
 
@@ -383,7 +432,7 @@ Returns a transaction matching the given transaction hash.
 ### web3.eth.getTransactionFromBlock
 
 ```
-`web3.eth.getTransactionFromBlock(hashStringOrNumber, indexNumber)
+web3.eth.getTransactionFromBlock(hashStringOrNumber, indexNumber)
 ```
 
 Returns a transaction based on a block hash or number and the transaction's index position.
@@ -506,6 +555,7 @@ Executes a new message call immediately without creating a transaction on the bl
 
 ## To Do
 - [ ] Update hardcoded `transactionIndex`
-- [ ] Make sure all errors are handled
+- [x] Make sure all errors are handled
 - [ ] Expose `utils.nearAccountToEvmAddress`, otherwise users will not be able to pass through the EVM Address equivalent
 - [ ] Expose conversion utils like `base58ToHex`, `hexToBase58`
+- [ ] Add documentation about accessing provider methods (point to Near docs, explain relevant methods)

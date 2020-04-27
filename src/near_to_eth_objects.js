@@ -12,13 +12,25 @@ const nearToEth = {
 /**
  * ETH Sync Object
  */
-nearToEth.syncObj = function (syncInfo) {
+nearToEth.syncObj = function(syncInfo) {
     return {
-        startingBlock: '0x0',
+        // QUANTITY The current block, same as eth_blockNumber
         currentBlock: utils.decToHex(syncInfo.latest_block_height),
+
+        // QUANTITY The highest estimated block
+        // NB: This returns the same as currentBlock, so this is semi-supported
         highestBlock: utils.decToHex(syncInfo.latest_block_height),
-        // NB: The following are not listed in the RPC docs but are expected in web3
+
+        /** ------------ UNSUPPORTED/FALSY VALUES --------- */
+
+        // QUANTITY The block at which the import started (will only be reset,
+        // after the sync reached his head)
+        startingBlock: '0x0',
+
+        // QUANTITY The estimated states to download
         knownStates: '0x0',
+
+        // QUANTITY The already downloaded states
         pulledStates: '0x0'
     };
 };
@@ -32,7 +44,8 @@ nearToEth.syncObj = function (syncInfo) {
  * @example nearToEth.transactionObject(tx, txIndex)
  */
 nearToEth.transactionObj = async function(tx, txIndex) {
-    assert(typeof tx === 'object' && tx.hash, 'nearToEth.transactionObj: must pass in tx object');
+    assert(typeof tx === 'object' && tx.hash,
+        'nearToEth.transactionObj: must pass in tx object');
 
     let destination = null;
     let data = null;
@@ -47,7 +60,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
     }
 
     const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
-    // const receiver = utils.nearACcountToEvmAddress(transaction.receiver_id);
+    // const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
 
     const value = transaction.actions.map(v => {
         const k = Object.keys(v)[0];
@@ -79,7 +92,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
 
         // DATA 32 bytes - hash of the transaction
-        hash: `${tx.hash}:${transaction.signer_id}`,
+        hash: `${transaction.hash}:${transaction.signer_id}`,
 
         // QUANTITY - the number of txs made by the sender prior to this one
         nonce: utils.decToHex(tx.nonce),
@@ -90,7 +103,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         // QUANTITY - value transferred in wei (yoctoNEAR)
         value: utils.decToHex(value),
 
-        /** ------------ UNSUPPORTED DUMMY VALUES --------- */
+        /** ------------ UNSUPPORTED/FALSY VALUES --------- */
         // QUANTITY - ECDSA recovery id
         v: '0x0',
         // QUANTITY - ECDSA signature r
@@ -103,6 +116,16 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 };
 
 /**
+ * Get the total gas used. gas_used is listed on each chunk
+ */
+// TODO: Is this chunks.gas_used or accumulated gas_burnt for each tx?
+nearToEth._getGasUsed = function(chunks) {
+    const gasUsed = chunks.map((c) => c.gas_used);
+    const accumulated = gasUsed.reduce((a, b) => a + b);
+    return accumulated;
+}
+
+/**
  * Maps NEAR Block to ETH Block Object
  * @param {Object|String} block NEAR block. If 'empty', return empty block
  * @param {Boolean} returnTxObjects (optional) default false. if true, return
@@ -111,7 +134,6 @@ nearToEth.transactionObj = async function(tx, txIndex) {
  * @returns {Object} returns ETH block object
  */
 nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
-    // console.log('-----nearToEth.blockObj');
     try {
         block = await this.hydrate.block(block, nearProvider);
 
@@ -137,10 +159,8 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
             transactions = [];
         } else {
             if (!returnTxObjects) {
-                // console.log('Just hashes');
-                transactions = block.transactions.map((tx) => utils.base58ToHex(tx.hash));
+                transactions = block.transactions.map((tx) => `${tx.hash }:${ tx.signer_id }`);
             } else {
-                // console.log('everything');
                 const hydratedTransactions = await hydrate.allTransactions(block, nearProvider);
 
                 const promiseArray = hydratedTransactions.map((tx, txIndex) => {
@@ -155,7 +175,6 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
             /**---------------- TODO: --------------- */
 
             // DATA hash of the generated proof-of-work. null when its pending block
-            // TODO: What is this equivalent?
             nonce: null,
 
             // DATA the root of the transaction trie of the block
@@ -181,7 +200,7 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
             gasLimit: utils.decToHex(getMaxGas(block.chunks)),
 
             // QUANTITY the total used gas by all transactions in this block
-            gasUsed: utils.decToHex(getGasUsed(block.chunks)),
+            gasUsed: utils.decToHex(this._getGasUsed(block.chunks)),
 
             // QUANTITY the unix timestamp for when the block was collated
             timestamp: utils.convertTimestamp(header.timestamp),
@@ -226,27 +245,16 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
     function getMaxGas (chunks) {
         return chunks.map((c) => c.gas_limit).sort()[0];
     }
-
-    /**
-     * Get the total gas used. gas_used is listed on each chunk
-     */
-    // TODO: Is this chunks.gas_used or accumulated gas_burnt for each tx?
-    function getGasUsed (chunks) {
-        const gasUsed = chunks.map((c) => c.gas_used);
-        // console.log({gasUsed})
-        const accumulated = gasUsed.reduce((a, b) => a + b);
-        // console.log({accumulated})
-        return accumulated;
-    }
 };
 
 /**
  * Maps NEAR transaction to ETH Transaction Receipt Object
  * @param {Object} block NEAR block
  * @param {Object} nearTxObj NEAR transaction object
+ * @param {Number} nearTxObjIndex index of NEAR tx in the block
  * @returns {Object} returns ETH transaction receipt object
  */
-nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
+nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, accountId) {
     let contractAddress = null;
     let destination = null;
 
@@ -266,31 +274,59 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, accountId) {
     if (functionCall && functionCall.method_name == 'call_contract') {
       const args = JSON.parse(utils.base64ToString(functionCall.args));
       destination = args.contract_address;
+    } else {
+        const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
+        destination = receiver;
     }
 
-    const gas_burnt = transaction_outcome.outcome.gas_burnt;
-
     // TODO: translate logs
-    const logs = transaction_outcome.outcome.logs;
+    const { gas_burnt, logs } = transaction_outcome.outcome;
 
     return {
+        // DATA Hash of the transaction
         transactionHash: `${transaction.hash}:${accountId}`,
-        transactionIndex: '0x1',
+
+        // QUANTITY integer of the transaction's position in the block
+        transactionIndex: nearTxObjIndex,
+
+        // DATA hash of the block where this transaction was in
         blockNumber: utils.decToHex(block.header.height),
-        blockHash: block.header.hash,
+
+        // QUANTITY block number where this transaction was in
+        blockHash: utils.base58ToHex(block.header.hash),
+
+        // DATA address of the sender
         from: utils.nearAccountToEvmAddress(transaction.signer_id),
-        to: destination ? `0x${destination}` : undefined,
+
+        // DATA address of the receiver, null when it's a contract creation tx
+        to: destination ? `0x${destination}` : null,
+
+        // DATA The contract address created, if the transaction was a contract
+        // creation, otherwise null
         contractAddress: contractAddress,
+
+        // QUANTITY The amount of gas used by this specific transaction alone
         gasUsed: utils.decToHex(gas_burnt),
+
+        // ARRAY Array of log objects, which this transaction generated
         logs: logs,
-        logsBloom: `0x${'00'.repeat(256)}`,
-        status: responseData ? '0x1' : '0x0'
+
+        // QUANTITY either 1 (success) or 0 (failure)
+        status: responseData ? '0x1' : '0x0',
+
+        // QUANTITY The total amount of gas used when this transaction was executed in the block
+        // NB: This value is not listed in the RPC
+        cumulativeGasUsed: utils.decToHex(this._getGasUsed(block.chunks)),
+
+        /**------------UNSUPPORTED/NULL VALUES--------- */
+
+        // DATA Bloom filter for light clients to quickly retrieve related logs
+        logsBloom: `0x${'00'.repeat(256)}`
+
+        // DATA 32 bytes of post-transaction stateroot (pre Byzantium)
+        // txReceipt will return EITHER status or root. Always returns status.
+        // root: '0x'
     };
 };
 
 module.exports = nearToEth;
-
-
-// get the block
-// spread the chunks
-// get list of txs from there
