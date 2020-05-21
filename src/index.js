@@ -157,7 +157,13 @@ class NearProvider {
             }
 
             case 'eth_sendTransaction': {
-                return this.routeEthSendTransaction(params);
+              try {
+                  const result = await this.routeEthSendTransaction(params);
+                  console.log('eth_sendTransaction result', result, 'params', params);
+                  return result;
+              } catch (e) {
+                  console.error('eth_sendTransaction error', e, 'params', params);
+              }
             }
 
             case 'eth_sendRawTransaction': {
@@ -167,6 +173,28 @@ class NearProvider {
             case 'eth_call': {
                 return this.routeEthCall(params);
             }
+
+            case 'evm_revert': {
+              console.log(`NearProvider: Faking method`, method, params);
+              return;
+            }
+            case 'evm_snapshot': {
+              console.log(`NearProvider: Faking method`, method, params);
+              return;
+            }
+            case 'eth_getLogs': {
+              console.log(`NearProvider: Faking method`, method, params);
+              // TODO: Filter logs somehow? Clear between tests?
+              return eventLogs;
+            }
+            case 'eth_signTypedData': {
+              console.log(`NearProvider: Faking method`, method, params);
+              // TODO: Should this sign using ETH curve or signed using ED25519 and re-implemented verification in smart contract level?
+              //return '0x' + Buffer.from(Array(65)).toString('hex');
+              return this.accountEvmAddress;
+            }
+
+
 
             /**
              * Always 0
@@ -238,7 +266,7 @@ class NearProvider {
             }
 
             default: {
-                return new Error(`NearProvider: Unknown method: ${method} with params ${params}`);
+                return new Error(`NearProvider: Unknown method: ${method} with params ${ params }`);
             }
         }
     }
@@ -363,8 +391,8 @@ class NearProvider {
         try {
             const networkId = this.connection.networkId;
             const accounts = await this.keyStore.getAccounts(networkId);
-
             const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
+            console.log('routeEthAccounts', accounts, evmAccounts);
             return evmAccounts;
         } catch (e) {
             return e;
@@ -716,6 +744,16 @@ class NearProvider {
                     GAS_AMOUNT.toString(),
                     val
                 );
+                console.log('call outcome', outcome.status);
+                if (outcome.status.SuccessValue) {
+                    const nearResult = Buffer.from(outcome.status.SuccessValue, 'base64').toString('utf-8');
+                    if (nearResult.match(/.*internal call failed: .*/)) {
+                        const failureResult = nearResult.replace(/.*internal call failed: /, '').replace(/"$/, '');
+                        const hexdump = require('hexdump-nodejs');
+                        console.log('internal call failed:', hexdump(Buffer.from(failureResult, 'hex')));
+                    }
+                }
+
             }
             return `${outcome.transaction_outcome.id}:${this.accountId}`;
         } catch (e) {
