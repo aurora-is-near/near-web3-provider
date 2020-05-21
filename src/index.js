@@ -159,7 +159,7 @@ class NearProvider {
             case 'eth_sendTransaction': {
               try {
                   const result = await this.routeEthSendTransaction(params);
-                  console.log('eth_sendTransaction result', result, 'params', params);
+                  // console.log('eth_sendTransaction result', result, 'params', params);
                   return result;
               } catch (e) {
                   console.error('eth_sendTransaction error', e, 'params', params);

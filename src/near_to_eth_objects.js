@@ -280,7 +280,32 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     }
 
     // TODO: translate logs
-    const { gas_burnt, logs } = transaction_outcome.outcome;
+    const blockNumber = utils.decToHex(block.header.height);
+    const blockHash = block.header.hash;
+
+    const { gas_burnt } = transaction_outcome.outcome;
+    const nearLogs = nearTxObj.receipts_outcome.map(({ outcome }) => outcome.logs).reduce((a, b) => a.concat(b));
+    //console.log('near logs', nearLogs);
+    let logs = nearLogs.map((log, i) => {
+        return {
+            logIndex: '0x' + i.toString(16),
+            blockNumber,
+            blockHash,
+            transactionIndex: '0x0',
+            address: contractAddress || destination,
+            data: '0x' + log.replace(/.*evm log: /, ''),
+            topics: []
+        };
+    });
+
+    logs = logs.filter(({ data }) => {
+        const buf = Buffer.from(data.replace(/^0x/, ''), 'hex');
+        if (buf.includes('NEARDebug')) {
+            console.log(buf.toString('utf-8'), buf.toString('hex'));
+            return false;
+        }
+        return true;
+    });
 
     return {
         // DATA Hash of the transaction
@@ -290,10 +315,10 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
         transactionIndex: nearTxObjIndex,
 
         // DATA hash of the block where this transaction was in
-        blockNumber: utils.decToHex(block.header.height),
+        blockNumber,
 
         // QUANTITY block number where this transaction was in
-        blockHash: utils.base58ToHex(block.header.hash),
+        blockHash,
 
         // DATA address of the sender
         from: utils.nearAccountToEvmAddress(transaction.signer_id),
@@ -309,7 +334,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
         gasUsed: utils.decToHex(gas_burnt),
 
         // ARRAY Array of log objects, which this transaction generated
-        logs: logs,
+        logs,
 
         // QUANTITY either 1 (success) or 0 (failure)
         status: responseData ? '0x1' : '0x0',
