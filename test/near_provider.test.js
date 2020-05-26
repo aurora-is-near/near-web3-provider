@@ -2,7 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const web3 = require('web3');
-const nearlib = require('nearlib');
+const nearlib = require('near-api-js');
 const utils = require('../src/utils');
 const { NearProvider } = require('../src/index');
 
@@ -77,14 +77,22 @@ async function deployContract(web) {
     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
     const keyPair = createKeyPair();
 
+    console.log(`Deploying contract on networkId: "${networkId}"`);
+
     try {
-        console.log(`Deploying contract on networkId: "${networkId}"`);
         await web._provider.keyStore.setKey(networkId, evmAccountId, keyPair);
+    } catch (e) {
+        throw new Error('Error setting key', e);
+    }
+
+    try {
+        // Minimum amount required to cover storage - LackBalanceForState
+        const startingBalance = BigInt(54607084300000000000000000);
         const contract = await web._provider.account.createAndDeployContract(
             evmAccountId,
             keyPair.getPublicKey(),
             evmBytecode,
-            0);  // NEAR value
+            startingBalance);  // NEAR value
         console.log('deployed EVM contract', contract);
         return true;
     } catch (e) {
@@ -568,18 +576,19 @@ describe('\n---- PROVIDER ----', () => {
                     await web.eth.getTransactionReceipt(badHash);
                 } catch (e) {
                     expect(e).toBeTruthy();
-                    expect(e.message).toEqual('[-32700] Parse error: incorrect length for hash');
+                    expect(e.message).toEqual('[-32602] Invalid params: Failed parsing args: incorrect length for hash');
                 }
             }));
 
-            // NB: Near will time out if it cannot find the tx instead of failing immediately.
             test('errors if hash does not exist', withWeb3(async (web) => {
+                const notRealHash = '9Y9SUcuLRX1afHsyocHiryPQvqAujrJqugy4WgjfXGiw';
+                const account = 'test.near';
+
                 try {
-                    const notRealHash = '9Y9SUcuLRX1afHsyocHiryPQvqAujrJqugy4WgjfXGiw:test.near';
-                    await web.eth.getTransactionReceipt(notRealHash);
+                    await web.eth.getTransactionReceipt(notRealHash + ':' + account);
                 } catch (e) {
                     expect(e).toBeTruthy();
-                    expect(e.message).toEqual('send_tx_commit has timed out');
+                    expect(e.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
                 }
             }));
         });
