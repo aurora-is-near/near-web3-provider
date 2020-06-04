@@ -770,7 +770,7 @@ class NearProvider {
                 });
             return '0x' + result;
         } catch (e) {
-            return ;
+            return e;
         }
     }
 }
