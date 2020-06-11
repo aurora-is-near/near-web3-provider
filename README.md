@@ -35,15 +35,7 @@ Install and run NEARCore using Docker:
 ```
 $ git clone https://github.com/nearprotocol/nearcore
 $ cd nearcore
-$ make docker-nearcore
-$ ./scripts/start_localnet.py
-```
-
-To run NEARcore without Docker
-```
-$ git clone https://github.com/nearprotocol/nearcore
-$ cd nearcore
-$ ./scripts/start_localnet.py --nodocker
+$ ./scripts/start_unittest.py --local
 ```
 
 Run tests
@@ -57,7 +49,9 @@ Tests currently take ~50 seconds to run.
 
 The web3 Provider also needs to be tested against the `near-evm` contract.
 
-Follow the testing instructions on the [near-evm repo](https://github.com/near/near-evm#testing)
+Follow the testing instructions on the [near-evm repo](https://github.com/near/near-evm#testing).
+
+If you're developing against an in-flux contract, make sure to build the wasm code from `near-evm` and update the wasm code for the provider: `/artifacts/near_evm.wasm`.
 
 ## General Usage
 
