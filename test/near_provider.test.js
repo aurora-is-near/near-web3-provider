@@ -287,7 +287,7 @@ describe('\n---- PROVIDER ----', () => {
             }));
         });
 
-        describe.skip('web3 Contract Abstraction', () => {
+        describe('web3 Contract Abstraction', () => {
             test('can instantiate and run view functions', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI, zombieAddress);
                 let callRes = await zombies.methods.getZombiesByOwner(`0x${'22'.repeat(20)}`).call();
