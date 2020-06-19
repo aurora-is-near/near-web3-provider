@@ -14,9 +14,9 @@ const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
 
 // see NearProvider constructor, src/index.js
-const NETWORK_ID = process.env.NEAR_NETWORK_ID || 'local';
+const NEAR_ENV = process.env.NEAR_ENV || 'local';
 
-const config = require('./config')[NETWORK_ID];
+const config = require('./config')[NEAR_ENV];
 const NODE_URL = config.nodeUrl;
 const ACCOUNT = require(config.keyPath);
 // Main/Sender Account. Default is test.near
@@ -27,7 +27,7 @@ const ACCOUNT_KEYPAIR = nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
 const testNearProvider = new nearlib.providers.JsonRpcProvider(NODE_URL);
 
 console.log(`-----------------------
-Running tests on ${NETWORK_ID} network
+Running tests on ${NEAR_ENV} network
 NODE_URL: ${NODE_URL}
 Account Id: ${ACCOUNT_ID}
 Public Key: ${ACCOUNT.public_key}
@@ -51,10 +51,10 @@ async function deployContract(web) {
     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
     const keyPair = createKeyPair();
 
-    console.log(`Deploying contract on NETWORK_ID: "${NETWORK_ID}"`);
+    console.log(`Deploying contract on NEAR_ENV: "${NEAR_ENV}"`);
 
     try {
-        await web._provider.keyStore.setKey(NETWORK_ID, evmAccountId, keyPair);
+        await web._provider.keyStore.setKey(NEAR_ENV, evmAccountId, keyPair);
     } catch (e) {
         throw new Error('Error setting key', e);
     }
