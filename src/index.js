@@ -1,7 +1,7 @@
 const BN = require('bn.js');
 const assert = require('bsert');
 const web3Utils = require('web3-utils');
-const nearlib = require('nearlib');
+const nearlib = require('near-api-js');
 
 const NEAR_NET_VERSION = '99';
 const NEAR_NET_VERSION_TEST = '98';
@@ -770,7 +770,7 @@ class NearProvider {
                 });
             return '0x' + result;
         } catch (e) {
-            return ;
+            return e;
         }
     }
 }

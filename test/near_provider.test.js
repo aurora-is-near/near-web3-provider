@@ -1,70 +1,44 @@
+/**
+ * These tests default to running a local NEAR node. nearcore must be
+ * running at the same folder level.
+ */
+
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const web3 = require('web3');
-const nearlib = require('nearlib');
+const nearlib = require('near-api-js');
 const utils = require('../src/utils');
 const { NearProvider } = require('../src/index');
 
-/**------------------------------------------------
- * TESTS IN FLUX
- *
- * Need to setup making transactions
- *
- * Hashes are hardcoded. New transactions need to be made and the
- * hashesupdated whenever testnet resets.
- *
- * ------------------------------------------------
- */
-
-const NEAR_NODE_URL = 'http://localhost:3030';
-const networkId = 'local'; // see NearProvider constructor, src/index.js
 const nearEvmFile = './artifacts/near_evm.wasm';
 const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
-const testNearProvider = new nearlib.providers.JsonRpcProvider(NEAR_NODE_URL);
 
-const configPath = path.resolve(os.homedir(), '.near', 'validator_key.json');
-const config = require(configPath);
+// see NearProvider constructor, src/index.js
+const NEAR_ENV = process.env.NEAR_ENV || 'local';
+
+const config = require('./config')[NEAR_ENV];
+const NODE_URL = config.nodeUrl;
+const ACCOUNT = require(config.keyPath);
+// Main/Sender Account. Default is test.near
+const ACCOUNT_ID = ACCOUNT.account_id;
+const ACCOUNT_KEY = ACCOUNT.secret_key;
+const ACCOUNT_KEYPAIR = nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
+
+const testNearProvider = new nearlib.providers.JsonRpcProvider(NODE_URL);
 
 console.log(`-----------------------
-Running tests on ${networkId} network
-NEAR_NODE_URL: ${NEAR_NODE_URL}
+Running tests on ${NEAR_ENV} network
+NODE_URL: ${NODE_URL}
+Account Id: ${ACCOUNT_ID}
+Public Key: ${ACCOUNT.public_key}
 -----------------------`);
-
-function createKeyPair() {
-    return nearlib.utils.KeyPair.fromRandom('ed25519');
-}
-
-
-async function getLatestBlockInfo() {
-    const { sync_info } = await testNearProvider.status();
-    const { latest_block_hash, latest_block_height } = sync_info;
-    const block = {
-        blockHash: utils.base58ToHex(latest_block_hash),
-        blockHeight: latest_block_height
-    };
-
-    return block;
-}
-
-async function waitForABlock() {
-    return await new Promise((r) => setTimeout(r, 1000));
-}
-
-
-// Main/Sender Account. Majority of tests will use this instance of web3
-const LOCAL_NEAR_ACCOUNT = config.account_id;
-// I don't know why but this has to be 'test'
-const LOCAL_NEAR_NETWORK_ID = 'test';
-const ACCOUNT_KEY = config.secret_key;
-const keyPair = nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
 
 const withWeb3 = (fn) => {
     const web = new web3();
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
-    keyStore.setKey(LOCAL_NEAR_NETWORK_ID, LOCAL_NEAR_ACCOUNT, keyPair);
-    web.setProvider(new NearProvider(NEAR_NODE_URL, keyStore, LOCAL_NEAR_ACCOUNT));
+    keyStore.setKey('test', ACCOUNT_ID, ACCOUNT_KEYPAIR);
+
+    web.setProvider(new NearProvider(NODE_URL, keyStore, ACCOUNT_ID));
     return () => fn(web);
 };
 
@@ -77,14 +51,22 @@ async function deployContract(web) {
     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
     const keyPair = createKeyPair();
 
+    console.log(`Deploying contract on NEAR_ENV: "${NEAR_ENV}"`);
+
     try {
-        console.log(`Deploying contract on networkId: "${networkId}"`);
-        await web._provider.keyStore.setKey(networkId, evmAccountId, keyPair);
+        await web._provider.keyStore.setKey(NEAR_ENV, evmAccountId, keyPair);
+    } catch (e) {
+        throw new Error('Error setting key', e);
+    }
+
+    try {
+        // Minimum amount required to cover storage - LackBalanceForState
+        const startingBalance = BigInt(54607084300000000000000000);
         const contract = await web._provider.account.createAndDeployContract(
             evmAccountId,
             keyPair.getPublicKey(),
             evmBytecode,
-            0);  // NEAR value
+            startingBalance);  // NEAR value
         console.log('deployed EVM contract', contract);
         return true;
     } catch (e) {
@@ -131,7 +113,6 @@ async function createEvmTransaction(web) {
 
         return txResult;
     } catch (e) {
-        console.log(e);
         return e;
     }
 }
@@ -227,6 +208,8 @@ describe('\n---- PROVIDER ----', () => {
                 });
                 zombieAddress = deployResult.contractAddress;
                 zombieABI = JSON.parse(fs.readFileSync(zombieABIFile).toString());
+
+                console.log({ zombieAddress })
             } catch(e) {
                 console.error('Contract Interaction beforeAll error:', e);
             }
@@ -250,7 +233,7 @@ describe('\n---- PROVIDER ----', () => {
             // TODO: test with a non-0 balance
             test('returns balance', withWeb3(async (web) => {
                 const balance = await web.eth.getBalance(
-                    utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT),
+                    utils.nearAccountToEvmAddress(ACCOUNT_ID),
                     'latest'
                 );
                 expect(typeof balance).toBe('string');
@@ -261,7 +244,7 @@ describe('\n---- PROVIDER ----', () => {
         describe('getStorageAt | eth_getStorageAt', () => {
             // TODO: test with a non-0 slot
             test('returns storage position', withWeb3(async (web) => {
-                const address = utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT);
+                const address = utils.nearAccountToEvmAddress(ACCOUNT_ID);
                 const position = 0;
                 let storagePosition = await web.eth.getStorageAt(address, position);
                 expect(typeof storagePosition).toBe('string');
@@ -272,7 +255,7 @@ describe('\n---- PROVIDER ----', () => {
         describe('getCode | eth_getCode', () => {
             // TODO: deploy a contract and test
             test('gets code', withWeb3(async (web) => {
-                const address = utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT);
+                const address = utils.nearAccountToEvmAddress(ACCOUNT_ID);
                 const code = await web.eth.getCode(address);
                 expect(typeof code).toBe('string');
                 expect(code).toStrictEqual('0x');
@@ -283,7 +266,7 @@ describe('\n---- PROVIDER ----', () => {
         describe('getTransactionCount | eth_getTransactionCount', () => {
             // TODO: call, make tx, call again to see if incremented
             test('returns transaction count', withWeb3(async (web) => {
-                const address = utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT);
+                const address = utils.nearAccountToEvmAddress(ACCOUNT_ID);
                 const txCount = await web.eth.getTransactionCount(address);
 
                 expect(typeof txCount).toBe('number');
@@ -328,7 +311,8 @@ describe('\n---- PROVIDER ----', () => {
             test('can deploy', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI);
                 try {
-                    let result = await zombies.deploy({data: `0x${zombieCode}`})
+                    let result = await zombies
+                        .deploy({data: `0x${zombieCode}`})
                         .send({from: web._provider.accountEvmAddress});
                     expect(result._address).toBeDefined();
                     expect(result._address.length).toStrictEqual(42);
@@ -486,9 +470,8 @@ describe('\n---- PROVIDER ----', () => {
         describe('getTransaction | eth_getTransactionByHash', () => {
             test('fails to get non-existant transactions', withWeb3(async(web) => {
                 try {
-                    await web.eth.getTransaction(`${base58TxHash}:${LOCAL_NEAR_ACCOUNT}`);
+                    await web.eth.getTransaction(`${base58TxHash}:${ACCOUNT_ID}`);
                 } catch (e) {
-                    console.log('e', e);
                     expect(e).toBeDefined();
                 }
             }));
@@ -568,20 +551,43 @@ describe('\n---- PROVIDER ----', () => {
                     await web.eth.getTransactionReceipt(badHash);
                 } catch (e) {
                     expect(e).toBeTruthy();
-                    expect(e.message).toEqual('[-32700] Parse error: incorrect length for hash');
+                    expect(e.message).toEqual('[-32602] Invalid params: Failed parsing args: incorrect length for hash');
                 }
             }));
 
-            // NB: Near will time out if it cannot find the tx instead of failing immediately.
             test('errors if hash does not exist', withWeb3(async (web) => {
+                const notRealHash = '9Y9SUcuLRX1afHsyocHiryPQvqAujrJqugy4WgjfXGiw';
+                const account = 'test.near';
+
                 try {
-                    const notRealHash = '9Y9SUcuLRX1afHsyocHiryPQvqAujrJqugy4WgjfXGiw:test.near';
-                    await web.eth.getTransactionReceipt(notRealHash);
+                    await web.eth.getTransactionReceipt(notRealHash + ':' + account);
                 } catch (e) {
                     expect(e).toBeTruthy();
-                    expect(e.message).toEqual('send_tx_commit has timed out');
+                    expect(e.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
                 }
             }));
         });
     });
 });
+
+/**
+ * Helpers
+ */
+function createKeyPair () {
+    return nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
+}
+
+async function getLatestBlockInfo () {
+    const { sync_info } = await testNearProvider.status();
+    const { latest_block_hash, latest_block_height } = sync_info;
+    const block = {
+        blockHash: utils.base58ToHex(latest_block_hash),
+        blockHeight: latest_block_height
+    };
+
+    return block;
+}
+
+async function waitForABlock () {
+    return await new Promise((r) => setTimeout(r, 1000));
+}
