@@ -1,100 +1,159 @@
+/**
+ * These tests default to running a local NEAR node. nearcore must be
+ * running at the same folder level.
+ */
+
 const fs = require('fs');
 const web3 = require('web3');
-const nearlib = require('nearlib');
+const nearlib = require('near-api-js');
 const utils = require('../src/utils');
 const { NearProvider } = require('../src/index');
 
-/**------------------------------------------------
- * TESTS IN FLUX
- *
- * Need to setup making transactions
- *
- * Hashes are hardcoded. New transactions need to be made and the
- * hashesupdated whenever testnet resets.
- *
- * ------------------------------------------------
- */
-
-let url = 'http://localhost:3030';
-const networkId = 'local'; // see NearProvider constructor, src/index.js
 const nearEvmFile = './artifacts/near_evm.wasm';
 const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
-const testNearProvider = new nearlib.providers.JsonRpcProvider(url);
+
+// see NearProvider constructor, src/index.js
+const NEAR_ENV = process.env.NEAR_ENV || 'local';
+
+const config = require('./config')[NEAR_ENV];
+const NODE_URL = config.nodeUrl;
+const ACCOUNT = require(config.keyPath);
+// Main/Sender Account. Default is test.near
+const ACCOUNT_ID = ACCOUNT.account_id;
+const ACCOUNT_KEY = ACCOUNT.secret_key;
+const ACCOUNT_KEYPAIR = nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
+
+const testNearProvider = new nearlib.providers.JsonRpcProvider(NODE_URL);
 
 console.log(`-----------------------
-Running tests on ${networkId} network
-URL: ${url}
+Running tests on ${NEAR_ENV} network
+NODE_URL: ${NODE_URL}
+Account Id: ${ACCOUNT_ID}
+Public Key: ${ACCOUNT.public_key}
 -----------------------`);
-
-
-function createKeyPair() {
-    return nearlib.utils.KeyPair.fromRandom('ed25519');
-}
-
-async function getLatestBlockInfo() {
-    const { sync_info } = await testNearProvider.status();
-    const { latest_block_hash, latest_block_height } = sync_info;
-    const block = {
-        blockHash: utils.base58ToHex(latest_block_hash),
-        blockHeight: latest_block_height
-    };
-
-    return block;
-}
-
-async function waitForABlock() {
-    return await new Promise((r) => setTimeout(r, 1000));
-}
-
-// Main/Sender Account. Majority of tests will use this instance of web3
-const LOCAL_NEAR_ACCOUNT = 'test.near';
 
 const withWeb3 = (fn) => {
     const web = new web3();
-
-    const keyPairString = 'ed25519:2wyRcSwSuHtRVmkMCGjPwnzZmQLeXLzLLyED1NDMt4BjnKgQL6tF85yBx6Jr26D2dUNeC716RBoTxntVHsegogYw';
-    const keyPair = nearlib.utils.KeyPair.fromString(keyPairString);
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+    keyStore.setKey('test', ACCOUNT_ID, ACCOUNT_KEYPAIR);
 
-    // I don't know why this has to be 'test'
-    keyStore.setKey('test', LOCAL_NEAR_ACCOUNT, keyPair);
-
-    web.setProvider(new NearProvider(url, keyStore, LOCAL_NEAR_ACCOUNT));
+    web.setProvider(new NearProvider(NODE_URL, keyStore, ACCOUNT_ID));
     return () => fn(web);
 };
 
+/**
+ * Deploys evm contract
+ */
+async function deployContract(web) {
+    const evmAccountId = 'evm';
+    const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
+    const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
+    const keyPair = createKeyPair();
+
+    console.log(`Deploying contract on NEAR_ENV: "${NEAR_ENV}"`);
+
+    try {
+        await web._provider.keyStore.setKey(NEAR_ENV, evmAccountId, keyPair);
+    } catch (e) {
+        throw new Error('Error setting key', e);
+    }
+
+    try {
+        // Minimum amount required to cover storage - LackBalanceForState
+        const startingBalance = BigInt(54607084300000000000000000);
+        const contract = await web._provider.account.createAndDeployContract(
+            evmAccountId,
+            keyPair.getPublicKey(),
+            evmBytecode,
+            startingBalance);  // NEAR value
+        console.log('deployed EVM contract', contract);
+        return true;
+    } catch (e) {
+        if (e.type === 'ActionError::AccountAlreadyExists') {
+            console.log('EVM already deployed');
+            return true;
+        } else {
+            console.log('EVM deploy error', e);
+            return false;
+        }
+    }
+}
+
+/**
+ * Checks if account exists
+ */
+async function accountExists(web, accountName) {
+    try {
+        await web._provider.nearProvider.query(`account/${accountName}`, '');
+        return true;
+    } catch (e) {
+        if (e.message === `[-32000] Server error: account ${accountName} does not exist while viewing`) {
+            console.log(`Account "${accountName}" does not exist`);
+        } else {
+            console.error('accountExists error', e);
+        }
+        return false;
+    }
+}
+
+/**
+ * Creates an EVM Transaction
+ * @returns transaction result aka transaction receipt
+ */
+async function createEvmTransaction(web) {
+    try {
+        const txResult = await web.eth.sendTransaction({
+            from: '00'.repeat(20),
+            to: '00'.repeat(20),
+            value: 0,
+            gas: 0,
+            data: '0x00'
+        });
+
+        return txResult;
+    } catch (e) {
+        return e;
+    }
+}
+
 describe('\n---- PROVIDER ----', () => {
     beforeAll(withWeb3(async (web) => {
-        const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
-        const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-        const keyPair = createKeyPair();
-        console.log('networkId variable', networkId);
         try {
-            await web._provider.keyStore.setKey(networkId, 'evm', keyPair);
-            const contract = await web._provider.account.createAndDeployContract(
-                'evm',
-                keyPair.getPublicKey(),
-                evmBytecode,
-                0);  // NEAR value
-            console.log('deployed EVM contract', contract);
-        } catch (e) {
-            if (e.type === 'ActionError::AccountAlreadyExists') {
-                console.log('EVM already deployed');
-            } else {
-                console.log('EVM deploy error', e);
+            const exists = await accountExists(web, 'evm');
+            if (exists) {
+                return true;
             }
+            return await deployContract(web);
+        } catch (e) {
+            console.error('Error in beforeAll', e);
         }
     }));
 
     describe('\n---- BASIC QUERIES ----', () => {
+        describe('getProtocolVersion | eth_protocolVersion', () => {
+            test('returns protocol version', withWeb3(async (web) => {
+                try {
+                    // Get current version
+                    const { version: { version } } = await testNearProvider.status();
+                    const getVersion = await web.eth.getProtocolVersion();
+
+                    expect(typeof version).toStrictEqual('string');
+                    expect(web3.utils.toHex(version)).toStrictEqual(getVersion);
+                } catch (e) {
+                    expect(e).toBeNull();
+                    return e;
+                }
+            }));
+        });
+
         describe('isSyncing | eth_syncing', () => {
             test('returns correct type - Boolean|Object', withWeb3(async (web) => {
                 try {
                     const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
                     const newAccount = await web._provider.account.createAccount('test.sync', keyPair.getPublicKey(), 2);
+                    expect(newAccount).toBe('object');
 
-                    console.log({newAccount});
                     const sync = await web.eth.isSyncing();
                     const syncType = typeof sync;
                     expect(syncType).toBe('boolean' || 'object');
@@ -128,7 +187,6 @@ describe('\n---- PROVIDER ----', () => {
             test('returns gasPrice', withWeb3(async (web) => {
                 const gasPrice = await web.eth.getGasPrice();
                 expect(typeof gasPrice).toBe('string');
-                expect(gasPrice).toStrictEqual('0');
             }));
         });
     });
@@ -139,16 +197,22 @@ describe('\n---- PROVIDER ----', () => {
         let zombieAddress;
 
         beforeAll(withWeb3(async (web) => {
-          zombieCode = fs.readFileSync(zombieCodeFile).toString();
-          const deployResult = await web.eth.sendTransaction({
-              from: '00'.repeat(20),
-              to: undefined,
-              value: 0,
-              gas: 0,
-              data: `0x${zombieCode}`
-          });
-          zombieAddress = deployResult.contractAddress;
-          zombieABI = JSON.parse(fs.readFileSync(zombieABIFile).toString());
+            try {
+                zombieCode = fs.readFileSync(zombieCodeFile).toString();
+                const deployResult = await web.eth.sendTransaction({
+                    from: `0x${'00'.repeat(20)}`,
+                    to: undefined,
+                    value: 10,
+                    gas: 0,
+                    data: `0x${zombieCode}`
+                });
+                zombieAddress = deployResult.contractAddress;
+                zombieABI = JSON.parse(fs.readFileSync(zombieABIFile).toString());
+
+                console.log({ zombieAddress })
+            } catch(e) {
+                console.error('Contract Interaction beforeAll error:', e);
+            }
         }));
 
         describe('getAccounts | eth_accounts', () => {
@@ -169,7 +233,7 @@ describe('\n---- PROVIDER ----', () => {
             // TODO: test with a non-0 balance
             test('returns balance', withWeb3(async (web) => {
                 const balance = await web.eth.getBalance(
-                    utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT),
+                    utils.nearAccountToEvmAddress(ACCOUNT_ID),
                     'latest'
                 );
                 expect(typeof balance).toBe('string');
@@ -180,7 +244,7 @@ describe('\n---- PROVIDER ----', () => {
         describe('getStorageAt | eth_getStorageAt', () => {
             // TODO: test with a non-0 slot
             test('returns storage position', withWeb3(async (web) => {
-                const address = utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT);
+                const address = utils.nearAccountToEvmAddress(ACCOUNT_ID);
                 const position = 0;
                 let storagePosition = await web.eth.getStorageAt(address, position);
                 expect(typeof storagePosition).toBe('string');
@@ -191,7 +255,7 @@ describe('\n---- PROVIDER ----', () => {
         describe('getCode | eth_getCode', () => {
             // TODO: deploy a contract and test
             test('gets code', withWeb3(async (web) => {
-                const address = utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT);
+                const address = utils.nearAccountToEvmAddress(ACCOUNT_ID);
                 const code = await web.eth.getCode(address);
                 expect(typeof code).toBe('string');
                 expect(code).toStrictEqual('0x');
@@ -202,7 +266,7 @@ describe('\n---- PROVIDER ----', () => {
         describe('getTransactionCount | eth_getTransactionCount', () => {
             // TODO: call, make tx, call again to see if incremented
             test('returns transaction count', withWeb3(async (web) => {
-                const address = utils.nearAccountToEvmAddress(LOCAL_NEAR_ACCOUNT);
+                const address = utils.nearAccountToEvmAddress(ACCOUNT_ID);
                 const txCount = await web.eth.getTransactionCount(address);
 
                 expect(typeof txCount).toBe('number');
@@ -215,12 +279,10 @@ describe('\n---- PROVIDER ----', () => {
             test('calls view functions', withWeb3(async (web) => {
                 // this data blob calls getZombiesByOwner
                 // with an argument of an address consisting of 22
-                let result = await web.eth.call(
-                  {
+                let result = await web.eth.call({
                     to: zombieAddress,
                     data: '0x4412e1040000000000000000000000002222222222222222222222222222222222222222'
-                  }
-                );
+                });
                 expect(result).toStrictEqual(`0x${'00'.repeat(31)}20${'00'.repeat(32)}`);
             }));
         });
@@ -234,8 +296,8 @@ describe('\n---- PROVIDER ----', () => {
             }));
 
             test('can make transactions', withWeb3(async (web) => {
-              let zombies = new web.eth.Contract(zombieABI, zombieAddress);
-                let txRes = await zombies.methods.createRandomZombie("george")
+                let zombies = new web.eth.Contract(zombieABI, zombieAddress);
+                let txRes = await zombies.methods.createRandomZombie('george')
                     .send({from: web._provider.accountEvmAddress});
                 expect(txRes).toBeInstanceOf(Object);
                 expect(txRes.from).toStrictEqual(web._provider.accountEvmAddress);
@@ -247,16 +309,17 @@ describe('\n---- PROVIDER ----', () => {
             }), 11000);
 
             test('can deploy', withWeb3(async (web) => {
-              let zombies = new web.eth.Contract(zombieABI);
-              try {
-                let result = await zombies.deploy({data: `0x${zombieCode}`})
-                    .send({from: web._provider.accountEvmAddress});
-                expect(result._address).toBeDefined();
-                expect(result._address.length).toStrictEqual(42);
-                expect(result._address.slice(0, 2)).toStrictEqual('0x');
-              } catch (e) {
-                return e;
-              }
+                let zombies = new web.eth.Contract(zombieABI);
+                try {
+                    let result = await zombies
+                        .deploy({data: `0x${zombieCode}`})
+                        .send({from: web._provider.accountEvmAddress});
+                    expect(result._address).toBeDefined();
+                    expect(result._address.length).toStrictEqual(42);
+                    expect(result._address.slice(0, 2)).toStrictEqual('0x');
+                } catch (e) {
+                    return e;
+                }
             }), 11000);
         });
 
@@ -265,24 +328,30 @@ describe('\n---- PROVIDER ----', () => {
     describe('\n---- BLOCK & TRANSACTION QUERIES ----', () => {
         let blockHash;
         let blockHeight;
+        let txResult;
         let transactionHash;
-
+        let txIndex;
+        let blockWithTxsHash;
+        let blockWithTxsNumber;
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
-
-        const txIndex = 0;
 
         beforeAll(withWeb3(async (web) => {
             const newBlock = await getLatestBlockInfo();
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
-            const txResult = await web.eth.sendTransaction({
+
+            txResult = await web.eth.sendTransaction({
                 from: '00'.repeat(20),
                 to: '00'.repeat(20),
                 value: 0,
                 gas: 0,
                 data: '0x00'
             });
+
             transactionHash = txResult.transactionHash;
+            txIndex = txResult.transactionIndex;
+            blockWithTxsHash = txResult.blockHash;
+            blockWithTxsNumber = txResult.blockNumber;
         }));
 
         describe('getBlockNumber | eth_blockNumber', () => {
@@ -369,38 +438,48 @@ describe('\n---- PROVIDER ----', () => {
             eth_getBlockTransactionCountByHash,
             eth_getBlockTransactionCountByNumber`, () => {
 
-            // broken on local because no txns on regtest.
-            test('gets block tx count by hash', withWeb3(async (web) => {
+            test('gets count by block hash: one tx ', withWeb3(async (web) => {
+                const count = await web.eth.getBlockTransactionCount(blockWithTxsHash);
+                expect(count).not.toBeNaN();
+                expect(typeof count).toBe('number');
+                expect(count).toBeGreaterThanOrEqual(1);
+            }));
+
+            test('gets count by block number: one tx', withWeb3(async (web) => {
+                const count = await web.eth.getBlockTransactionCount(blockWithTxsNumber);
+                expect(count).not.toBeNaN();
+                expect(typeof count).toBe('number');
+                expect(count).toBeGreaterThanOrEqual(1);
+            }));
+
+            test('gets count by block hash: empty block', withWeb3(async (web) => {
                 const count = await web.eth.getBlockTransactionCount(blockHash);
                 expect(count).not.toBeNaN();
                 expect(typeof count).toBe('number');
-                expect(count).toBeGreaterThanOrEqual(0);
+                expect(count).toEqual(0);
             }));
 
-            // broken on local because no txns on regtest.
-            test('gets block tx count by number', withWeb3(async (web) => {
+            test('gets count by block number: empty block', withWeb3(async (web) => {
                 const count = await web.eth.getBlockTransactionCount(blockHeight);
                 expect(count).not.toBeNaN();
                 expect(typeof count).toBe('number');
-                expect(count).toBeGreaterThanOrEqual(0);
+                expect(count).toEqual(0);
             }));
         });
 
         describe('getTransaction | eth_getTransactionByHash', () => {
-            // broken on local because no txns on regtest.
             test('fails to get non-existant transactions', withWeb3(async(web) => {
                 try {
-                    const tx = await web.eth.getTransaction(`${base58TxHash}:${LOCAL_NEAR_ACCOUNT}`);
-                    expect(tx).toBeNull();
+                    await web.eth.getTransaction(`${base58TxHash}:${ACCOUNT_ID}`);
                 } catch (e) {
-                    return e;
+                    expect(e).toBeDefined();
                 }
-            }), 11000);
+            }));
 
             test('it gets a transaction by hash', withWeb3(async(web) => {
                 try {
                     const tx = await web.eth.getTransaction(transactionHash);
-                    expect(tx).toBeOk();
+                    expect(tx).toBeDefined();
                     expect(tx.contractAddress).toBeNull();
                     expect(tx.status).toBe(true);
                 } catch (e) {
@@ -412,40 +491,103 @@ describe('\n---- PROVIDER ----', () => {
         describe(`getTransactionFromBlock |
             eth_getTransactionByBlockHashAndIndex,
             eth_getTransactionByBlockNumberAndIndex`, () => {
-            // broken on local because no txns on regtest.
+
             test('returns transaction from block hash', withWeb3(async (web) => {
-                const tx = await web.eth.getTransactionFromBlock(blockHash, txIndex);
+                const tx = await web.eth.getTransactionFromBlock(blockWithTxsHash, txIndex);
                 expect(typeof tx).toBe('object');
-                if (tx) {
-                    expect(typeof tx.hash).toBe('string');
-                }
+                expect(typeof tx.hash).toBe('string');
+                expect(tx.hash).toStrictEqual(transactionHash);
             }));
 
-            // broken on local because no txns on regtest.
+
             test('returns transaction from block number', withWeb3(async (web) => {
-                const tx = await web.eth.getTransactionFromBlock(blockHeight, txIndex);
+                const tx = await web.eth.getTransactionFromBlock(blockWithTxsNumber, txIndex);
                 expect(typeof tx).toBe('object');
-                if (tx) {
-                    expect(typeof tx.hash).toBe('string');
-                }
+                expect(typeof tx.hash).toBe('string');
+                expect(tx.hash).toStrictEqual(transactionHash);
             }));
 
-            // broken on local because no txns on regtest.
+
             test('returns transaction from string - latest', withWeb3(async (web) => {
                 const tx = await web.eth.getTransactionFromBlock('latest', txIndex);
-                expect(typeof tx).toBe('object');
-                if (tx) {
-                    expect(typeof tx.hash).toBe('string');
-                }
+                // NB: We expect this to be null because the latest block will not have a transaction on it.
+                expect(tx).toBeNull();
             }));
 
             test('returns tx from string - genesis', withWeb3(async (web) => {
                 const tx = await web.eth.getTransactionFromBlock('earliest', txIndex);
-                expect(typeof tx).toBe('object');
-                if (tx) {
-                    expect(typeof tx.hash).toBe('string');
+                // NB: We expect this to be null because the latest block will not have a transaction on it.
+                expect(tx).toBeNull();
+            }));
+
+            test('errors if block does not exist', withWeb3(async (web) => {
+                try {
+                    const notRealBlockHash = utils.base58ToHex('3cdkbRn1hpNLH5Ri6pipy7AEAKJscPD7TCgLFs94nWGB');
+                    await web.eth.getTransactionFromBlock(notRealBlockHash, txIndex);
+                } catch (e) {
+                    expect(e).toBeDefined();
+                    return e;
+                }
+            }));
+        });
+
+        describe('getTransactionReceipt | eth_getTransactionReceipt', () => {
+            test('gets transaction receipt', withWeb3(async (web) => {
+                try {
+                    const txResult = await createEvmTransaction(web);
+                    const txReceipt = await web.eth.getTransactionReceipt(txResult.transactionHash);
+
+                    expect(typeof transactionHash).toBeTruthy();
+                    expect(typeof transactionHash).toStrictEqual('object');
+                    expect(transactionHash).toStrictEqual(txReceipt.transactionHash);
+                } catch (e) {
+                    return e;
+                }
+            }));
+
+            test('errors if not a real txhash', withWeb3(async (web) => {
+                try {
+                    const badHash = 'whatsuppppp:hello';
+                    await web.eth.getTransactionReceipt(badHash);
+                } catch (e) {
+                    expect(e).toBeTruthy();
+                    expect(e.message).toEqual('[-32602] Invalid params: Failed parsing args: incorrect length for hash');
+                }
+            }));
+
+            test('errors if hash does not exist', withWeb3(async (web) => {
+                const notRealHash = '9Y9SUcuLRX1afHsyocHiryPQvqAujrJqugy4WgjfXGiw';
+                const account = 'test.near';
+
+                try {
+                    await web.eth.getTransactionReceipt(notRealHash + ':' + account);
+                } catch (e) {
+                    expect(e).toBeTruthy();
+                    expect(e.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
                 }
             }));
         });
     });
 });
+
+/**
+ * Helpers
+ */
+function createKeyPair () {
+    return nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
+}
+
+async function getLatestBlockInfo () {
+    const { sync_info } = await testNearProvider.status();
+    const { latest_block_hash, latest_block_height } = sync_info;
+    const block = {
+        blockHash: utils.base58ToHex(latest_block_hash),
+        blockHeight: latest_block_height
+    };
+
+    return block;
+}
+
+async function waitForABlock () {
+    return await new Promise((r) => setTimeout(r, 1000));
+}
