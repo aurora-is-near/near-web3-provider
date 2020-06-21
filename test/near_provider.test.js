@@ -287,6 +287,39 @@ describe('\n---- PROVIDER ----', () => {
             }));
         });
 
+        describe('sendTransaction | eth_sendTransaction', () => {
+            test('sends the correct balance when deploying code', withWeb3(async (web) => {
+                // zombieAddress deployed with val 10 in beforeAll
+                const balance = await web.eth.getBalance(
+                    zombieAddress,
+                    'latest'
+                );
+                expect(balance).toStrictEqual("10");
+            }));
+
+            test.only('sends the correct balance when simply transferring funds to other evm address', withWeb3(async (web) => {
+                const from = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                const to = utils.nearAccountToEvmAddress("random")
+                const value = 5
+
+                console.log("balance of acct: ", await web.eth.getBalance(from, 'latest'))
+                const addNear = await web.eth.sendTransaction({
+                    from,
+                    to: from,
+                    value: value * 2,
+                    gas: 0
+                });
+                console.log("balance of acct: ", await web.eth.getBalance(from, 'latest'))
+
+                const sendResult = await web.eth.sendTransaction({
+                    from,
+                    to,
+                    value,
+                    gas: 0
+                });
+            }));
+        });
+
         describe('web3 Contract Abstraction', () => {
             test('can instantiate and run view functions', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI, zombieAddress);

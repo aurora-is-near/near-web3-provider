@@ -686,18 +686,6 @@ class NearProvider {
                 const remove = utils.remove0x(value)
                 val = new BN(remove, 16)
             }
-            // value === undefined
-            //     ? new BN(0)
-            //     : new BN(utils.remove0x(value), 16);
-
-            // TODO: differentiate simple sends
-            const functionCallData = {
-                contractId: this.evm_contract,
-                methodName: 'deploy_code',
-                args: { 'bytecode': utils.remove0x(data) },
-                gas: GAS_AMOUNT,
-                amount: val
-            }
 
             if (to === undefined) {
                 // Contract deployment.
@@ -708,7 +696,34 @@ class NearProvider {
                     GAS_AMOUNT,
                     val
                 );
+            } else if (to != `0x${"0".repeat(40)}` && to == txObj.from) {
+                // Add near
+                console.log("**ADD NEAR**")
+                outcome = await this.account.functionCall(
+                    this.evm_contract,
+                    'add_near',
+                    {},
+                    GAS_AMOUNT,
+                    val
+                )
+            }
+            else if (data == undefined) {
+                // Simple Send
+                let zeroVal = new BN(0)
+                console.log("sendTransaction **SIMPLE SEND**")
+                console.log("to balance: ", await this.routeEthGetBalance([to]))
+                outcome = await this.account.functionCall(
+                    this.evm_contract,
+                    'move_funds_to_evm_address',
+                    { 'address': utils.remove0x(to), 'amount': val },
+                    GAS_AMOUNT,
+                    zeroVal
+                );
+                console.log("to balance: ", await this.routeEthGetBalance([to]))
             } else {
+                // Function Call
+                console.log("sendTransaction **FUNCTION CALL** ")
+                console.log({from: txObj.from, to, value, data})
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'call_contract',
