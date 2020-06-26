@@ -9,6 +9,7 @@ const nearlib = require('near-api-js');
 const utils = require('../src/utils');
 const { NearProvider } = require('../src/index');
 
+// TODO: update nearEvmFile frequently when near_evm work is being done
 const nearEvmFile = './artifacts/near_evm.wasm';
 const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
@@ -230,14 +231,24 @@ describe('\n---- PROVIDER ----', () => {
         });
 
         describe('getBalance | eth_getBalance', () => {
-            // TODO: test with a non-0 balance
             test('returns balance', withWeb3(async (web) => {
+                let evmAddress = utils.nearAccountToEvmAddress(ACCOUNT_ID);
+                let value = 20;
+
                 const balance = await web.eth.getBalance(
-                    utils.nearAccountToEvmAddress(ACCOUNT_ID),
+                    evmAddress,
                     'latest'
                 );
                 expect(typeof balance).toBe('string');
-                expect(balance).toStrictEqual('0');
+
+                const addNear = await web.eth.sendTransaction({
+                    from: evmAddress,
+                    to: evmAddress,
+                    value: value,
+                    gas: 0
+                });
+                let newBalance = parseInt(await web.eth.getBalance(evmAddress, 'latest'))
+                expect(parseInt(newBalance)).toStrictEqual(parseInt(balance) + value);
             }));
         });
 
