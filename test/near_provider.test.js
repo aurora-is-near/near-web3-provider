@@ -247,7 +247,10 @@ describe('\n---- PROVIDER ----', () => {
                     value: value,
                     gas: 0
                 });
-                let newBalance = parseInt(await web.eth.getBalance(evmAddress, 'latest'))
+                let newBalance = await web.eth.getBalance(
+                    evmAddress,
+                    'latest'
+                );
                 expect(parseInt(newBalance)).toStrictEqual(parseInt(balance) + value);
             }));
         });
