@@ -687,7 +687,29 @@ class NearProvider {
                 val = new BN(remove, 16)
             }
 
-            if (to === undefined) {
+            if (data == undefined) {
+                // send funds
+                if (to != ZERO_ADDRESS && to == from) {
+                    // Add near to corresponding evm account
+                    outcome = await this.account.functionCall(
+                        this.evm_contract,
+                        'add_near',
+                        {},
+                        GAS_AMOUNT,
+                        val
+                    )
+                } else  {
+                    // Simple Transfer b/w EVM accounts
+                    let zeroVal = new BN(0)
+                    outcome = await this.account.functionCall(
+                        this.evm_contract,
+                        'move_funds_to_evm_address',
+                        { 'address': utils.remove0x(to), 'amount': val.toString() },
+                        GAS_AMOUNT,
+                        zeroVal
+                    );
+                }
+            } else if (to === undefined) {
                 // Contract deployment
                 outcome = await this.account.functionCall(
                     this.evm_contract,
@@ -695,26 +717,6 @@ class NearProvider {
                     { bytecode: utils.remove0x(data) },
                     GAS_AMOUNT,
                     val
-                );
-            } else if (to != ZERO_ADDRESS && to == from) {
-                // Add near to corresponding evm account
-                outcome = await this.account.functionCall(
-                    this.evm_contract,
-                    'add_near',
-                    {},
-                    GAS_AMOUNT,
-                    val
-                )
-            }
-            else if (data == undefined) {
-                // Simple Transfer b/w EVM accounts
-                let zeroVal = new BN(0)
-                outcome = await this.account.functionCall(
-                    this.evm_contract,
-                    'move_funds_to_evm_address',
-                    { 'address': utils.remove0x(to), 'amount': val.toString() },
-                    GAS_AMOUNT,
-                    zeroVal
                 );
             } else {
                 // Function Call
