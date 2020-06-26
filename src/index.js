@@ -712,7 +712,7 @@ class NearProvider {
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'move_funds_to_evm_address',
-                    { 'address': utils.remove0x(to), 'amount': val },
+                    { 'address': utils.remove0x(to), 'amount': val.toString() },
                     GAS_AMOUNT,
                     zeroVal
                 );
