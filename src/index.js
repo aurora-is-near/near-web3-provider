@@ -10,6 +10,7 @@ const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
 const GAS_AMOUNT = new BN('1000000000000000'); // 10e14.
+const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
 class NearProvider {
     constructor(url, keyStore, accountId, networkId, evmContractName) {
@@ -452,7 +453,6 @@ class NearProvider {
      */
     async routeEthGetBlockByHash([blockHash, returnTxObjects]) {
         try {
-            // console.log('gethash', blockHash);
             assert(blockHash, 'Must pass in blockHash');
             blockHash = utils.hexToBase58(blockHash);
             const block = await this._getBlock(blockHash, returnTxObjects);
@@ -679,7 +679,7 @@ class NearProvider {
         try {
             let outcome;
             let val;
-            const { to, value, data } = txObj;
+            const { from, to, value, data } = txObj;
             if (value === undefined) {
                 val = new BN(0)
             } else {
@@ -688,7 +688,7 @@ class NearProvider {
             }
 
             if (to === undefined) {
-                // Contract deployment.
+                // Contract deployment
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'deploy_code',
@@ -696,9 +696,8 @@ class NearProvider {
                     GAS_AMOUNT,
                     val
                 );
-            } else if (to != `0x${"0".repeat(40)}` && to == txObj.from) {
-                // Add near
-                console.log("**ADD NEAR**")
+            } else if (to != ZERO_ADDRESS && to == from) {
+                // Add near to corresponding evm account
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'add_near',
@@ -708,10 +707,8 @@ class NearProvider {
                 )
             }
             else if (data == undefined) {
-                // Simple Send
+                // Simple Transfer b/w EVM accounts
                 let zeroVal = new BN(0)
-                console.log("sendTransaction **SIMPLE SEND**")
-                console.log("to balance: ", await this.routeEthGetBalance([to]))
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'move_funds_to_evm_address',
@@ -719,11 +716,8 @@ class NearProvider {
                     GAS_AMOUNT,
                     zeroVal
                 );
-                console.log("to balance: ", await this.routeEthGetBalance([to]))
             } else {
                 // Function Call
-                console.log("sendTransaction **FUNCTION CALL** ")
-                console.log({from: txObj.from, to, value, data})
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'call_contract',

@@ -297,26 +297,32 @@ describe('\n---- PROVIDER ----', () => {
                 expect(balance).toStrictEqual("10");
             }));
 
-            test.only('sends the correct balance when simply transferring funds to other evm address', withWeb3(async (web) => {
+            test('sends the correct balance when simply transferring funds to other evm address', withWeb3(async (web) => {
                 const from = utils.nearAccountToEvmAddress(ACCOUNT_ID)
                 const to = utils.nearAccountToEvmAddress("random")
                 const value = 5
-
-                console.log("balance of acct: ", await web.eth.getBalance(from, 'latest'))
                 const addNear = await web.eth.sendTransaction({
                     from,
                     to: from,
                     value: value * 2,
                     gas: 0
                 });
-                console.log("balance of acct: ", await web.eth.getBalance(from, 'latest'))
+
+                let prevFromBalance = parseInt(await web.eth.getBalance(from, 'latest'))
+                let prevToBalance = parseInt(await web.eth.getBalance(to, 'latest'))
 
                 const sendResult = await web.eth.sendTransaction({
                     from,
                     to,
-                    value,
+                    value: value,
                     gas: 0
                 });
+
+                let newFromBalance = parseInt(await web.eth.getBalance(from, 'latest'))
+                let newToBalance = parseInt(await web.eth.getBalance(to, 'latest'))
+
+                expect(newFromBalance).toStrictEqual(prevFromBalance - value);
+                expect(newToBalance).toStrictEqual(prevToBalance + value);
             }));
         });
 
