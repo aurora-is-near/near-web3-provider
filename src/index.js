@@ -687,9 +687,9 @@ class NearProvider {
                 val = new BN(remove, 16)
             }
 
-            if (data == undefined) {
+            if (data === undefined) {
                 // send funds
-                if (to != ZERO_ADDRESS && to == from) {
+                if (to !== ZERO_ADDRESS && to === from) {
                     // Add near to corresponding evm account
                     outcome = await this.account.functionCall(
                         this.evm_contract,
