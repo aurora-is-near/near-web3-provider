@@ -19,6 +19,8 @@ $ npm install near-web3-provider
 
 Tests require [running a local `nearcore`](https://docs.nearprotocol.com/docs/local-setup/local-dev-testnet).
 
+> Note: `nearcore` should be on `stable` branch.
+
 ### Setup and Run NEARCore
 
 Install Rustup:

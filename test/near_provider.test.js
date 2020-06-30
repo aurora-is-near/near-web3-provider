@@ -9,6 +9,7 @@ const nearlib = require('near-api-js');
 const utils = require('../src/utils');
 const { NearProvider } = require('../src/index');
 
+// TODO: update nearEvmFile frequently when near_evm work is being done
 const nearEvmFile = './artifacts/near_evm.wasm';
 const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
@@ -230,14 +231,27 @@ describe('\n---- PROVIDER ----', () => {
         });
 
         describe('getBalance | eth_getBalance', () => {
-            // TODO: test with a non-0 balance
             test('returns balance', withWeb3(async (web) => {
+                let evmAddress = utils.nearAccountToEvmAddress(ACCOUNT_ID);
+                let value = 20;
+
                 const balance = await web.eth.getBalance(
-                    utils.nearAccountToEvmAddress(ACCOUNT_ID),
+                    evmAddress,
                     'latest'
                 );
                 expect(typeof balance).toBe('string');
-                expect(balance).toStrictEqual('0');
+
+                const addNear = await web.eth.sendTransaction({
+                    from: evmAddress,
+                    to: evmAddress,
+                    value: value,
+                    gas: 0
+                });
+                let newBalance = await web.eth.getBalance(
+                    evmAddress,
+                    'latest'
+                );
+                expect(parseInt(newBalance)).toStrictEqual(parseInt(balance) + value);
             }));
         });
 
@@ -284,6 +298,61 @@ describe('\n---- PROVIDER ----', () => {
                     data: '0x4412e1040000000000000000000000002222222222222222222222222222222222222222'
                 });
                 expect(result).toStrictEqual(`0x${'00'.repeat(31)}20${'00'.repeat(32)}`);
+            }));
+        });
+
+        describe('sendTransaction | eth_sendTransaction', () => {
+            test('sends the correct balance when deploying code', withWeb3(async (web) => {
+                // zombieAddress deployed with val 10 in beforeAll
+                const balance = await web.eth.getBalance(
+                    zombieAddress,
+                    'latest'
+                );
+                expect(balance).toStrictEqual("10");
+            }));
+
+            test('sends value from near account to corresponding evm account', withWeb3(async (web) => {
+                const from = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                const value = 10 * (10 ** 18)
+
+                let prevBalance = parseInt(await web.eth.getBalance(from, 'latest'))
+                const addNear = await web.eth.sendTransaction({
+                    from,
+                    to: from,
+                    value: value,
+                    gas: 0
+                });
+                let newBalance = parseInt(await web.eth.getBalance(from, 'latest'))
+
+                expect(newBalance).toStrictEqual(prevBalance + value);
+            }));
+
+            test('sends the correct balance when simply transferring funds to other evm address', withWeb3(async (web) => {
+                const from = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                const to = utils.nearAccountToEvmAddress("random")
+                const value = 15 * (10 ** 18)
+                const addNear = await web.eth.sendTransaction({
+                    from,
+                    to: from,
+                    value: value * 2,
+                    gas: 0
+                });
+
+                let prevFromBalance = parseInt(await web.eth.getBalance(from, 'latest'))
+                let prevToBalance = parseInt(await web.eth.getBalance(to, 'latest'))
+
+                const sendResult = await web.eth.sendTransaction({
+                    from,
+                    to,
+                    value,
+                    gas: 0
+                });
+
+                let newFromBalance = parseInt(await web.eth.getBalance(from, 'latest'))
+                let newToBalance = parseInt(await web.eth.getBalance(to, 'latest'))
+
+                expect(newFromBalance).toStrictEqual(prevFromBalance - value);
+                expect(newToBalance).toStrictEqual(prevToBalance + value);
             }));
         });
 
