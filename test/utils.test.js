@@ -20,6 +20,31 @@ describe('utils', () => {
         });
     });
 
+    describe('#include0x', () => {
+        test('adds 0x to value without 0x', () => {
+            const value = '0000';
+            const result = utils.include0x(value);
+            expect(result).toEqual('0x0000');
+        });
+
+        test('does not add extra 0x if value already contains 0x', () => {
+            const value = '0x0000';
+            const result = utils.include0x(value);
+            expect(result).toEqual('0x0000');
+        });
+
+        test('returns string', () => {
+            const value = '0x0000';
+            const result = utils.include0x(value);
+            expect(typeof result).toEqual('string');
+        });
+
+        test('errors if arg is not string', () => {
+            const value = 10;
+            expect(() => utils.include0x(value)).toThrow();
+        });
+    });
+
     describe('#isHex', () => {
         test('returns true if string is hex', () => {
             const value = '0x0000';

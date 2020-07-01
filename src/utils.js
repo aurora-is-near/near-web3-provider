@@ -27,6 +27,21 @@ utils.remove0x = function(value) {
 };
 
 /**
+ * Add 0x if not prepended
+ * @param {String} value value to check and modify
+ * @return {String} string with 0x
+ */
+utils.include0x = function(value) {
+    assert(typeof value === 'string', 'include0x: must pass in string');
+
+    if (value.slice(0, 2) === '0x') {
+        return value
+    } else {
+        return `0x${value}`;
+    }
+};
+
+/**
  * Checks if string is hex
  * @param {String} value value to check
  * @returns {Boolean} true if value is hex, false if not

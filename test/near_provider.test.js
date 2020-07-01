@@ -324,6 +324,7 @@ describe('\n---- PROVIDER ----', () => {
                 });
                 let newBalance = parseInt(await web.eth.getBalance(from, 'latest'))
 
+                expect(addNear.to).toStrictEqual(from)
                 expect(newBalance).toStrictEqual(prevBalance + value);
             }));
 
@@ -351,6 +352,7 @@ describe('\n---- PROVIDER ----', () => {
                 let newFromBalance = parseInt(await web.eth.getBalance(from, 'latest'))
                 let newToBalance = parseInt(await web.eth.getBalance(to, 'latest'))
 
+                expect(sendResult.to).toStrictEqual(to)
                 expect(newFromBalance).toStrictEqual(prevFromBalance - value);
                 expect(newToBalance).toStrictEqual(prevToBalance + value);
             }));
