@@ -94,11 +94,12 @@ describe('utils', () => {
 
     describe('#getTxHashAndAccountId', () => {
         test('splits txHash and accountId', () => {
-            const txHashAndAccountId = '0x0000:accountId';
+            const base58Hash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P'
+            const txHashAndAccountId = `${base58Hash}:accountid`;
             const result = utils.getTxHashAndAccountId(txHashAndAccountId);
             expect(typeof result).toEqual('object');
-            expect(result.txHash).toEqual('0x0000');
-            expect(result.accountId).toEqual('accountId');
+            expect(result.txHash).toEqual(base58Hash);
+            expect(result.accountId).toEqual('accountid');
         });
     });
 

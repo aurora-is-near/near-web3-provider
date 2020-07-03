@@ -198,14 +198,39 @@ utils.convertTimestamp = function(value) {
 utils.getTxHashAndAccountId = function(value) {
     if (value.includes(':')) {
         // Split value into txHash and accountId
-        const [txHash, accountId] = value.split(':');
-
+        const [value1, value2] = value.split(':');
+        const { txHash, accountId } = distinguishTxValues(value1, value2)
         // Return object for convenience so we don't need to keep track of index order
         return { txHash, accountId };
     } else {
         return { txHash: value, accountId: '' };
     }
 };
+
+const distinguishTxValues = function(value1, value2) {
+    let txHash, accountId;
+
+    if (isValidAccountId(value1) && hasOnlyAlphanumeric(value2)) {
+        accountId = value1;
+        txHash = value2;
+    } else if (isValidAccountId(value2) && hasOnlyAlphanumeric(value1))  {
+        accountId = value2;
+        txHash = value1;
+    } else {
+        throw new TypeError(`Invalid txHash: ${value1}:${value2}`);
+    }
+
+    return { txHash, accountId }
+}
+
+const isValidAccountId = function(value) {
+    // has a period or is all lowercase
+    return value.includes(".") || /[A-Z]/.test(value) == false
+}
+
+const hasOnlyAlphanumeric = function(value) {
+    return /^[a-z0-9]+$/i.test(value)
+}
 
 /**
  * Converts a Near account ID into the corresponding ETH address

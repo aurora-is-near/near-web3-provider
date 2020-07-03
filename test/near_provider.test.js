@@ -570,14 +570,12 @@ describe('\n---- PROVIDER ----', () => {
                 expect(tx.hash).toStrictEqual(transactionHash);
             }));
 
-
             test('returns transaction from block number', withWeb3(async (web) => {
                 const tx = await web.eth.getTransactionFromBlock(blockWithTxsNumber, txIndex);
                 expect(typeof tx).toBe('object');
                 expect(typeof tx.hash).toBe('string');
                 expect(tx.hash).toStrictEqual(transactionHash);
             }));
-
 
             test('returns transaction from string - latest', withWeb3(async (web) => {
                 const tx = await web.eth.getTransactionFromBlock('latest', txIndex);
@@ -606,6 +604,7 @@ describe('\n---- PROVIDER ----', () => {
             test('gets transaction receipt', withWeb3(async (web) => {
                 try {
                     const txResult = await createEvmTransaction(web);
+                    console.log("txResult.transactionHash ", txResult.transactionHash)
                     const txReceipt = await web.eth.getTransactionReceipt(txResult.transactionHash);
 
                     expect(typeof transactionHash).toBeTruthy();
@@ -617,12 +616,14 @@ describe('\n---- PROVIDER ----', () => {
             }));
 
             test('errors if not a real txhash', withWeb3(async (web) => {
+                const notRealHash = '9Y9SUcuLRX1afHsyocHiryPQvqAujrJqugy4WgjfXGiw';
+                const badInput = `${notRealHash}:hello`;
+
                 try {
-                    const badHash = 'whatsuppppp:hello';
-                    await web.eth.getTransactionReceipt(badHash);
+                    await web.eth.getTransactionReceipt(badInput);
                 } catch (e) {
                     expect(e).toBeTruthy();
-                    expect(e.message).toEqual('[-32602] Invalid params: Failed parsing args: incorrect length for hash');
+                    expect(e.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
                 }
             }));
 
