@@ -52,6 +52,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
     const { transaction_outcome, transaction } = tx;
 
     const functionCall = transaction.actions[0].FunctionCall;
+
     // if it's a call, get the destination address
     if (functionCall && functionCall.method_name == 'call_contract') {
       const args = JSON.parse(utils.base64ToString(functionCall.args));
@@ -73,14 +74,14 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         from: sender,
 
         // DATA 20 bytes - address of the receiver
-        to: utils.include0x(destination),
+        to: destination ? utils.include0x(destination) : null,
 
         // QUANTITY - integer of the current gas price in wei
         // TODO: This will break with big numbers?
         gasPrice: utils.decToHex(parseInt(tx.gas_price)),
 
         // DATA - the data sent along with the transaction
-        input: '0x' + data ? data : '',
+        input: data ? utils.include0x(data) : '',
 
         // DATA 32 bytes - hash of the block where this transaction was in
         blockHash: transaction_outcome.block_hash,
