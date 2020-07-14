@@ -49,23 +49,38 @@ nearToEth.transactionObj = async function(tx, txIndex) {
 
     let destination = null;
     let data = null;
+    let value = null;
     const { transaction_outcome, transaction } = tx;
 
     const functionCall = transaction.actions[0].FunctionCall;
-    // if it's a call, get the destination address
-    if (functionCall && functionCall.method_name == 'call_contract') {
-      const args = JSON.parse(utils.base64ToString(functionCall.args));
-      destination = args.contract_address;
-      data = args.encoded_input;
+    if (functionCall) {
+        const args = JSON.parse(utils.base64ToString(functionCall.args));
+        switch (functionCall.method_name) {
+            case 'call_contract':
+                destination = args.contract_address;
+                data = args.encoded_input;
+                break;
+            case 'deploy_code':
+                data = args.bytecode;
+                break;
+            case 'add_near':
+                destination = utils.nearAccountToEvmAddress(transaction.signer_id);
+                break;
+            case 'move_funds_to_evm_address':
+                destination = args.address;
+                value = parseInt(args.amount)
+                break;
+        }
     }
 
     const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
-    // const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
 
-    const value = transaction.actions.map(v => {
-        const k = Object.keys(v)[0];
-        return parseInt(v[k].deposit, 10);
-    }).reduce((a, b) => a + b);
+    if (value == null) {
+        value = transaction.actions.map(v => {
+            const k = Object.keys(v)[0];
+            return parseInt(v[k].deposit, 10);
+        }).reduce((a, b) => a + b);
+    }
 
     const obj = {
         // DATA 20 bytes - address of the sender
@@ -73,17 +88,17 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         from: sender,
 
         // DATA 20 bytes - address of the receiver
-        to: utils.include0x(destination),
+        to: destination ? utils.include0x(destination) : null,
 
         // QUANTITY - integer of the current gas price in wei
         // TODO: This will break with big numbers?
         gasPrice: utils.decToHex(parseInt(tx.gas_price)),
 
         // DATA - the data sent along with the transaction
-        input: '0x' + data ? data : '',
+        input: data ? utils.include0x(data) : '',
 
         // DATA 32 bytes - hash of the block where this transaction was in
-        blockHash: transaction_outcome.block_hash,
+        blockHash: utils.base58ToHex(transaction_outcome.block_hash),
 
         // QUANTITY block number where this transaction was in
         blockNumber: utils.decToHex(tx.block_height),
@@ -283,8 +298,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
             case 'move_funds_to_evm_address':
                 destination = args.address;
                 break;
-            default:
-        }       const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
+        }
     }
 
     // TODO: translate logs
