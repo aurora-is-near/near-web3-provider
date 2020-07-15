@@ -9,7 +9,8 @@ const NEAR_NET_VERSION_TEST = '98';
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
-const GAS_AMOUNT = new BN('1000000000000000000');
+const GAS_AMOUNT = new BN('1000000000000000'); // 10e14.
+const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
 class NearProvider {
     constructor(url, keyStore, accountId, networkId, evmContractName) {
@@ -452,7 +453,6 @@ class NearProvider {
      */
     async routeEthGetBlockByHash([blockHash, returnTxObjects]) {
         try {
-            // console.log('gethash', blockHash);
             assert(blockHash, 'Must pass in blockHash');
             blockHash = utils.hexToBase58(blockHash);
             const block = await this._getBlock(blockHash, returnTxObjects);
@@ -679,28 +679,38 @@ class NearProvider {
         try {
             let outcome;
             let val;
-            const { to, value, data } = txObj;
+            const { from, to, value, data } = txObj;
             if (value === undefined) {
                 val = new BN(0)
             } else {
                 const remove = utils.remove0x(value)
                 val = new BN(remove, 16)
             }
-            // value === undefined
-            //     ? new BN(0)
-            //     : new BN(utils.remove0x(value), 16);
 
-            // TODO: differentiate simple sends
-            const functionCallData = {
-                contractId: this.evm_contract,
-                methodName: 'deploy_code',
-                args: { 'bytecode': utils.remove0x(data) },
-                gas: GAS_AMOUNT,
-                amount: val
-            }
-
-            if (to === undefined) {
-                // Contract deployment.
+            if (data === undefined) {
+                // send funds
+                if (to !== ZERO_ADDRESS && to === from) {
+                    // Add near to corresponding evm account
+                    outcome = await this.account.functionCall(
+                        this.evm_contract,
+                        'add_near',
+                        {},
+                        GAS_AMOUNT,
+                        val
+                    )
+                } else  {
+                    // Simple Transfer b/w EVM accounts
+                    let zeroVal = new BN(0)
+                    outcome = await this.account.functionCall(
+                        this.evm_contract,
+                        'move_funds_to_evm_address',
+                        { 'address': utils.remove0x(to), 'amount': val.toString() },
+                        GAS_AMOUNT,
+                        zeroVal
+                    );
+                }
+            } else if (to === undefined) {
+                // Contract deployment
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'deploy_code',
@@ -709,6 +719,7 @@ class NearProvider {
                     val
                 );
             } else {
+                // Function Call
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'call_contract',
@@ -770,7 +781,7 @@ class NearProvider {
                 });
             return '0x' + result;
         } catch (e) {
-            return ;
+            return e;
         }
     }
 }

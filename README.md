@@ -5,6 +5,10 @@
 NEAR Protocol Web3 provider.
 Use it to connect your Ethereum frontend or Truffle to NEAR Protocol.
 
+## Requirements
+
+**Node > 11.0**
+
 ## Install
 
 ```bash
@@ -14,6 +18,10 @@ $ npm install near-web3-provider
 ## Running Tests
 
 Tests require [running a local `nearcore`](https://docs.nearprotocol.com/docs/local-setup/local-dev-testnet).
+
+> Note: `nearcore` should be on `stable` branch.
+
+### Setup and Run NEARCore
 
 Install Rustup:
 ```
@@ -29,15 +37,7 @@ Install and run NEARCore using Docker:
 ```
 $ git clone https://github.com/nearprotocol/nearcore
 $ cd nearcore
-$ make docker-nearcore
-$ ./scripts/start_localnet.py
-```
-
-To run NEARcore without Docker
-```
-$ git clone https://github.com/nearprotocol/nearcore
-$ cd nearcore
-$ ./scripts/start_localnet.py --nodocker
+$ ./scripts/start_unittest.py --local
 ```
 
 Run tests
@@ -47,9 +47,13 @@ $ npm run test
 
 Tests currently take ~50 seconds to run.
 
-## Requirements
+## Developing
 
-**Node > 11.0**
+The web3 Provider also needs to be tested against the `near-evm` contract.
+
+Follow the testing instructions on the [near-evm repo](https://github.com/near/near-evm#testing).
+
+If you're developing against an in-flux contract, make sure to build the wasm code from `near-evm` and update the wasm code for the provider: `/artifacts/near_evm.wasm`.
 
 ## General Usage
 

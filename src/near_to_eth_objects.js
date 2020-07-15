@@ -73,7 +73,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         from: sender,
 
         // DATA 20 bytes - address of the receiver
-        to: `0x${destination}`,
+        to: utils.include0x(destination),
 
         // QUANTITY - integer of the current gas price in wei
         // TODO: This will break with big numbers?
@@ -92,7 +92,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
 
         // DATA 32 bytes - hash of the transaction
-        hash: `${transaction.hash}:${transaction.signer_id}`,
+        hash: `${transaction.signer_id}:${transaction.hash}`,
 
         // QUANTITY - the number of txs made by the sender prior to this one
         nonce: utils.decToHex(tx.nonce),
@@ -271,12 +271,20 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     }
 
     // if it's a call, get the destination address
-    if (functionCall && functionCall.method_name == 'call_contract') {
-      const args = JSON.parse(utils.base64ToString(functionCall.args));
-      destination = args.contract_address;
-    } else {
-        const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
-        destination = receiver;
+    if (functionCall) {
+        const args = JSON.parse(utils.base64ToString(functionCall.args));
+        switch (functionCall.method_name) {
+            case 'call_contract':
+                destination = args.contract_address;
+                break;
+            case 'add_near':
+                destination = utils.nearAccountToEvmAddress(transaction.signer_id);
+                break;
+            case 'move_funds_to_evm_address':
+                destination = args.address;
+                break;
+            default:
+        }       const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
     }
 
     // TODO: translate logs
@@ -284,7 +292,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
 
     return {
         // DATA Hash of the transaction
-        transactionHash: `${transaction.hash}:${accountId}`,
+        transactionHash: `${accountId}:${transaction.hash}`,
 
         // QUANTITY integer of the transaction's position in the block
         transactionIndex: nearTxObjIndex,
@@ -299,7 +307,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
         from: utils.nearAccountToEvmAddress(transaction.signer_id),
 
         // DATA address of the receiver, null when it's a contract creation tx
-        to: destination ? `0x${destination}` : null,
+        to: destination ? utils.include0x(destination) : null,
 
         // DATA The contract address created, if the transaction was a contract
         // creation, otherwise null

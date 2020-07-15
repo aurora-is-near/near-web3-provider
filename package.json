@@ -20,19 +20,19 @@
   ],
   "license": "AGPL-3.0",
   "dependencies": {
-    "bn.js": "^5.0.0",
+    "bn.js": "^5.1.2",
     "bs58": "^4.0.1",
     "bsert": "0.0.10",
     "near-api-js": "^0.27.0",
     "tweetnacl": "^1.0.3",
-    "web3-provider-engine": "^15.0.4",
-    "web3-utils": "^1.2.6"
+    "web3-provider-engine": "^15.0.7",
+    "web3-utils": "^1.2.8"
   },
   "devDependencies": {
-    "web3": "^1.2.6",
     "eslint": "^6.8.0",
-    "eslint-plugin-jest": "^23.7.0",
-    "jest": "^25.1.0"
+    "eslint-plugin-jest": "^23.13.1",
+    "jest": "^25.5.4",
+    "web3": "^1.2.8"
   },
   "jest": {
     "testEnvironment": "node",
