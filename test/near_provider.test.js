@@ -2,7 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const web3 = require('web3');
-const nearlib = require('nearlib');
+const nearlib = require('near-api-js');
 const utils = require('../src/utils');
 const { NearProvider } = require('../src/index');
 
