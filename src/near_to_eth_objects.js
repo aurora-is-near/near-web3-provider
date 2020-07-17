@@ -187,7 +187,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         transaction_outcome.outcome.gas_burnt,
         txIndex
     )
-    if (sharedParams.value == null) {
+    if (sharedParams.value === null) {
         sharedParams.value = transaction.actions.map(v => {
             const k = Object.keys(v)[0];
             return parseInt(v[k].deposit, 10);

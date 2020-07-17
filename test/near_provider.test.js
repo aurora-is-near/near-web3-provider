@@ -445,7 +445,7 @@ describe('\n---- PROVIDER ----', () => {
                     // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
                     const tx = await web.eth.getTransaction(transactionHash);
                     expect(tx.blockHash).toStrictEqual(blockWithTxsHash)
-                    expect(isHex(tx.blockHash)).toBeTruthy()
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
                     expect(tx.blockNumber).toStrictEqual(blockWithTxsNumber)
                     expect(tx.transactionIndex).toStrictEqual(txIndex)
                     expect(tx.hash).toStrictEqual(transactionHash)
@@ -475,7 +475,7 @@ describe('\n---- PROVIDER ----', () => {
                     // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
                     const tx = await web.eth.getTransaction(txHash);
                     expect(tx.blockHash).toStrictEqual(txReceipt.blockHash)
-                    expect(isHex(tx.blockHash)).toBeTruthy()
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
                     expect(tx.blockNumber).toStrictEqual(txReceipt.blockNumber)
                     expect(tx.transactionIndex).toStrictEqual(txReceipt.transactionIndex)
                     expect(tx.hash).toStrictEqual(txHash)
@@ -516,7 +516,7 @@ describe('\n---- PROVIDER ----', () => {
                     // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
                     const tx = await web.eth.getTransaction(addNearReceipt.transactionHash);
                     expect(tx.blockHash).toStrictEqual(addNearReceipt.blockHash)
-                    expect(isHex(tx.blockHash)).toBeTruthy()
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
                     expect(tx.blockNumber).toStrictEqual(addNearReceipt.blockNumber)
                     expect(tx.transactionIndex).toStrictEqual(addNearReceipt.transactionIndex)
                     expect(tx.hash).toStrictEqual(addNearReceipt.transactionHash)
@@ -530,7 +530,7 @@ describe('\n---- PROVIDER ----', () => {
                     // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
                     const tx = await web.eth.getTransaction(transferReceipt.transactionHash);
                     expect(tx.blockHash).toStrictEqual(transferReceipt.blockHash)
-                    expect(isHex(tx.blockHash)).toBeTruthy()
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
                     expect(tx.blockNumber).toStrictEqual(transferReceipt.blockNumber)
                     expect(tx.transactionIndex).toStrictEqual(transferReceipt.transactionIndex)
                     expect(tx.hash).toStrictEqual(transferReceipt.transactionHash)
@@ -758,9 +758,4 @@ async function getLatestBlockInfo () {
 
 async function waitForABlock () {
     return await new Promise((r) => setTimeout(r, 1000));
-}
-
-function isHex(h) {
-    var re = /^0x[0-9A-Fa-f]{12}/g;
-    return re.test(h)
 }
