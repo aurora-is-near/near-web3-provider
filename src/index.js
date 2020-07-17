@@ -54,7 +54,17 @@ class NearProvider {
     }
 
     /**
-     * Calls a block and fills it up
+     * TODO: Make return params into options object for better readability
+     * TODO: Return consistent type: either an Array or an Object
+     *
+     * Gets a Near block and formats it according to web3 provider requirements
+     * @param {Number|String} blockHeight Block height, block hash, or block
+     * finality (enum: 'final', 'near-final', 'optimistic')
+     * @param {Boolean} returnTxObjects Indicates whether this method should
+     * return a block with tx objects
+     * @param {Boolean} returnNearBlock Indicates whether this method should
+     * return an unformatted Near block
+     * @returns {Object|Array}
      */
     async _getBlock(blockHeight, returnTxObjects, returnNearBlock) {
         try {
