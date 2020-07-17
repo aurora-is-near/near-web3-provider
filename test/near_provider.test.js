@@ -617,12 +617,13 @@ describe('\n---- PROVIDER ----', () => {
             }));
 
             test('errors if not a real txhash', withWeb3(async (web) => {
+                const errorType = "[-32602]";
                 try {
                     const badHash = 'whatsuppppp:hello';
                     await web.eth.getTransactionReceipt(badHash);
                 } catch (e) {
                     expect(e).toBeTruthy();
-                    expect(e.message).toEqual('[-32602] Invalid params: Failed parsing args: incorrect length for hash');
+                    expect(e.message).toContain(errorType);
                 }
             }));
 

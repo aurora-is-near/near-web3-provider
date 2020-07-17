@@ -179,6 +179,7 @@ utils.base58ToUint8 = function(value) {
  * @returns {String} hex string equivalent of timestamp
  */
 utils.convertTimestamp = function(value) {
+    value = parseInt(value);
     assert(typeof value === 'number', 'convertTimestamp: must pass in number');
     // NB: NEAR timestamps need to be divided by 1000000 to be converted to a value that produces a valid new Date(). However, this value is now a decimal, which cannot be converted to a valid hex String. Passing this value into new Date() and then calling getTime() will yield a rounded epoch time that can then be converted to valid hex.
     // Example with NEAR block number 1221180 with timestamp 1580771932817928262.
