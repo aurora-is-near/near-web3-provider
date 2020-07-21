@@ -1,6 +1,7 @@
 const assert = require('bsert');
 const bs58 = require('bs58');
 const web3Utils = require('web3-utils');
+const BN = require('bn.js');
 
 const utils = {};
 
@@ -173,6 +174,17 @@ utils.hexToUint8 = function(value) {
 utils.base58ToUint8 = function(value) {
     return new Uint8Array(bs58.decode(value));
 };
+
+/**
+ * Converts hex representation of a number to BigNumber format
+ * @param {String}  value hex string
+ * @returns {Uint8Array} returns hex string in Uint8Array
+ */
+utils.hexToBN = function(hex) {
+    const remove = this.remove0x(hex.toString())
+    return new BN(remove, 16)
+}
+
 /**
  * Convert timestamp in NEAR to hex
  * @param {Number} value NEAR timestamp

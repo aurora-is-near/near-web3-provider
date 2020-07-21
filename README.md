@@ -60,20 +60,21 @@ If you're developing against an in-flux contract, make sure to build the wasm co
 You can use this provider wherever a Web3 provider is needed.
 
 ```javascript
-const { NearProvider, nearlib } = require('near-web3-provider');
+const { NearProvider, nearlib, nearWeb3Extensions } = require('near-web3-provider');
 
 const nearNetworkId = '<local, default, test, etc>'; // default is 'default'
 const accountId = '<account id to use for tx>';
 const keyStore = new nearlib.keyStores.<one of keyStores>;
 
 const web = new Web3();
+web.extend(nearWeb3Extensions(web)) // extend web3 to include customized near methods
 web.setProvider(new NearProvider("<url to NEAR RPC>", keyStore, accountId, nearNetworkId));
 web.eth.net.isListening();
 ```
 
 ## Using in Truffle
 
-Add to your `truffle-config.json`:
+Add to your `truffle-config.js`:
 
 ```javascript
 // Import NearProvider and nearlib
