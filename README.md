@@ -118,7 +118,7 @@ As a sharded blockchain, the structure of NEAR blocks is also different. In Ethe
 
 Mining, hashrates, `ssh,` and `db` methods are not supported.
 
-### Limitations
+### Limitations and Differences
 
 * [Methods](https://github.com/ethereum/wiki/wiki/json-rpc#the-default-block-parameter) that have an extra default block parameter will function as `latest`, regardless of the actual argument. This is a Near RPC limitation.
 
@@ -127,16 +127,15 @@ Mining, hashrates, `ssh,` and `db` methods are not supported.
 * `eth_estimateGas` will always return `0x0`. Near RPC does not seem to support
   gas estimation for calls.
 
-* Many fields in Ethereum data structures do not have a direct correspondance
-  to Near data structures. Some attributes of transaction and block objects
-  will be unreliable.
+* Some fields in Ethereum data structures do not have a direct correspondance to Near data structures, therefore these fields are unimplemented or unreliable. Always consult implementation in near_to_eth_objects.js. Examples include:
+  * The tx receipts `status` field is always `0x1`, regardless of the success of the transaction.
+  * `transactionIndex` is constant, and not reliable.
 
-* Some fields are just unimplemented. For example, tx receipts currently always
-  have a `0x1` status, regardless of the success of the transaction.
+* Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible correspondance to Near block structure.
 
-* Some fields are just unimplemented. Always consult implementation in `near_to_eth_objects.js`. E.g. tx index is constant, and not reliable.
-
-* Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible correspondance to Near block structure
+* Near doesn't keep track of nonces for contracts which is a required feature for the evm. Therefore both an evm nonce and near nonce exist for each account. `eth_getTransactionCount` will return a reference to the evm nonce. All other nonce fields in the web3-near-provider reference the near nonce.
+    * evm nonce: nonce used for address calculation in the next EVM contract deployment from this EVM account
+    * near nonce: number of all near transactions (including evm transactions) executed by account
 
 ## API Overview
 
@@ -150,10 +149,13 @@ Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to c
 
 ### Important Format Changes
 
-* `blockHash` - a block hash is the hash equivalent of a Near block hash (denoted in `base58`)
+* `blockHash` - a block hash is the hash equivalent of a Near block hash
+  * denoted in `hex` within the context of the near-web3-provider
+  * denoted in `base58` within the context of the rest of the near protocol
 
 * `transactionHash` - a transaction hash is the combination of a Near transaction hash (in `base58`) concatenanted with the accountId of the transaction's sender, and separated by `:`
-  * `<base58TxHash>:<senderAccountId>`
+  * `<base58TxHash>:<senderAccountId>` within the context of the near-web3-provider
+  * `<senderAccountId>:<base58TxHash>` within the context of the rest of the near protocol
 
 * `gas` - Gas is denominated in yoctoNEAR
 
@@ -399,16 +401,16 @@ Returns a transaction matching the given transaction hash.
 `Promise` returns `Object` - A transaction object
 
 * `hash` - Hash of the transaction `<nearTxHash>:<accountId>` (transaction's sender's accountId)
-* `nonce` - The number of transactions made by the sender prior to this one
-* `blockHash` - hash equivalent of the block where this transaction was in.
+* `nonce` - The total number of near transactions made by the sender prior to this one
+* `blockHash` - hash equivalent of the block where this transaction was in (represented in hex instead of near's base58 format)
 * `blockNumber` - Block number where this transaction was in
-* `transactionIndex` - integer of the transactions index position in the block.
+* `transactionIndex` - integer of the transactions index position in the block
 * `from` - EVM Address of the sender
 * `to` - EVM address of the receiver
 * `value` - Value transfered in yoctoNEAR
 * `gasPrice` - Gas price set by the block in yoctoNEAR
 * `gas` - Gas consumed by the sender in yoctoNEAR
-* `input` - Unsupported, null value provided
+* `input` - tx data, encoded contract call or deployed bytecode
 
 #### Differences | Limitations
 
@@ -497,10 +499,11 @@ Get the numbers of transactions sent from this address.
 1. `String` `address` - The address to get the numbers of transactions from. Address is the EVM address of a Near AccountId
 
 #### Returns
-`Promise` returns `Number` - The number of transactions sent from the given address
+`Promise` returns `Number` - The total number of evm transactions sent from the given address
 
 #### Differences | Limitations
-* Specifically, returns the nonce of transactions sent from the address. Near will only return the total transactions; selecting a block is not supported.
+* Specifically, returns the nonce of evm transactions sent from the address. Near will only return the total transactions; selecting a block is not supported
+* The return value refers to the total number of evm transactions not including near transactions outside the evm. All other transaction count nonces refer to total near transactions (which include evm transcations)
 
 ---
 

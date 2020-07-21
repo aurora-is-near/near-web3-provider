@@ -9,7 +9,7 @@ const NEAR_NET_VERSION_TEST = '98';
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 
-const GAS_AMOUNT = new BN('1000000000000000'); // 10e14.
+const GAS_AMOUNT = new BN('200000000000000');
 const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
 class NearProvider {
