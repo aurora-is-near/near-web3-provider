@@ -12,6 +12,10 @@ module.exports = function (web3) {
 		const dummyAddr = `0x${"00".repeat(20)}`
 		const to = options.to;
 
+		if (!utils.isValidAccountID(to)) {
+			throw new Error(`invalid near accountID: ${to}`);
+		}
+
 		// use web3 formatter for all other options with options.to as hex so validation
 		// will not fail with non-hex to
 		options.to = dummyAddr

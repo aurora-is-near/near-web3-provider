@@ -54,6 +54,23 @@ utils.isHex = function(value) {
 };
 
 /**
+ * Checks if string is valid accountID
+ * citing: https://github.com/nearprotocol/nearcore/blob/bf5f272638dab6d8ff7ebc6d8272c08db3aff06c/core/primitives/src/utils.rs#L75
+ * @param {String} value value to check
+ * @returns {Boolean} true if value is valid accountID, false if not
+ */
+utils.isValidAccountID = function(value) {
+    assert(typeof value === 'string', 'isValidAccountID: must pass in string');
+    const accountIDTest = /^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/;
+
+    return (
+        value.length >= 2 &&
+        value.length <= 64 &&
+        accountIDTest.test(value)
+    );
+};
+
+/**
  * Converts number to hex
  * @param {Number|Object} value number to convert to hex.
  * @returns {String} hex string equivalent of number

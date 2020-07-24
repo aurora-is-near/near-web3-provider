@@ -409,18 +409,19 @@ describe('\n---- PROVIDER ----', () => {
                 }
             }));
 
-            test('returns error if retrieving near to nearID not associated with account', withWeb3(async (web) => {
-                let currentBalance = await web.eth.getBalance(account, 'latest')
+            test('returns error if near accountID is invalid', withWeb3(async (web) => {
+                const invalidAccountID = "random%%id";
+
                 try {
-                    await web.near.retrieveNear({
+                    let bla = await web.near.retrieveNear({
                         from: account,
                         value: value / 2,
-                        to: "randomId",
+                        to: invalidAccountID,
                         gas: 0
                     })
+                    console.log(bla)
                 } catch (e) {
-                    // TODO: return better error from near_evm
-                    expect(e.message).toContain("{\"index\":0}")
+                    expect(e.message).toContain("invalid near accountID:")
                 }
             }));
         })
