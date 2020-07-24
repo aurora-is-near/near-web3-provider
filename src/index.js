@@ -163,7 +163,7 @@ class NearProvider {
             }
 
             case 'near_retrieveNear': {
-                return this.routeEthRetrieveNear(params);
+                return this.routeNearRetrieveNear(params);
             }
 
             case 'eth_sendRawTransaction': {
@@ -734,7 +734,7 @@ class NearProvider {
         }
     }
 
-    async routeEthRetrieveNear([params]) {
+    async routeNearRetrieveNear([params]) {
         try {
             const { to, value } = params
             let val = value ? utils.hexToBN(value) : new BN(0)

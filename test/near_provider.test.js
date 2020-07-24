@@ -395,6 +395,25 @@ describe('\n---- PROVIDER ----', () => {
                 // expect(parseInt(newNearBalance) - parseInt(prevNearBalance)).toBeGreaterThan(0) // failing
             }));
 
+            test('forces capitalized near accountID to lowercase and successfully completes transaction', withWeb3(async (web) => {
+                let valueRetrieved = value / 2;
+                let numprevBal = await web.eth.getBalance(account, 'latest')
+                let prevEvmBalance = await web.eth.getBalance(account, 'latest')
+                let prevNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                let retrieveNear = await web.near.retrieveNear({
+                    from: account,
+                    value: valueRetrieved,
+                    to: "Test.Near",
+                    gas: 0
+                })
+
+                let newEvmBalance = await web.eth.getBalance(account, 'latest')
+                let newNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                expect(prevEvmBalance - newEvmBalance).toStrictEqual(valueRetrieved)
+            }));
+
             test('returns error if amount exceeds evm account balance', withWeb3(async (web) => {
                 let currentBalance = await web.eth.getBalance(account, 'latest')
                 try {

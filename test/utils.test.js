@@ -71,9 +71,9 @@ describe('utils', () => {
             expect(isValidAccountID).toBe(true);
         });
 
-        test('returns false if string has any capital letters', () => {
+        test('throws an error if string has any capital letters', () => {
             const value = 'abcdE123';
-            expect(utils.isValidAccountID(value)).toBe(false);
+            expect(() => utils.isValidAccountID(value)).toThrow();
         });
 
         test('returns false if string has invalid symbols', () => {

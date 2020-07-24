@@ -61,8 +61,9 @@ utils.isHex = function(value) {
  */
 utils.isValidAccountID = function(value) {
     assert(typeof value === 'string', 'isValidAccountID: must pass in string');
-    const accountIDTest = /^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/;
+    assert(value == value.toLowerCase(), `isValidAccountID: near accountID cannot have uppercase letters: ${value}`)
 
+    const accountIDTest = /^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/;
     return (
         value.length >= 2 &&
         value.length <= 64 &&

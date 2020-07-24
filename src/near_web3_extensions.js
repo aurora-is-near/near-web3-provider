@@ -10,7 +10,7 @@ module.exports = function (web3) {
 	 */
 	var inputRetrieveNearFormatter = function (options) {
 		const dummyAddr = `0x${"00".repeat(20)}`
-		const to = options.to;
+		const to = options.to.toLowerCase();
 
 		if (!utils.isValidAccountID(to)) {
 			throw new Error(`invalid near accountID: ${to}`);
