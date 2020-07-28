@@ -445,6 +445,62 @@ describe('\n---- PROVIDER ----', () => {
             }));
         })
 
+        describe('retrieveNear | near_transferNear', () => {
+            let account, value, firstNearBalance
+
+            beforeEach(withWeb3(async (web) => {
+                account = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                value = 2 * 10 ** 18
+                await web.eth.sendTransaction({
+                    from: account,
+                    to: account,
+                    value: value.toString(),
+                    gas: 0
+                });
+            }));
+
+            test('transfers near to the evm address corresponding to the near accountId', withWeb3(async (web) => {
+                let recipient = 'randomid.test'
+                let recipientEvm = utils.nearAccountToEvmAddress(recipient)
+
+                let fromPrevBalance = await web.eth.getBalance(account, 'latest')
+                let toPrevBalance = await web.eth.getBalance(recipientEvm, 'latest')
+
+                let transferNear = await web.near.transferNear({
+                    from: account,
+                    value: value,
+                    to: recipient,
+                    gas: 0
+                })
+
+                let fromNewBalance = await web.eth.getBalance(account, 'latest')
+                let toNewBalance = await web.eth.getBalance(recipientEvm, 'latest')
+
+                expect(fromPrevBalance - fromNewBalance).toStrictEqual(value)
+                expect(toNewBalance - toPrevBalance).toStrictEqual(value)
+
+            }));
+
+            test('throws an error if amount exceeds balance', withWeb3(async (web) => {
+                let recipient = 'randomid.test'
+                let recipientEvm = utils.nearAccountToEvmAddress(recipient)
+                let balance = await web.eth.getBalance(account, 'latest');
+
+                let err
+                try {
+                    await web.near.transferNear({
+                        from: account,
+                        value: balance * 2,
+                        to: recipient,
+                        gas: 0
+                    });
+                } catch (e) {
+                    err = e.message
+                }
+                expect(err).toContain('underflow during sub_balance')
+            }))
+        });
+
         describe('web3 Contract Abstraction', () => {
             test('can instantiate and run view functions', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI, zombieAddress);

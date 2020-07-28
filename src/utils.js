@@ -245,7 +245,7 @@ utils.getTxHashAndAccountId = function(value) {
  */
 utils.nearAccountToEvmAddress = function(accountID) {
     assert(
-        typeof accountID === 'string', 'nearAccountToEvmAddress must pass in string'
+        utils.isValidAccountID(accountID), 'nearAccountToEvmAddress must pass in valid accountID'
     );
     // NB: 2 characters of hex prefix. Then 20 hex pairs.
     return '0x' + utils.keccak256(accountID).slice(26, 66);
