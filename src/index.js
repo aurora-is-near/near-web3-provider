@@ -8,6 +8,7 @@ const NEAR_NET_VERSION_TEST = '98';
 
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
+const nearWeb3Extensions = require('./near_web3_extensions');
 
 const GAS_AMOUNT = new BN('200000000000000');
 const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
@@ -159,6 +160,10 @@ class NearProvider {
 
             case 'eth_sendTransaction': {
                 return this.routeEthSendTransaction(params);
+            }
+
+            case 'near_retrieveNear': {
+                return this.routeNearRetrieveNear(params);
             }
 
             case 'eth_sendRawTransaction': {
@@ -677,15 +682,10 @@ class NearProvider {
     // TODO: Account for passed in gas
     async routeEthSendTransaction([txObj]) {
         try {
-            let outcome;
-            let val;
             const { from, to, value, data } = txObj;
-            if (value === undefined) {
-                val = new BN(0)
-            } else {
-                const remove = utils.remove0x(value)
-                val = new BN(remove, 16)
-            }
+
+            let outcome;
+            let val = value ? utils.hexToBN(value) : new BN(0)
 
             if (data === undefined) {
                 // send funds
@@ -731,6 +731,23 @@ class NearProvider {
             return `${outcome.transaction_outcome.id}:${this.accountId}`;
         } catch (e) {
             return e;
+        }
+    }
+
+    async routeNearRetrieveNear([params]) {
+        try {
+            const { to, value } = params
+            let val = value ? utils.hexToBN(value) : new BN(0)
+            let outcome = await this.account.functionCall(
+                this.evm_contract,
+                'retrieve_near',
+                { 'recipient': to, 'amount': val.toString() },
+                GAS_AMOUNT,
+                new BN(0)
+            );
+            return `${outcome.transaction_outcome.id}:${this.accountId}`;
+        } catch (e) {
+            return e
         }
     }
 
@@ -786,4 +803,4 @@ class NearProvider {
     }
 }
 
-module.exports = { NearProvider, nearlib };
+module.exports = { NearProvider, nearlib, nearWeb3Extensions };

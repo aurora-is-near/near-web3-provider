@@ -8,7 +8,7 @@ const web3 = require('web3');
 const bn = web3.utils.BN
 const nearlib = require('near-api-js');
 const utils = require('../src/utils');
-const { NearProvider } = require('../src/index');
+const { NearProvider, nearWeb3Extensions } = require('../src/index');
 
 // TODO: update nearEvmFile frequently when near_evm work is being done
 const nearEvmFile = './artifacts/near_evm.wasm';
@@ -41,6 +41,7 @@ const withWeb3 = (fn) => {
     keyStore.setKey('test', ACCOUNT_ID, ACCOUNT_KEYPAIR);
 
     web.setProvider(new NearProvider(NODE_URL, keyStore, ACCOUNT_ID));
+    web.extend(nearWeb3Extensions(web))
     return () => fn(web);
 };
 
@@ -358,6 +359,91 @@ describe('\n---- PROVIDER ----', () => {
                 expect(newToBalance).toStrictEqual(prevToBalance + value);
             }));
         });
+
+        describe('retrieveNear | near_retrieveNear', () => {
+            let account, value, firstNearBalance
+
+            beforeEach(withWeb3(async (web) => {
+                account = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                value = 6 * 10 ** 18
+                await web.eth.sendTransaction({
+                    from: account,
+                    to: account,
+                    value: value.toString(),
+                    gas: 0
+                });
+            }));
+
+            test('sends near back to nearAccount if sufficient funds in corresponding evm account', withWeb3(async (web) => {
+                let valueRetrieved = value / 2;
+                let numprevBal = await web.eth.getBalance(account, 'latest')
+                let prevEvmBalance = await web.eth.getBalance(account, 'latest')
+                let prevNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                let retrieveNear = await web.near.retrieveNear({
+                    from: account,
+                    value: valueRetrieved,
+                    to: ACCOUNT_ID,
+                    gas: 0
+                })
+
+                let newEvmBalance = await web.eth.getBalance(account, 'latest')
+                let newNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                expect(prevEvmBalance - newEvmBalance).toStrictEqual(valueRetrieved)
+                // TODO: test that near balances are being modified appropriately
+                // expect(parseInt(newNearBalance) - parseInt(prevNearBalance)).toBeGreaterThan(0) // failing
+            }));
+
+            test('forces capitalized near accountID to lowercase and successfully completes transaction', withWeb3(async (web) => {
+                let valueRetrieved = value / 2;
+                let numprevBal = await web.eth.getBalance(account, 'latest')
+                let prevEvmBalance = await web.eth.getBalance(account, 'latest')
+                let prevNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                let retrieveNear = await web.near.retrieveNear({
+                    from: account,
+                    value: valueRetrieved,
+                    to: "Test.Near",
+                    gas: 0
+                })
+
+                let newEvmBalance = await web.eth.getBalance(account, 'latest')
+                let newNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                expect(prevEvmBalance - newEvmBalance).toStrictEqual(valueRetrieved)
+            }));
+
+            test('returns error if amount exceeds evm account balance', withWeb3(async (web) => {
+                let currentBalance = await web.eth.getBalance(account, 'latest')
+                try {
+                    await web.near.retrieveNear({
+                        from: account,
+                        value: currentBalance * 2,
+                        to: ACCOUNT_ID,
+                        gas: 0
+                    })
+                } catch (e) {
+                    expect(e.message).toContain("insufficient funds")
+                }
+            }));
+
+            test('returns error if near accountID is invalid', withWeb3(async (web) => {
+                const invalidAccountID = "random%%id";
+
+                try {
+                    let bla = await web.near.retrieveNear({
+                        from: account,
+                        value: value / 2,
+                        to: invalidAccountID,
+                        gas: 0
+                    })
+                    console.log(bla)
+                } catch (e) {
+                    expect(e.message).toContain("invalid near accountID:")
+                }
+            }));
+        })
 
         describe('web3 Contract Abstraction', () => {
             test('can instantiate and run view functions', withWeb3(async (web) => {
