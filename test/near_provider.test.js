@@ -822,6 +822,24 @@ describe('\n---- PROVIDER ----', () => {
             }));
         });
     });
+
+    describe('\n---- EXTENDED UTILITY FUNCTIONS ----', () => {
+        describe('web3.utils.hexToBase58', () => {
+            test('returns the correct output', withWeb3(async (web) => {
+                const hex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b"
+                const expectedBase58 = "3qirLQdXAeug59YuXYk1eocA4BJ2"
+                expect(web.utils.hexToBase58(hex)).toStrictEqual(expectedBase58)
+            }));
+        });
+
+        describe('web3.utils.base58ToHex', () => {
+            test('returns the correct output', withWeb3(async (web) => {
+                const base58 = "3qirLQdXAeug59YuXYk1eocA4BJ2"
+                const expectedHex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b"
+                expect(web.utils.base58ToHex(base58)).toStrictEqual(expectedHex)
+            }));
+        });
+    });
 });
 
 /**

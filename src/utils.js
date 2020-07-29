@@ -135,7 +135,7 @@ utils.deserializeHex = function(hexStr) {
  */
 utils.hexToDec = function(value) {
     assert(typeof value === 'string', 'hexToDec: must pass in hex string');
-    assert(this.isHex(value), 'hexToDec: must pass in hex string');
+    assert(utils.isHex(value), 'hexToDec: must pass in hex string');
 
     return parseInt(utils.remove0x(value), 16);
 };
@@ -156,8 +156,8 @@ utils.base58ToHex = function(value) {
  */
 utils.hexToBase58 = function(value) {
     assert(typeof value === 'string', 'hexToBase58: must pass in hex string');
-    assert(this.isHex(value), 'hexToBase58: must pass in hex string');
-    value = this.remove0x(value);
+    assert(utils.isHex(value), 'hexToBase58: must pass in hex string');
+    value = utils.remove0x(value);
 
     return bs58.encode(Buffer.from(value, 'hex'));
 };
@@ -186,7 +186,7 @@ utils.base64ToString = function(value) {
  * @returns {Uint8Array} returns hex string in Uint8Array
  */
 utils.hexToUint8 = function(value) {
-    return new Uint8Array(bs58.decode(this.hexToBase58(value)));
+    return new Uint8Array(bs58.decode(utils.hexToBase58(value)));
 };
 
 utils.base58ToUint8 = function(value) {
@@ -199,7 +199,7 @@ utils.base58ToUint8 = function(value) {
  * @returns {Uint8Array} returns hex string in Uint8Array
  */
 utils.hexToBN = function(hex) {
-    const remove = this.remove0x(hex.toString())
+    const remove = utils.remove0x(hex.toString())
     return new BN(remove, 16)
 }
 
@@ -217,7 +217,7 @@ utils.convertTimestamp = function(value) {
     // If we convert the original timestamp 1580771932817928262 to hex, it yields 0x15f007b296853000. Attempting to pass this through to web3 results in the error: 'Number can only safely store up to 53 bits'
     const divider = 1000000;
     const roundedTime = new Date(value / divider).getTime();
-    return this.decToHex(roundedTime);
+    return utils.decToHex(roundedTime);
 };
 
 /**
@@ -260,7 +260,7 @@ utils.nearAccountToEvmAddress = function(accountID) {
 utils.convertBlockHeight = async function(blockHeight, nearProvider) {
     try {
         const enums = ['genesis', 'latest', 'earliest', 'pending'];
-        const notHex = !this.isHex(blockHeight);
+        const notHex = !utils.isHex(blockHeight);
         const isAnEnum = enums.find((e) => e === blockHeight);
 
         if (notHex && typeof blockHeight === 'string') {
@@ -281,7 +281,7 @@ utils.convertBlockHeight = async function(blockHeight, nearProvider) {
         }
 
         default: {
-            blockHeight = this.hexToDec(blockHeight);
+            blockHeight = utils.hexToDec(blockHeight);
             break;
         }
         }
