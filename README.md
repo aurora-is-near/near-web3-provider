@@ -166,6 +166,40 @@ Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to c
 
 ---
 
+## API - Custom Near Utility Functions
+
+### web3.utils.hexToBase58
+```
+web3.utils.hexToBase58(hexVal)
+```
+Converts hex value into base58 value. `blockHash` is represented in hex in the context of `web3.eth` functionality but represented within the near protocol as `base58` 
+
+#### Parameters
+
+1. `String` `hex` - valid with or without `0x` prepended
+
+#### Returns
+
+Returns `String` `base58`
+
+---
+
+### web3.utils.hexToBase58
+```
+web3.utils.base58ToHex(base58Val)
+```
+Converts base58 value into hex value. `blockHash` is represented in hex in the context of `web3.eth` functionality but represented within the near protocol as `base58` 
+
+#### Parameters
+
+1. `String` `base58`
+
+#### Returns
+
+Returns `String` `hex` - prepended with `0x`
+
+---
+
 ## API - Unsupported Methods
 
 * `web3.eth.getCoinbase`
