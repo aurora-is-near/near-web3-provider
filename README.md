@@ -166,13 +166,55 @@ Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to c
 
 ---
 
+## API - Custom Near Methods
+
+### web3.near.retrieveNear
+```
+web3.near.retrieveNear([transactionObject])
+```
+Transfers yoctoNEAR from evmAccount out of the evm to near account.
+
+#### Parameters
+
+1. `Object` - the transaction object to send:
+
+   * `to` - `String`: near accountId to receive yoctoNEAR
+   * `value` - `Number|String|BN|BigNumber`: amount of yoctoNEAR to attach
+   * `gas` - `Number`: amount of gas to use for the transaction in yoctoNEAR
+
+#### Returns
+
+Returns the `transactionHash` of the transaction: `<base58TxHash>:<accountId>`
+
+---
+
+### web3.near.transferNear
+```
+web3.near.transferNear([transactionObject])
+```
+Transfers yoctoNEAR from sending evmAccount to the evmAccount corresponding to near accountId recipient (`to`)
+
+#### Parameters
+
+1. `Object` - the transaction object to send:
+
+   * `to` - `String`: near accountId to receive yoctoNEAR to their corresponding evm address
+   * `value` - `Number|String|BN|BigNumber`: amount of yoctoNEAR to attach
+   * `gas` - `Number`: amount of gas to use for the transaction in yoctoNEAR
+
+#### Returns
+
+Returns the `transactionHash` of the transaction: `<base58TxHash>:<accountId>`
+
+---
+
 ## API - Custom Near Utility Functions
 
 ### web3.utils.hexToBase58
 ```
 web3.utils.hexToBase58(hexVal)
 ```
-Converts hex value into base58 value. `blockHash` is represented in hex in the context of `web3.eth` functionality but represented within the near protocol as `base58` 
+Converts hex value into base58 value. `blockHash` is represented in hex in the context of `web3.eth` functionality but represented within the near protocol as `base58`
 
 #### Parameters
 
@@ -188,7 +230,7 @@ Returns `String` `base58`
 ```
 web3.utils.base58ToHex(base58Val)
 ```
-Converts base58 value into hex value. `blockHash` is represented in hex in the context of `web3.eth` functionality but represented within the near protocol as `base58` 
+Converts base58 value into hex value. `blockHash` is represented in hex in the context of `web3.eth` functionality but represented within the near protocol as `base58`
 
 #### Parameters
 
