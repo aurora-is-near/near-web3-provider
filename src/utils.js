@@ -1,6 +1,7 @@
 const assert = require('bsert');
 const bs58 = require('bs58');
 const web3Utils = require('web3-utils');
+const BN = require('bn.js');
 
 const utils = {};
 
@@ -50,6 +51,24 @@ utils.isHex = function(value) {
     assert(typeof value === 'string', 'isHex: must pass in string');
     const hexTest = /^(0[xX])?[A-Fa-f0-9]+$/;
     return hexTest.test(value);
+};
+
+/**
+ * Checks if string is valid accountID
+ * citing: https://github.com/nearprotocol/nearcore/blob/bf5f272638dab6d8ff7ebc6d8272c08db3aff06c/core/primitives/src/utils.rs#L75
+ * @param {String} value value to check
+ * @returns {Boolean} true if value is valid accountID, false if not
+ */
+utils.isValidAccountID = function(value) {
+    assert(typeof value === 'string', 'isValidAccountID: must pass in string');
+    assert(value == value.toLowerCase(), `isValidAccountID: near accountID cannot have uppercase letters: ${value}`)
+
+    const accountIDTest = /^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/;
+    return (
+        value.length >= 2 &&
+        value.length <= 64 &&
+        accountIDTest.test(value)
+    );
 };
 
 /**
@@ -173,6 +192,17 @@ utils.hexToUint8 = function(value) {
 utils.base58ToUint8 = function(value) {
     return new Uint8Array(bs58.decode(value));
 };
+
+/**
+ * Converts hex representation of a number to BigNumber format
+ * @param {String}  value hex string
+ * @returns {Uint8Array} returns hex string in Uint8Array
+ */
+utils.hexToBN = function(hex) {
+    const remove = this.remove0x(hex.toString())
+    return new BN(remove, 16)
+}
+
 /**
  * Convert timestamp in NEAR to hex
  * @param {Number} value NEAR timestamp

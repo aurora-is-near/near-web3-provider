@@ -64,6 +64,44 @@ describe('utils', () => {
         });
     });
 
+    describe('#isValidAccountID', () => {
+        test('returns true if string is valid', () => {
+            const value = 'abcd-1234.fffff';
+            const isValidAccountID = utils.isValidAccountID(value);
+            expect(isValidAccountID).toBe(true);
+        });
+
+        test('throws an error if string has any capital letters', () => {
+            const value = 'abcdE123';
+            expect(() => utils.isValidAccountID(value)).toThrow();
+        });
+
+        test('returns false if string has invalid symbols', () => {
+            const value = "invalid.&&id";
+            expect(utils.isValidAccountID(value)).toBe(false);
+        });
+
+        test('returns false if there are consecutive periods', () => {
+            const value = "invalid..id";
+            expect(utils.isValidAccountID(value)).toBe(false);
+        });
+
+        test('returns false if it is less than 2 characters', () => {
+            const value = "e";
+            expect(utils.isValidAccountID(value)).toBe(false);
+        });
+
+        test('returns false if it is more than 64 characters', () => {
+            const value = "e".repeat(65);
+            expect(utils.isValidAccountID(value)).toBe(false);
+        });
+
+        test('throws an error if value is not a string', () => {
+            const value = 123456;
+            expect(() => utils.isValidAccountID(value)).toThrow();
+        });
+    });
+
     describe('#decToHex', () => {
 
     });
