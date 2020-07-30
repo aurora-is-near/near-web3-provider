@@ -8,7 +8,7 @@ module.exports = function (web3) {
 	 * @param {Object} options
 	 * @returns object
 	 */
-	var inputRetrieveNearFormatter = function (options) {
+	var inputTxNearRecipientFormatter = function (options) {
 		const dummyAddr = `0x${"00".repeat(20)}`
 		const to = options.to.toLowerCase();
 
@@ -35,13 +35,21 @@ module.exports = function (web3) {
 
 	// prepare near specific blockchain operations
 	const extensions = {
-	  property: 'near',
-	  methods: [{
-		  name: 'retrieveNear',
-		  call: 'near_retrieveNear',
-		  params: 1,
-		  inputFormatter: [inputRetrieveNearFormatter],
-		}]
+		property: 'near',
+		methods: [
+			{
+				name: 'retrieveNear',
+				call: 'near_retrieveNear',
+				params: 1,
+				inputFormatter: [inputTxNearRecipientFormatter],
+			},
+			{
+				name: 'transferNear',
+				call: 'near_transferNear',
+				params: 1,
+				inputFormatter: [inputTxNearRecipientFormatter],
+			},
+		]
 	}
 
 	return extensions;
