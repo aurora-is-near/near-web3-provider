@@ -5,9 +5,10 @@
 
 const fs = require('fs');
 const web3 = require('web3');
+const bn = web3.utils.BN
 const nearlib = require('near-api-js');
 const utils = require('../src/utils');
-const { NearProvider } = require('../src/index');
+const { NearProvider, nearWeb3Extensions } = require('../src/index');
 
 // TODO: update nearEvmFile frequently when near_evm work is being done
 const nearEvmFile = './artifacts/near_evm.wasm';
@@ -40,6 +41,7 @@ const withWeb3 = (fn) => {
     keyStore.setKey('test', ACCOUNT_ID, ACCOUNT_KEYPAIR);
 
     web.setProvider(new NearProvider(NODE_URL, keyStore, ACCOUNT_ID));
+    web.extend(nearWeb3Extensions(web))
     return () => fn(web);
 };
 
@@ -358,6 +360,147 @@ describe('\n---- PROVIDER ----', () => {
             }));
         });
 
+        describe('retrieveNear | near_retrieveNear', () => {
+            let account, value, firstNearBalance
+
+            beforeEach(withWeb3(async (web) => {
+                account = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                value = 6 * 10 ** 18
+                await web.eth.sendTransaction({
+                    from: account,
+                    to: account,
+                    value: value.toString(),
+                    gas: 0
+                });
+            }));
+
+            test('sends near back to nearAccount if sufficient funds in corresponding evm account', withWeb3(async (web) => {
+                let valueRetrieved = value / 2;
+                let numprevBal = await web.eth.getBalance(account, 'latest')
+                let prevEvmBalance = await web.eth.getBalance(account, 'latest')
+                let prevNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                let retrieveNear = await web.near.retrieveNear({
+                    from: account,
+                    value: valueRetrieved,
+                    to: ACCOUNT_ID,
+                    gas: 0
+                })
+
+                let newEvmBalance = await web.eth.getBalance(account, 'latest')
+                let newNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                expect(prevEvmBalance - newEvmBalance).toStrictEqual(valueRetrieved)
+                // TODO: test that near balances are being modified appropriately
+                // expect(parseInt(newNearBalance) - parseInt(prevNearBalance)).toBeGreaterThan(0) // failing
+            }));
+
+            test('forces capitalized near accountID to lowercase and successfully completes transaction', withWeb3(async (web) => {
+                let valueRetrieved = value / 2;
+                let numprevBal = await web.eth.getBalance(account, 'latest')
+                let prevEvmBalance = await web.eth.getBalance(account, 'latest')
+                let prevNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                let retrieveNear = await web.near.retrieveNear({
+                    from: account,
+                    value: valueRetrieved,
+                    to: "Test.Near",
+                    gas: 0
+                })
+
+                let newEvmBalance = await web.eth.getBalance(account, 'latest')
+                let newNearBalance = (await web._provider.account.getAccountBalance()).total
+
+                expect(prevEvmBalance - newEvmBalance).toStrictEqual(valueRetrieved)
+            }));
+
+            test('returns error if amount exceeds evm account balance', withWeb3(async (web) => {
+                let currentBalance = await web.eth.getBalance(account, 'latest')
+                try {
+                    await web.near.retrieveNear({
+                        from: account,
+                        value: currentBalance * 2,
+                        to: ACCOUNT_ID,
+                        gas: 0
+                    })
+                } catch (e) {
+                    expect(e.message).toContain("insufficient funds")
+                }
+            }));
+
+            test('returns error if near accountID is invalid', withWeb3(async (web) => {
+                const invalidAccountID = "random%%id";
+
+                try {
+                    let bla = await web.near.retrieveNear({
+                        from: account,
+                        value: value / 2,
+                        to: invalidAccountID,
+                        gas: 0
+                    })
+                    console.log(bla)
+                } catch (e) {
+                    expect(e.message).toContain("invalid near accountID:")
+                }
+            }));
+        })
+
+        describe('retrieveNear | near_transferNear', () => {
+            let account, value, firstNearBalance
+
+            beforeEach(withWeb3(async (web) => {
+                account = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                value = 2 * 10 ** 18
+                await web.eth.sendTransaction({
+                    from: account,
+                    to: account,
+                    value: value.toString(),
+                    gas: 0
+                });
+            }));
+
+            test('transfers near to the evm address corresponding to the near accountId', withWeb3(async (web) => {
+                let recipient = 'randomid.test'
+                let recipientEvm = utils.nearAccountToEvmAddress(recipient)
+
+                let fromPrevBalance = await web.eth.getBalance(account, 'latest')
+                let toPrevBalance = await web.eth.getBalance(recipientEvm, 'latest')
+
+                let transferNear = await web.near.transferNear({
+                    from: account,
+                    value: value,
+                    to: recipient,
+                    gas: 0
+                })
+
+                let fromNewBalance = await web.eth.getBalance(account, 'latest')
+                let toNewBalance = await web.eth.getBalance(recipientEvm, 'latest')
+
+                expect(fromPrevBalance - fromNewBalance).toStrictEqual(value)
+                expect(toNewBalance - toPrevBalance).toStrictEqual(value)
+
+            }));
+
+            test('throws an error if amount exceeds balance', withWeb3(async (web) => {
+                let recipient = 'randomid.test'
+                let recipientEvm = utils.nearAccountToEvmAddress(recipient)
+                let balance = await web.eth.getBalance(account, 'latest');
+
+                let err
+                try {
+                    await web.near.transferNear({
+                        from: account,
+                        value: balance * 2,
+                        to: recipient,
+                        gas: 0
+                    });
+                } catch (e) {
+                    err = e.message
+                }
+                expect(err).toContain('underflow during sub_balance')
+            }))
+        });
+
         describe('web3 Contract Abstraction', () => {
             test('can instantiate and run view functions', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI, zombieAddress);
@@ -404,6 +547,9 @@ describe('\n---- PROVIDER ----', () => {
         let txIndex;
         let blockWithTxsHash;
         let blockWithTxsNumber;
+        let zombieCode
+        let zombieAddress
+        const value = 10
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
 
         beforeAll(withWeb3(async (web) => {
@@ -411,19 +557,132 @@ describe('\n---- PROVIDER ----', () => {
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
 
-            txResult = await web.eth.sendTransaction({
-                from: '00'.repeat(20),
-                to: '00'.repeat(20),
-                value: 0,
+            zombieCode = fs.readFileSync(zombieCodeFile).toString();
+            const txResult = await web.eth.sendTransaction({
+                from: `0x${'00'.repeat(20)}`,
+                to: undefined,
+                value,
                 gas: 0,
-                data: '0x00'
+                data: `0x${zombieCode}`
             });
 
+            zombieAddress = txResult.contractAddress;
             transactionHash = txResult.transactionHash;
             txIndex = txResult.transactionIndex;
             blockWithTxsHash = txResult.blockHash;
             blockWithTxsNumber = txResult.blockNumber;
         }));
+
+        describe('getTransaction | eth_getTransactionByHash', () => {
+            test('fails to get non-existant transactions', withWeb3(async(web) => {
+                try {
+                    await web.eth.getTransaction(`${base58TxHash}:${ACCOUNT_ID}`);
+                } catch (e) {
+                    expect(e).toBeDefined();
+                }
+            }));
+
+            describe('for contract creation transaction', () => {
+                test('has corrent parameters', withWeb3(async(web) => {
+                    // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
+                    const tx = await web.eth.getTransaction(transactionHash);
+                    expect(tx.blockHash).toStrictEqual(blockWithTxsHash)
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
+                    expect(tx.blockNumber).toStrictEqual(blockWithTxsNumber)
+                    expect(tx.transactionIndex).toStrictEqual(txIndex)
+                    expect(tx.hash).toStrictEqual(transactionHash)
+                    expect(tx.from.toLowerCase()).toStrictEqual(web._provider.accountEvmAddress.toLowerCase())
+                    expect(tx.to).toBeNull()
+                    expect(tx.input).toStrictEqual("0x" + zombieCode)
+                    expect(parseInt(tx.value)).toStrictEqual(value)
+                }));
+            });
+
+            describe('for contract interaction transaction', () => {
+                let txHash
+                let encoded_call
+                let txReceipt
+
+                beforeAll(withWeb3(async (web) => {
+                    let zombieABI = JSON.parse(fs.readFileSync(zombieABIFile).toString());
+                    let zombies = new web.eth.Contract(zombieABI, zombieAddress);
+                    txReceipt = await zombies.methods.createRandomZombie('george')
+                        .send({from: web._provider.accountEvmAddress});
+
+                    txHash = txReceipt.transactionHash
+                    encoded_call = zombies.methods.createRandomZombie('george').encodeABI()
+                }))
+
+                test('has correct parameters', withWeb3(async(web) => {
+                    // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
+                    const tx = await web.eth.getTransaction(txHash);
+                    expect(tx.blockHash).toStrictEqual(txReceipt.blockHash)
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
+                    expect(tx.blockNumber).toStrictEqual(txReceipt.blockNumber)
+                    expect(tx.transactionIndex).toStrictEqual(txReceipt.transactionIndex)
+                    expect(tx.hash).toStrictEqual(txHash)
+                    expect(tx.from.toLowerCase()).toStrictEqual(web._provider.accountEvmAddress.toLowerCase())
+                    expect(tx.to).toStrictEqual(zombieAddress)
+                    expect(tx.input).toStrictEqual(encoded_call)
+                    expect(parseInt(tx.value)).toStrictEqual(0)
+                }));
+            });
+
+            describe('for simple transfer transactions', () => {
+                let addNearReceipt
+                let transferReceipt
+                let to
+                let from
+                let value = 5
+
+                beforeAll(withWeb3(async (web) => {
+                    from = web._provider.accountEvmAddress;
+                    to = utils.nearAccountToEvmAddress("random")
+
+                    addNearReceipt = await web.eth.sendTransaction({
+                        from,
+                        to: from,
+                        value: value * 2,
+                        gas: 0
+                    });
+
+                    transferReceipt = await web.eth.sendTransaction({
+                        from,
+                        to,
+                        value,
+                        gas: 0
+                    });
+                }))
+
+                test('transaction has correct parameters for addNear from near account to evm account', withWeb3(async(web) => {
+                    // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
+                    const tx = await web.eth.getTransaction(addNearReceipt.transactionHash);
+                    expect(tx.blockHash).toStrictEqual(addNearReceipt.blockHash)
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
+                    expect(tx.blockNumber).toStrictEqual(addNearReceipt.blockNumber)
+                    expect(tx.transactionIndex).toStrictEqual(addNearReceipt.transactionIndex)
+                    expect(tx.hash).toStrictEqual(addNearReceipt.transactionHash)
+                    expect(tx.from.toLowerCase()).toStrictEqual(from.toLowerCase())
+                    expect(tx.to.toLowerCase()).toStrictEqual(from.toLowerCase())
+                    expect(tx.input).toStrictEqual('')
+                    expect(parseInt(tx.value)).toStrictEqual(value * 2)
+                }))
+
+                test('transaction has correct parameters for transfers between evm addrs', withWeb3(async(web) => {
+                    // TODO: test nonce: see issue #27 https://github.com/nearprotocol/near-web3-provider/issues/27
+                    const tx = await web.eth.getTransaction(transferReceipt.transactionHash);
+                    expect(tx.blockHash).toStrictEqual(transferReceipt.blockHash)
+                    expect(utils.isHex(tx.blockHash)).toBeTruthy()
+                    expect(tx.blockNumber).toStrictEqual(transferReceipt.blockNumber)
+                    expect(tx.transactionIndex).toStrictEqual(transferReceipt.transactionIndex)
+                    expect(tx.hash).toStrictEqual(transferReceipt.transactionHash)
+                    expect(tx.from.toLowerCase()).toStrictEqual(from.toLowerCase())
+                    expect(tx.to.toLowerCase()).toStrictEqual(to.toLowerCase())
+                    expect(tx.input).toStrictEqual('')
+                    expect(parseInt(tx.value)).toStrictEqual(value)
+                }))
+            })
+        });
 
         describe('getBlockNumber | eth_blockNumber', () => {
             test('returns the most recent blockNumber', withWeb3(async (web) => {
@@ -538,27 +797,6 @@ describe('\n---- PROVIDER ----', () => {
             }));
         });
 
-        describe('getTransaction | eth_getTransactionByHash', () => {
-            test('fails to get non-existant transactions', withWeb3(async(web) => {
-                try {
-                    await web.eth.getTransaction(`${base58TxHash}:${ACCOUNT_ID}`);
-                } catch (e) {
-                    expect(e).toBeDefined();
-                }
-            }));
-
-            test('it gets a transaction by hash', withWeb3(async(web) => {
-                try {
-                    const tx = await web.eth.getTransaction(transactionHash);
-                    expect(tx).toBeDefined();
-                    expect(tx.contractAddress).toBeNull();
-                    expect(tx.status).toBe(true);
-                } catch (e) {
-                    return e;
-                }
-            }));
-        });
-
         describe(`getTransactionFromBlock |
             eth_getTransactionByBlockHashAndIndex,
             eth_getTransactionByBlockNumberAndIndex`, () => {
@@ -637,6 +875,24 @@ describe('\n---- PROVIDER ----', () => {
                     expect(e).toBeTruthy();
                     expect(e.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
                 }
+            }));
+        });
+    });
+
+    describe('\n---- EXTENDED UTILITY FUNCTIONS ----', () => {
+        describe('web3.utils.hexToBase58', () => {
+            test('returns the correct output', withWeb3(async (web) => {
+                const hex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b"
+                const expectedBase58 = "3qirLQdXAeug59YuXYk1eocA4BJ2"
+                expect(web.utils.hexToBase58(hex)).toStrictEqual(expectedBase58)
+            }));
+        });
+
+        describe('web3.utils.base58ToHex', () => {
+            test('returns the correct output', withWeb3(async (web) => {
+                const base58 = "3qirLQdXAeug59YuXYk1eocA4BJ2"
+                const expectedHex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b"
+                expect(web.utils.base58ToHex(base58)).toStrictEqual(expectedHex)
             }));
         });
     });

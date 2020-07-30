@@ -8,6 +8,7 @@ const NEAR_NET_VERSION_TEST = '98';
 
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
+const nearWeb3Extensions = require('./near_web3_extensions');
 
 const GAS_AMOUNT = new BN('200000000000000');
 const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
@@ -169,6 +170,14 @@ class NearProvider {
 
             case 'eth_sendTransaction': {
                 return this.routeEthSendTransaction(params);
+            }
+
+            case 'near_retrieveNear': {
+                return this.routeNearRetrieveNear(params);
+            }
+
+            case 'near_transferNear': {
+                return this.routeNearTransferNear(params);
             }
 
             case 'eth_sendRawTransaction': {
@@ -678,24 +687,19 @@ class NearProvider {
      * eth_getTransactionReceipt. If the latter has errors, this method will
      * error.
      * @param    {Object} txObj transaction object
-     * @property {String} params.to EVM destination address
-     * @property {String} params.value amount of yoctoNEAR to attach
-     * @property {String} params.gas amount of gas to attach
-     * @property {String} params.data the encoded call data
+     * @property {String} txObj.to EVM destination address
+     * @property {String} txObj.value amount of yoctoNEAR to attach
+     * @property {String} txObj.gas amount of gas to attach
+     * @property {String} txObj.data the encoded call data
      * @returns  {String} The resulting txid
      */
     // TODO: Account for passed in gas
     async routeEthSendTransaction([txObj]) {
         try {
-            let outcome;
-            let val;
             const { from, to, value, data } = txObj;
-            if (value === undefined) {
-                val = new BN(0)
-            } else {
-                const remove = utils.remove0x(value)
-                val = new BN(remove, 16)
-            }
+
+            let outcome;
+            let val = value ? utils.hexToBN(value) : new BN(0)
 
             if (data === undefined) {
                 // send funds
@@ -741,6 +745,58 @@ class NearProvider {
             return `${outcome.transaction_outcome.id}:${this.accountId}`;
         } catch (e) {
             return e;
+        }
+    }
+
+    /**
+     * Creates transaction to send send funds from evm account
+     * to a near account
+     * @param    {Object} txObj transaction object
+     * @property {String} txObj.to near destination accountId
+     * @property {String} txObj.value amount of yoctoNEAR to attach
+     * @property {String} txObj.gas amount of gas to attach
+     * @returns  {String} The resulting txid
+     */
+    async routeNearRetrieveNear([txObj]) {
+        try {
+            const { to, value } = txObj
+            let val = value ? utils.hexToBN(value) : new BN(0)
+            let outcome = await this.account.functionCall(
+                this.evm_contract,
+                'retrieve_near',
+                { 'recipient': to, 'amount': val.toString() },
+                GAS_AMOUNT,
+                new BN(0)
+            );
+            return `${outcome.transaction_outcome.id}:${this.accountId}`;
+        } catch (e) {
+            return e
+        }
+    }
+
+    /**
+     * Creates transaction to send send funds from evm account
+     * to the evmAccount of a corresponding near accountId
+     * @param    {Object} txObj transaction object
+     * @property {String} txObj.to near destination accountId
+     * @property {String} txObj.value amount of yoctoNEAR to attach
+     * @property {String} txObj.gas amount of gas to attach
+     * @returns  {String} The resulting txid
+     */
+    async routeNearTransferNear([txObj]) {
+        try {
+            const { to, value } = txObj
+            let val = value ? utils.hexToBN(value) : new BN(0)
+            let outcome = await this.account.functionCall(
+                this.evm_contract,
+                'move_funds_to_near_account',
+                { 'address': to, 'amount': val.toString() },
+                GAS_AMOUNT,
+                new BN(0)
+            );
+            return `${outcome.transaction_outcome.id}:${this.accountId}`;
+        } catch (e) {
+            return e
         }
     }
 
@@ -796,4 +852,4 @@ class NearProvider {
     }
 }
 
-module.exports = { NearProvider, nearlib };
+module.exports = { NearProvider, nearlib, nearWeb3Extensions };

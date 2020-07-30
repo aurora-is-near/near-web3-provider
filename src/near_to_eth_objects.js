@@ -36,86 +36,6 @@ nearToEth.syncObj = function(syncInfo) {
 };
 
 /**
- * Maps NEAR Transaction FROM A TX QUERY to ETH Transaction Object
- * @param {Object} 		tx NEAR transaction
- * @param {Number}		txIndex	txIndex
- * @returns {Object} returns ETH transaction object
- *
- * @example nearToEth.transactionObject(tx, txIndex)
- */
-nearToEth.transactionObj = async function(tx, txIndex) {
-    assert(typeof tx === 'object' && tx.hash,
-        'nearToEth.transactionObj: must pass in tx object');
-
-    let destination = null;
-    let data = null;
-    const { transaction_outcome, transaction } = tx;
-
-    const functionCall = transaction.actions[0].FunctionCall;
-    // if it's a call, get the destination address
-    if (functionCall && functionCall.method_name == 'call_contract') {
-      const args = JSON.parse(utils.base64ToString(functionCall.args));
-      destination = args.contract_address;
-      data = args.encoded_input;
-    }
-
-    const sender = utils.nearAccountToEvmAddress(transaction.signer_id);
-    // const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
-
-    const value = transaction.actions.map(v => {
-        const k = Object.keys(v)[0];
-        return parseInt(v[k].deposit, 10);
-    }).reduce((a, b) => a + b);
-
-    const obj = {
-        // DATA 20 bytes - address of the sender
-        // from: sender,
-        from: sender,
-
-        // DATA 20 bytes - address of the receiver
-        to: utils.include0x(destination),
-
-        // QUANTITY - integer of the current gas price in wei
-        // TODO: This will break with big numbers?
-        gasPrice: utils.decToHex(parseInt(tx.gas_price)),
-
-        // DATA - the data sent along with the transaction
-        input: '0x' + data ? data : '',
-
-        // DATA 32 bytes - hash of the block where this transaction was in
-        blockHash: transaction_outcome.block_hash,
-
-        // QUANTITY block number where this transaction was in
-        blockNumber: utils.decToHex(tx.block_height),
-
-        // QUANTITY gas provided by the sender
-        gas: utils.decToHex(transaction_outcome.outcome.gas_burnt),
-
-        // DATA 32 bytes - hash of the transaction
-        hash: `${transaction.hash}:${transaction.signer_id}`,
-
-        // QUANTITY - the number of txs made by the sender prior to this one
-        nonce: utils.decToHex(tx.nonce),
-
-        // QUANTITY - integer of the tx's index position in the block
-        transactionIndex: utils.decToHex(txIndex),
-
-        // QUANTITY - value transferred in wei (yoctoNEAR)
-        value: utils.decToHex(value),
-
-        /** ------------ UNSUPPORTED/FALSY VALUES --------- */
-        // QUANTITY - ECDSA recovery id
-        v: '0x0',
-        // QUANTITY - ECDSA signature r
-        r: '0x0',
-        // QUANTITY - ECDSA signature s
-        s: '0x0'
-    };
-
-    return obj;
-};
-
-/**
  * Get the total gas used. gas_used is listed on each chunk
  */
 // TODO: Is this chunks.gas_used or accumulated gas_burnt for each tx?
@@ -248,6 +168,56 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
 };
 
 /**
+ * Maps NEAR Transaction FROM A TX QUERY to ETH Transaction Object
+ * @param {Object} 		tx NEAR transaction
+ * @param {Number}		txIndex	txIndex
+ * @returns {Object} returns ETH transaction object
+ *
+ * @example nearToEth.transactionObject(tx, txIndex)
+ */
+nearToEth.transactionObj = async function(tx, txIndex) {
+    assert(typeof tx === 'object' && tx.hash,
+        'nearToEth.transactionObj: must pass in tx object');
+
+    const { transaction_outcome, transaction } = tx;
+    let sharedParams = processSharedParams(
+        transaction,
+        transaction_outcome.block_hash,
+        tx.block_height,
+        transaction_outcome.outcome.gas_burnt,
+        txIndex
+    )
+    if (sharedParams.value === null) {
+        sharedParams.value = transaction.actions.map(v => {
+            const k = Object.keys(v)[0];
+            return parseInt(v[k].deposit, 10);
+        }).reduce((a, b) => a + b);
+    }
+
+    return {
+        // DATA 32 bytes - hash of the transaction
+        hash: `${transaction.hash}:${transaction.signer_id}`,
+
+        // QUANTITY - the number of txs made by the sender prior to this one
+        nonce: utils.decToHex(tx.nonce),
+
+        ...sharedParams,
+
+        // QUANTITY - integer of the current gas price in wei
+        // TODO: This will break with big numbers?
+        gasPrice: utils.decToHex(parseInt(tx.gas_price)),
+
+        /** ------------ UNSUPPORTED/FALSY VALUES --------- */
+        // QUANTITY - ECDSA recovery id
+        v: '0x0',
+        // QUANTITY - ECDSA signature r
+        r: '0x0',
+        // QUANTITY - ECDSA signature s
+        s: '0x0',
+    };
+};
+
+/**
  * Maps NEAR transaction to ETH Transaction Receipt Object
  * @param {Object} block NEAR block
  * @param {Object} nearTxObj NEAR transaction object
@@ -256,8 +226,8 @@ nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
  */
 nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, accountId) {
     let contractAddress = null;
-    let destination = null;
 
+    const isReceipt = true;
     const { transaction, transaction_outcome, status } = nearTxObj;
     const responseData = utils.base64ToString(status.SuccessValue);
     const functionCall = transaction.actions[0].FunctionCall;
@@ -270,51 +240,26 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
       }
     }
 
-    // if it's a call, get the destination address
-    if (functionCall) {
-        const args = JSON.parse(utils.base64ToString(functionCall.args));
-        switch (functionCall.method_name) {
-            case 'call_contract':
-                destination = args.contract_address;
-                break;
-            case 'add_near':
-                destination = utils.nearAccountToEvmAddress(transaction.signer_id);
-                break;
-            case 'move_funds_to_evm_address':
-                destination = args.address;
-                break;
-            default:
-        }       const receiver = utils.nearAccountToEvmAddress(transaction.receiver_id);
-    }
-
     // TODO: translate logs
     const { gas_burnt, logs } = transaction_outcome.outcome;
+    let sharedParams = processSharedParams(
+        transaction,
+        block.header.hash,
+        block.header.height,
+        transaction_outcome.outcome.gas_burnt,
+        nearTxObjIndex,
+        isReceipt,
+    )
 
     return {
         // DATA Hash of the transaction
         transactionHash: `${transaction.hash}:${accountId}`,
 
-        // QUANTITY integer of the transaction's position in the block
-        transactionIndex: nearTxObjIndex,
-
-        // DATA hash of the block where this transaction was in
-        blockNumber: utils.decToHex(block.header.height),
-
-        // QUANTITY block number where this transaction was in
-        blockHash: utils.base58ToHex(block.header.hash),
-
-        // DATA address of the sender
-        from: utils.nearAccountToEvmAddress(transaction.signer_id),
-
-        // DATA address of the receiver, null when it's a contract creation tx
-        to: destination ? utils.include0x(destination) : null,
+        ...sharedParams,
 
         // DATA The contract address created, if the transaction was a contract
         // creation, otherwise null
         contractAddress: contractAddress,
-
-        // QUANTITY The amount of gas used by this specific transaction alone
-        gasUsed: utils.decToHex(gas_burnt),
 
         // ARRAY Array of log objects, which this transaction generated
         logs: logs,
@@ -329,12 +274,73 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
         /**------------UNSUPPORTED/NULL VALUES--------- */
 
         // DATA Bloom filter for light clients to quickly retrieve related logs
-        logsBloom: `0x${'00'.repeat(256)}`
+        logsBloom: `0x${'00'.repeat(256)}`,
 
         // DATA 32 bytes of post-transaction stateroot (pre Byzantium)
         // txReceipt will return EITHER status or root. Always returns status.
         // root: '0x'
     };
 };
+
+function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIndex, isReceipt = false) {
+    const gas = utils.decToHex(gasBurnt)
+    let destination = null;
+    let data = null;
+    let value = null;
+
+    // function specific parameters
+    const functionCall = transaction.actions[0].FunctionCall;
+    if (functionCall) {
+        const args = JSON.parse(utils.base64ToString(functionCall.args));
+        switch (functionCall.method_name) {
+            case 'call_contract':
+                destination = args.contract_address;
+                data = args.encoded_input;
+                break;
+            case 'deploy_code':
+                data = args.bytecode;
+                break;
+            case 'add_near':
+                destination = utils.nearAccountToEvmAddress(transaction.signer_id);
+                break;
+            case 'move_funds_to_evm_address':
+                destination = args.address;
+                value = parseInt(args.amount)
+                break;
+        }
+    }
+
+    let obj =  {
+        // DATA hash of the block where this transaction was in
+        blockHash: utils.base58ToHex(blockHash),
+        // QUANTITY block number where this transaction was in
+        blockNumber: utils.decToHex(blockHeight),
+        // QUANTITY integer of the transaction's position in the block
+        transactionIndex: txIndex,
+        // DATA address of the sender
+        from: utils.nearAccountToEvmAddress(transaction.signer_id),
+        // DATA address of the receiver, null when it's a contract creation tx
+        to: destination ? utils.include0x(destination) : null,
+    }
+
+    let additionalParams
+    if (isReceipt) {
+        additionalParams = {
+            // QUANTITY The amount of gas used by this specific transaction alone
+            gasUsed: gas
+        }
+    } else {
+        additionalParams = {
+            // QUANTITY The amount of gas used by this specific transaction alone
+            gas,
+            // QUANTITY - value transferred in wei (yoctoNEAR)
+            value: value ? utils.decToHex(value) : null,
+             // DATA - the data sent along with the transaction
+            input: data ? utils.include0x(data) : '',
+        }
+    }
+
+    return { ...obj, ...additionalParams }
+}
 
 module.exports = nearToEth;

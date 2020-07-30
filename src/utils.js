@@ -1,6 +1,7 @@
 const assert = require('bsert');
 const bs58 = require('bs58');
 const web3Utils = require('web3-utils');
+const BN = require('bn.js');
 
 const utils = {};
 
@@ -50,6 +51,24 @@ utils.isHex = function(value) {
     assert(typeof value === 'string', 'isHex: must pass in string');
     const hexTest = /^(0[xX])?[A-Fa-f0-9]+$/;
     return hexTest.test(value);
+};
+
+/**
+ * Checks if string is valid accountID
+ * citing: https://github.com/nearprotocol/nearcore/blob/bf5f272638dab6d8ff7ebc6d8272c08db3aff06c/core/primitives/src/utils.rs#L75
+ * @param {String} value value to check
+ * @returns {Boolean} true if value is valid accountID, false if not
+ */
+utils.isValidAccountID = function(value) {
+    assert(typeof value === 'string', 'isValidAccountID: must pass in string');
+    assert(value == value.toLowerCase(), `isValidAccountID: near accountID cannot have uppercase letters: ${value}`)
+
+    const accountIDTest = /^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/;
+    return (
+        value.length >= 2 &&
+        value.length <= 64 &&
+        accountIDTest.test(value)
+    );
 };
 
 /**
@@ -116,7 +135,7 @@ utils.deserializeHex = function(hexStr) {
  */
 utils.hexToDec = function(value) {
     assert(typeof value === 'string', 'hexToDec: must pass in hex string');
-    assert(this.isHex(value), 'hexToDec: must pass in hex string');
+    assert(utils.isHex(value), 'hexToDec: must pass in hex string');
 
     return parseInt(utils.remove0x(value), 16);
 };
@@ -137,8 +156,8 @@ utils.base58ToHex = function(value) {
  */
 utils.hexToBase58 = function(value) {
     assert(typeof value === 'string', 'hexToBase58: must pass in hex string');
-    assert(this.isHex(value), 'hexToBase58: must pass in hex string');
-    value = this.remove0x(value);
+    assert(utils.isHex(value), 'hexToBase58: must pass in hex string');
+    value = utils.remove0x(value);
 
     return bs58.encode(Buffer.from(value, 'hex'));
 };
@@ -167,12 +186,23 @@ utils.base64ToString = function(value) {
  * @returns {Uint8Array} returns hex string in Uint8Array
  */
 utils.hexToUint8 = function(value) {
-    return new Uint8Array(bs58.decode(this.hexToBase58(value)));
+    return new Uint8Array(bs58.decode(utils.hexToBase58(value)));
 };
 
 utils.base58ToUint8 = function(value) {
     return new Uint8Array(bs58.decode(value));
 };
+
+/**
+ * Converts hex representation of a number to BigNumber format
+ * @param {String}  value hex string
+ * @returns {Uint8Array} returns hex string in Uint8Array
+ */
+utils.hexToBN = function(hex) {
+    const remove = utils.remove0x(hex.toString())
+    return new BN(remove, 16)
+}
+
 /**
  * Convert timestamp in NEAR to hex
  * @param {Number} value NEAR timestamp
@@ -187,7 +217,7 @@ utils.convertTimestamp = function(value) {
     // If we convert the original timestamp 1580771932817928262 to hex, it yields 0x15f007b296853000. Attempting to pass this through to web3 results in the error: 'Number can only safely store up to 53 bits'
     const divider = 1000000;
     const roundedTime = new Date(value / divider).getTime();
-    return this.decToHex(roundedTime);
+    return utils.decToHex(roundedTime);
 };
 
 /**
@@ -215,7 +245,7 @@ utils.getTxHashAndAccountId = function(value) {
  */
 utils.nearAccountToEvmAddress = function(accountID) {
     assert(
-        typeof accountID === 'string', 'nearAccountToEvmAddress must pass in string'
+        utils.isValidAccountID(accountID), 'nearAccountToEvmAddress must pass in valid accountID'
     );
     // NB: 2 characters of hex prefix. Then 20 hex pairs.
     return '0x' + utils.keccak256(accountID).slice(26, 66);
@@ -230,7 +260,7 @@ utils.nearAccountToEvmAddress = function(accountID) {
 utils.convertBlockHeight = async function(blockHeight, nearProvider) {
     try {
         const enums = ['genesis', 'latest', 'earliest', 'pending'];
-        const notHex = !this.isHex(blockHeight);
+        const notHex = !utils.isHex(blockHeight);
         const isAnEnum = enums.find((e) => e === blockHeight);
 
         if (notHex && typeof blockHeight === 'string') {
@@ -251,7 +281,7 @@ utils.convertBlockHeight = async function(blockHeight, nearProvider) {
         }
 
         default: {
-            blockHeight = this.hexToDec(blockHeight);
+            blockHeight = utils.hexToDec(blockHeight);
             break;
         }
         }
