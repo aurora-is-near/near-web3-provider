@@ -111,11 +111,45 @@ describe('utils', () => {
     });
 
     describe('#base58ToHex', () => {
+        test('returns the correct hex value', () => {
+            const base58 = "3qirLQdXAeug59YuXYk1eocA4BJ2";
+            const expectedHex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b";
+            expect(utils.base58ToHex(base58)).toStrictEqual(expectedHex);
+        });
 
+        test('throws error if input is not a string', () => {
+            const invalidBase58 = 55;
+            expect(() => utils.base58ToHex(invalidBase58)).toThrow();
+        });
+
+        test('throws error if input is not base58', () => {
+            const invalidBase58 = "10lI";
+            expect(() => utils.base58ToHex(invalidBase58)).toThrow();
+        });
     });
 
     describe('#hexToBase58', () => {
+        test('returns the correct base58 value for hex starting with 0x', () => {
+            const hex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b";
+            const expectedBase58 = "3qirLQdXAeug59YuXYk1eocA4BJ2";
+            expect(utils.hexToBase58(hex)).toStrictEqual(expectedBase58);
+        });
 
+        test('returns the correct base58 value for hex without 0x', () => {
+            const hex = "cbda96b3f2b8eb962f97ae50c3852ca976740e2b";
+            const expectedBase58 = "3qirLQdXAeug59YuXYk1eocA4BJ2";
+            expect(utils.hexToBase58(hex)).toStrictEqual(expectedBase58);
+        });
+
+        test('throws error if input is not a string', () => {
+            const invalidHex = 55;
+            expect(() => utils.hexToBase58(invalidHex)).toThrow();
+        });
+
+        test('throws error if input is not in hex format', () => {
+            const invalidHex = "ghjks";
+            expect(() => utils.hexToBase58(invalidHex)).toThrow();
+        });
     });
 
     describe('#base64ToHex', () => {

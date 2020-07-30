@@ -2,7 +2,7 @@ const utils = require('./utils')
 
 module.exports = function (web3) {
 	/**
-	 * Formats the input of retrieveNear and converts all number values to HEX
+	 * Formats the input of retrieveNear and transferNear and converts all number values to HEX
 	 *
 	 * @method inputRetrieveNearFormatter
 	 * @param {Object} options
@@ -26,6 +26,14 @@ module.exports = function (web3) {
 		return options
 	};
 
+	// add near specific utility functions
+	const near_utils = {
+		hexToBase58: utils.hexToBase58,
+		base58ToHex: utils.base58ToHex,
+	}
+	web3.utils = {...web3.utils, ...near_utils}
+
+	// prepare near specific blockchain operations
 	const extensions = {
 	  property: 'near',
 	  methods: [{
