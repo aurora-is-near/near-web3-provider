@@ -445,6 +445,62 @@ describe('\n---- PROVIDER ----', () => {
             }));
         })
 
+        describe('retrieveNear | near_transferNear', () => {
+            let account, value, firstNearBalance
+
+            beforeEach(withWeb3(async (web) => {
+                account = utils.nearAccountToEvmAddress(ACCOUNT_ID)
+                value = 2 * 10 ** 18
+                await web.eth.sendTransaction({
+                    from: account,
+                    to: account,
+                    value: value.toString(),
+                    gas: 0
+                });
+            }));
+
+            test('transfers near to the evm address corresponding to the near accountId', withWeb3(async (web) => {
+                let recipient = 'randomid.test'
+                let recipientEvm = utils.nearAccountToEvmAddress(recipient)
+
+                let fromPrevBalance = await web.eth.getBalance(account, 'latest')
+                let toPrevBalance = await web.eth.getBalance(recipientEvm, 'latest')
+
+                let transferNear = await web.near.transferNear({
+                    from: account,
+                    value: value,
+                    to: recipient,
+                    gas: 0
+                })
+
+                let fromNewBalance = await web.eth.getBalance(account, 'latest')
+                let toNewBalance = await web.eth.getBalance(recipientEvm, 'latest')
+
+                expect(fromPrevBalance - fromNewBalance).toStrictEqual(value)
+                expect(toNewBalance - toPrevBalance).toStrictEqual(value)
+
+            }));
+
+            test('throws an error if amount exceeds balance', withWeb3(async (web) => {
+                let recipient = 'randomid.test'
+                let recipientEvm = utils.nearAccountToEvmAddress(recipient)
+                let balance = await web.eth.getBalance(account, 'latest');
+
+                let err
+                try {
+                    await web.near.transferNear({
+                        from: account,
+                        value: balance * 2,
+                        to: recipient,
+                        gas: 0
+                    });
+                } catch (e) {
+                    err = e.message
+                }
+                expect(err).toContain('underflow during sub_balance')
+            }))
+        });
+
         describe('web3 Contract Abstraction', () => {
             test('can instantiate and run view functions', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI, zombieAddress);
@@ -819,6 +875,24 @@ describe('\n---- PROVIDER ----', () => {
                     expect(e).toBeTruthy();
                     expect(e.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
                 }
+            }));
+        });
+    });
+
+    describe('\n---- EXTENDED UTILITY FUNCTIONS ----', () => {
+        describe('web3.utils.hexToBase58', () => {
+            test('returns the correct output', withWeb3(async (web) => {
+                const hex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b"
+                const expectedBase58 = "3qirLQdXAeug59YuXYk1eocA4BJ2"
+                expect(web.utils.hexToBase58(hex)).toStrictEqual(expectedBase58)
+            }));
+        });
+
+        describe('web3.utils.base58ToHex', () => {
+            test('returns the correct output', withWeb3(async (web) => {
+                const base58 = "3qirLQdXAeug59YuXYk1eocA4BJ2"
+                const expectedHex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b"
+                expect(web.utils.base58ToHex(base58)).toStrictEqual(expectedHex)
             }));
         });
     });
