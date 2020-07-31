@@ -241,7 +241,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     }
 
     // TODO: translate logs
-    const { gas_burnt, logs } = transaction_outcome.outcome;
+    const { gas_burnt } = transaction_outcome.outcome;
     let sharedParams = processSharedParams(
         transaction,
         block.header.hash,
@@ -262,7 +262,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
         contractAddress: contractAddress,
 
         // ARRAY Array of log objects, which this transaction generated
-        logs: logs,
+        logs: parseLogs(nearTxObj.receipts_outcome, sharedParams, contractAddress),
 
         // QUANTITY either 1 (success) or 0 (failure)
         status: responseData ? '0x1' : '0x0',
@@ -341,6 +341,22 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     }
 
     return { ...obj, ...additionalParams }
+}
+
+function parseLogs(receipts_outcome, params, contractAddress) {
+    let nearLogs = receipts_outcome.map(({ outcome }) => outcome.logs).reduce((a, b) => a.concat(b));
+    let logs = nearLogs.map((log, i) => {
+        return {
+            logIndex: '0x' + i.toString(16),
+            blockNumber: params.blockNumber,
+            blockHash: params.blockHash,
+            transactionIndex: '0x0',
+            address: contractAddress || params.to,
+            data: '0x' + log.replace(/.*evm log: /, ''),
+            topics: []
+        };
+    });
+    return logs;
 }
 
 module.exports = nearToEth;

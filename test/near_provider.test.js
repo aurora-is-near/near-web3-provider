@@ -854,6 +854,30 @@ describe('\n---- PROVIDER ----', () => {
                 }
             }));
 
+            test('has correct paramters', withWeb3(async (web) => {
+                let eventRawData = "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000209e105f40198c000000000000000000000000000000000000000000000000000000000000000667656f7267650000000000000000000000000000000000000000000000000000"
+                let zombieCode = fs.readFileSync(zombieCodeFile).toString();
+                const deployResult = await web.eth.sendTransaction({
+                    from: `0x${'00'.repeat(20)}`,
+                    to: undefined,
+                    value: 10,
+                    gas: 0,
+                    data: `0x${zombieCode}`
+                });
+                let zombieAddress = deployResult.contractAddress;
+                let zombieABI = JSON.parse(fs.readFileSync(zombieABIFile).toString());
+                let zombies = new web.eth.Contract(zombieABI, zombieAddress);
+                let txReceipt = await zombies.methods.createRandomZombie('george')
+                    .send({from: web._provider.accountEvmAddress});
+
+                expect(txReceipt.from).toStrictEqual(web._provider.accountEvmAddress)
+                expect(txReceipt.to).toStrictEqual(zombieAddress.toLowerCase())
+                expect(txReceipt.events[0].blockNumber).toStrictEqual(txReceipt.blockNumber)
+                expect(txReceipt.events[0].blockHash).toStrictEqual(txReceipt.blockHash)
+                expect(txReceipt.events[0].address).toStrictEqual(zombieAddress)
+                expect(txReceipt.events[0].raw.data).toStrictEqual(eventRawData)
+            }));
+
             test('errors if not a real txhash', withWeb3(async (web) => {
                 const errorType = "[-32602]";
                 try {
