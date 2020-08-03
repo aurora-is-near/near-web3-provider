@@ -64,7 +64,7 @@ async function deployContract(web) {
 
     try {
         // Minimum amount required to cover storage - LackBalanceForState
-        const startingBalance = BigInt(54607084300000000000000000);
+        const startingBalance = BigInt(99999999999999999999999999999999);
         const contract = await web._provider.account.createAndDeployContract(
             evmAccountId,
             keyPair.getPublicKey(),
@@ -721,7 +721,7 @@ describe('\n---- PROVIDER ----', () => {
                 }
             }));
 
-            test('gets block by number', withWeb3(async (web) => {
+            test.only('gets block by number', withWeb3(async (web) => {
                 try {
                     const block = await web.eth.getBlock(blockHeight);
                     expect(block.hash).toStrictEqual(blockHash);

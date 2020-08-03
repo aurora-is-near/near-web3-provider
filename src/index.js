@@ -61,25 +61,32 @@ class NearProvider {
      * Gets a Near block and formats it according to web3 provider requirements
      * @param {Object} blockId Block height, block hash, or block
      * finality (enum: 'final', 'near-final', 'optimistic')
-     * @param {Boolean} shouldReturnTxObjects Indicates whether this method should
-     * return a block with tx objects
-     * @param {Boolean} shouldReturnNearBlock Indicates whether this method should
-     * return an unformatted Near block
+     * @param {Boolean} shouldReturnTxObjects Indicates whether this method
+     * should return a block with tx objects. Default false.
+     * @param {Boolean} shouldReturnNearBlock Indicates whether this method
+     * should return an unformatted Near block. Default false.
      * @returns {Object|Array}
      */
-    async _getBlock(blockId, shouldReturnTxObjects, shouldReturnNearBlock) {
+    async _getBlock(blockId, shouldReturnTxObjects = false, shouldReturnNearBlock = false) {
+        console.log({ blockId, shouldReturnTxObjects, shouldReturnNearBlock})
         try {
             const finalityEnums = ['final', 'near-final', 'optimistic'];
-            const isFinalityType = finalityEnums.find((f) => f === blockId);
-            const blockQuery = {};
+            const isFinalityType = typeof blockId === 'string'
+                ? finalityEnums.find((f) => f === blockId)
+                : false;
+            const query = {};
 
-            if (isFinalityType) {
-                blockQuery.finality = blockId;
+            if (typeof blockId === 'number') {
+                query.blockId = blockId;
+            } else if (isFinalityType) {
+                query.finality = blockId;
             } else {
-                blockQuery.blockId = blockId;
+                query.blockQuery = blockId;
             }
 
-            const block = await this.nearProvider.block(blockQuery);
+            console.log({ query })
+
+            const block = await this.nearProvider.block(query);
             const fullBlock = await nearToEth.blockObj(
                 block,
                 shouldReturnTxObjects,
