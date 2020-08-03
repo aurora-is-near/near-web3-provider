@@ -59,20 +59,34 @@ class NearProvider {
      * TODO: Return consistent type: either an Array or an Object
      *
      * Gets a Near block and formats it according to web3 provider requirements
-     * @param {Number|String} blockHeight Block height, block hash, or block
+     * @param {Object} blockId Block height, block hash, or block
      * finality (enum: 'final', 'near-final', 'optimistic')
-     * @param {Boolean} returnTxObjects Indicates whether this method should
+     * @param {Boolean} shouldReturnTxObjects Indicates whether this method should
      * return a block with tx objects
-     * @param {Boolean} returnNearBlock Indicates whether this method should
+     * @param {Boolean} shouldReturnNearBlock Indicates whether this method should
      * return an unformatted Near block
      * @returns {Object|Array}
      */
-    async _getBlock(blockHeight, returnTxObjects, returnNearBlock) {
+    async _getBlock(blockId, shouldReturnTxObjects, shouldReturnNearBlock) {
         try {
-            const block = await this.nearProvider.block(blockHeight);
-            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
+            const finalityEnums = ['final', 'near-final', 'optimistic'];
+            const isFinalityType = finalityEnums.find((f) => f === blockId);
+            const blockQuery = {};
 
-            if (returnNearBlock) {
+            if (isFinalityType) {
+                blockQuery.finality = blockId;
+            } else {
+                blockQuery.blockId = blockId;
+            }
+
+            const block = await this.nearProvider.block(blockQuery);
+            const fullBlock = await nearToEth.blockObj(
+                block,
+                shouldReturnTxObjects,
+                this.nearProvider
+            );
+
+            if (shouldReturnNearBlock) {
                 return [fullBlock, block];
             }
             return fullBlock;
