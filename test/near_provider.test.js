@@ -875,6 +875,7 @@ describe('\n---- PROVIDER ----', () => {
                 expect(txReceipt.events[0].blockNumber).toStrictEqual(txReceipt.blockNumber)
                 expect(txReceipt.events[0].blockHash).toStrictEqual(txReceipt.blockHash)
                 expect(txReceipt.events[0].address).toStrictEqual(zombieAddress)
+                expect(txReceipt.events[0].transactionHash).toStrictEqual(txReceipt.transactionHash)
                 expect(txReceipt.events[0].raw.data).toStrictEqual(eventRawData)
             }));
 

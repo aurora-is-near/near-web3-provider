@@ -195,9 +195,6 @@ nearToEth.transactionObj = async function(tx, txIndex) {
     }
 
     return {
-        // DATA 32 bytes - hash of the transaction
-        hash: `${transaction.hash}:${transaction.signer_id}`,
-
         // QUANTITY - the number of txs made by the sender prior to this one
         nonce: utils.decToHex(tx.nonce),
 
@@ -252,9 +249,6 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     )
 
     return {
-        // DATA Hash of the transaction
-        transactionHash: `${transaction.hash}:${accountId}`,
-
         ...sharedParams,
 
         // DATA The contract address created, if the transaction was a contract
@@ -310,6 +304,7 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
         }
     }
 
+    let transactionHash = `${transaction.hash}:${transaction.signer_id}`
     let obj =  {
         // DATA hash of the block where this transaction was in
         blockHash: utils.base58ToHex(blockHash),
@@ -326,11 +321,15 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     let additionalParams
     if (isReceipt) {
         additionalParams = {
+            // DATA 32 bytes - Hash of the transaction
+            transactionHash,
             // QUANTITY The amount of gas used by this specific transaction alone
-            gasUsed: gas
+            gasUsed: gas,
         }
     } else {
         additionalParams = {
+            // DATA 32 bytes - Hash of the transaction
+            hash: transactionHash,
             // QUANTITY The amount of gas used by this specific transaction alone
             gas,
             // QUANTITY - value transferred in wei (yoctoNEAR)
@@ -350,6 +349,7 @@ function parseLogs(receipts_outcome, params, contractAddress) {
             logIndex: '0x' + i.toString(16),
             blockNumber: params.blockNumber,
             blockHash: params.blockHash,
+            transactionHash: params.transactionHash,
             transactionIndex: '0x0',
             address: contractAddress || params.to,
             data: '0x' + log.replace(/.*evm log: /, ''),
