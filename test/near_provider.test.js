@@ -8,6 +8,11 @@ const web3 = require('web3');
 const bn = web3.utils.BN
 const nearlib = require('near-api-js');
 const utils = require('../src/utils');
+const {
+    createKeyPair,
+    waitForABlock,
+    getLatestBlockInfo
+} = require('./helpers');
 const { NearProvider, nearWeb3Extensions } = require('../src/index');
 
 // TODO: update nearEvmFile frequently when near_evm work is being done
@@ -52,7 +57,7 @@ async function deployContract(web) {
     const evmAccountId = 'evm';
     const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-    const keyPair = createKeyPair();
+    const keyPair = createKeyPair(nearlib);
 
     console.log(`Deploying contract on NEAR_ENV: "${NEAR_ENV}"`);
 
@@ -553,7 +558,7 @@ describe('\n---- PROVIDER ----', () => {
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
 
         beforeAll(withWeb3(async (web) => {
-            const newBlock = await getLatestBlockInfo();
+            const newBlock = await getLatestBlockInfo(testNearProvider);
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
 
@@ -897,25 +902,3 @@ describe('\n---- PROVIDER ----', () => {
         });
     });
 });
-
-/**
- * Helpers
- */
-function createKeyPair () {
-    return nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
-}
-
-async function getLatestBlockInfo () {
-    const { sync_info } = await testNearProvider.status();
-    const { latest_block_hash, latest_block_height } = sync_info;
-    const block = {
-        blockHash: utils.base58ToHex(latest_block_hash),
-        blockHeight: latest_block_height
-    };
-
-    return block;
-}
-
-async function waitForABlock () {
-    return await new Promise((r) => setTimeout(r, 1000));
-}
