@@ -136,36 +136,28 @@ describe('\n---- PROVIDER ----', () => {
     describe('\n---- BASIC QUERIES ----', () => {
         describe('getProtocolVersion | eth_protocolVersion', () => {
             test('returns protocol version', withWeb3(async (web) => {
-                try {
-                    // Get current version
-                    const { version: { version } } = await testNearProvider.status();
-                    const getVersion = await web.eth.getProtocolVersion();
+                // Get current version
+                const { version: { version } } = await testNearProvider.status();
+                const getVersion = await web.eth.getProtocolVersion();
 
-                    expect(typeof version).toStrictEqual('string');
-                    expect(web3.utils.toHex(version)).toStrictEqual(getVersion);
-                } catch (e) {
-                    expect(e).toBeNull();
-                    return e;
-                }
+                expect(typeof version).toStrictEqual('string');
+                expect(web3.utils.toHex(version)).toStrictEqual(getVersion);
             }));
         });
 
         describe('isSyncing | eth_syncing', () => {
-            test('returns correct type - Boolean|Object', withWeb3(async (web) => {
-                try {
-                    const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
-                    const newAccount = await web._provider.account.createAccount('test.sync', keyPair.getPublicKey(), 2);
-                    expect(newAccount).toBe('object');
+            test.skip('returns correct type - Boolean|Object', withWeb3(async (web) => {
+                // TODO: This test is failing https://github.com/nearprotocol/near-web3-provider/issues/40
+                const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+                const newAccount = await web._provider.account.createAccount('test.sync', keyPair.getPublicKey(), 2);
+                expect(newAccount).toBe('object');
 
-                    const sync = await web.eth.isSyncing();
-                    const syncType = typeof sync;
-                    expect(syncType).toBe('boolean' || 'object');
+                const sync = await web.eth.isSyncing();
+                const syncType = typeof sync;
+                expect(syncType).toBe('boolean' || 'object');
 
-                    if (syncType === 'boolean') {
-                        expect(sync).toBe(false);
-                    }
-                } catch (e) {
-                    return e;
+                if (syncType === 'boolean') {
+                    expect(sync).toBe(false);
                 }
             }));
 
@@ -416,6 +408,8 @@ describe('\n---- PROVIDER ----', () => {
 
             test('returns error if amount exceeds evm account balance', withWeb3(async (web) => {
                 let currentBalance = await web.eth.getBalance(account, 'latest')
+
+                let err;
                 try {
                     await web.near.retrieveNear({
                         from: account,
@@ -424,24 +418,26 @@ describe('\n---- PROVIDER ----', () => {
                         gas: 0
                     })
                 } catch (e) {
-                    expect(e.message).toContain("insufficient funds")
+                    err = e.message;
                 }
+                expect(err).toContain("insufficient funds")
             }));
 
             test('returns error if near accountID is invalid', withWeb3(async (web) => {
                 const invalidAccountID = "random%%id";
 
+                let err;
                 try {
-                    let bla = await web.near.retrieveNear({
+                    await web.near.retrieveNear({
                         from: account,
                         value: value / 2,
                         to: invalidAccountID,
                         gas: 0
                     })
-                    console.log(bla)
                 } catch (e) {
-                    expect(e.message).toContain("invalid near accountID:")
+                    err = e.message;
                 }
+                expect(err).toContain("invalid near accountID:")
             }));
         })
 
@@ -524,16 +520,12 @@ describe('\n---- PROVIDER ----', () => {
 
             test('can deploy', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI);
-                try {
-                    let result = await zombies
-                        .deploy({data: `0x${zombieCode}`})
-                        .send({from: web._provider.accountEvmAddress});
-                    expect(result._address).toBeDefined();
-                    expect(result._address.length).toStrictEqual(42);
-                    expect(result._address.slice(0, 2)).toStrictEqual('0x');
-                } catch (e) {
-                    return e;
-                }
+                let result = await zombies
+                    .deploy({data: `0x${zombieCode}`})
+                    .send({from: web._provider.accountEvmAddress});
+                expect(result._address).toBeDefined();
+                expect(result._address.length).toStrictEqual(42);
+                expect(result._address.slice(0, 2)).toStrictEqual('0x');
             }), 11000);
         });
 
@@ -575,11 +567,13 @@ describe('\n---- PROVIDER ----', () => {
 
         describe('getTransaction | eth_getTransactionByHash', () => {
             test('fails to get non-existant transactions', withWeb3(async(web) => {
+                let err;
                 try {
                     await web.eth.getTransaction(`${base58TxHash}:${ACCOUNT_ID}`);
                 } catch (e) {
-                    expect(e).toBeDefined();
+                    err = e;
                 }
+                expect(err).toBeDefined();
             }));
 
             describe('for contract creation transaction', () => {
@@ -722,15 +716,11 @@ describe('\n---- PROVIDER ----', () => {
             }));
 
             test('gets block by number', withWeb3(async (web) => {
-                try {
-                    const block = await web.eth.getBlock(blockHeight);
-                    expect(block.hash).toStrictEqual(blockHash);
-                    expect(block.number).toStrictEqual(blockHeight);
-                    if (block.transactions.length > 0) {
-                        expect(typeof block.transactions[0]).toBe('string');
-                    }
-                } catch (e) {
-                    expect(e).toBe(null);
+                const block = await web.eth.getBlock(blockHeight);
+                expect(block.hash).toStrictEqual(blockHash);
+                expect(block.number).toStrictEqual(blockHeight);
+                if (block.transactions.length > 0) {
+                    expect(typeof block.transactions[0]).toBe('string');
                 }
             }));
 
@@ -751,15 +741,11 @@ describe('\n---- PROVIDER ----', () => {
 
                 await waitForABlock();
 
-                try {
-                    const block = await web.eth.getBlock(blockString);
-                    expect(block.number).toBeGreaterThan(blockHeight);
-                    expect(Array.isArray(block.transactions)).toBe(true);
-                    if (block.transactions.length > 0) {
-                        expect(typeof block.transactions[0]).toBe('string');
-                    }
-                } catch (e) {
-                    expect(e).toBe(null);
+                const block = await web.eth.getBlock(blockString);
+                expect(block.number).toBeGreaterThan(blockHeight);
+                expect(Array.isArray(block.transactions)).toBe(true);
+                if (block.transactions.length > 0) {
+                    expect(typeof block.transactions[0]).toBe('string');
                 }
             }));
         });
@@ -830,51 +816,53 @@ describe('\n---- PROVIDER ----', () => {
             }));
 
             test('errors if block does not exist', withWeb3(async (web) => {
+                let err;
                 try {
                     const notRealBlockHash = utils.base58ToHex('3cdkbRn1hpNLH5Ri6pipy7AEAKJscPD7TCgLFs94nWGB');
                     await web.eth.getTransactionFromBlock(notRealBlockHash, txIndex);
                 } catch (e) {
-                    expect(e).toBeDefined();
-                    return e;
+                    err = e;
                 }
+                expect(err).toBeDefined();
             }));
         });
 
         describe('getTransactionReceipt | eth_getTransactionReceipt', () => {
             test('gets transaction receipt', withWeb3(async (web) => {
-                try {
-                    const txResult = await createEvmTransaction(web);
-                    const txReceipt = await web.eth.getTransactionReceipt(txResult.transactionHash);
+                const txResult = await createEvmTransaction(web);
+                const txReceipt = await web.eth.getTransactionReceipt(txResult.transactionHash);
 
-                    expect(typeof transactionHash).toBeTruthy();
-                    expect(typeof transactionHash).toStrictEqual('object');
-                    expect(transactionHash).toStrictEqual(txReceipt.transactionHash);
-                } catch (e) {
-                    return e;
-                }
+                expect(typeof txResult).toBeTruthy();
+                expect(typeof txResult).toStrictEqual('object');
+                expect(txResult.transactionHash).toStrictEqual(txReceipt.transactionHash);
             }));
 
             test('errors if not a real txhash', withWeb3(async (web) => {
                 const errorType = "[-32602]";
+
+                let err;
                 try {
                     const badHash = 'whatsuppppp:hello';
                     await web.eth.getTransactionReceipt(badHash);
                 } catch (e) {
-                    expect(e).toBeTruthy();
-                    expect(e.message).toContain(errorType);
+                    err = e;
                 }
+                expect(err).toBeTruthy();
+                expect(err.message).toContain(errorType);
             }));
 
             test('errors if hash does not exist', withWeb3(async (web) => {
                 const notRealHash = '9Y9SUcuLRX1afHsyocHiryPQvqAujrJqugy4WgjfXGiw';
                 const account = 'test.near';
 
+                let err;
                 try {
                     await web.eth.getTransactionReceipt(notRealHash + ':' + account);
                 } catch (e) {
-                    expect(e).toBeTruthy();
-                    expect(e.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
+                    err = e;
                 }
+                expect(err).toBeTruthy();
+                expect(err.message).toEqual(`[-32000] Server error: Transaction ${notRealHash} doesn't exist`);
             }));
         });
     });
