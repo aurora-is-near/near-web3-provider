@@ -24,7 +24,7 @@
     "bn.js": "^5.1.2",
     "bs58": "^4.0.1",
     "bsert": "0.0.10",
-    "near-api-js": "^0.27.0",
+    "near-api-js": "^0.29.0",
     "tweetnacl": "^1.0.3",
     "web3-provider-engine": "^15.0.7",
     "web3-utils": "^1.2.8"
