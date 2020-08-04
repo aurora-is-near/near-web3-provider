@@ -108,5 +108,19 @@ describe('Near Connection', () => {
       const block = await nearProvider.block(finality);
       expect(block).toBeTruthy()
     });
+
+    // PASSES
+    test('gets block information by block FINALITY - sendJsonRpc', async () => {
+      const finality = 'near-final';
+      const block = await nearProvider.sendJsonRpc('block', { finality });
+      expect(block).toBeTruthy()
+    });
+
+    // PASSES
+    test('gets block information by block ID - sendJsonRpc', async () => {
+      const blockHash = blockInfo.blockHash;
+      const block = await nearProvider.sendJsonRpc('block', { block_id: blockHash });
+      expect(block).toBeTruthy()
+    });
   });
 });
