@@ -6,13 +6,9 @@
 const fs = require('fs');
 const web3 = require('web3');
 const bn = web3.utils.BN
-const nearlib = require('near-api-js');
+const nearAPI = require('near-api-js');
 const utils = require('../src/utils');
-const {
-    createKeyPair,
-    waitForABlock,
-    getLatestBlockInfo
-} = require('./helpers');
+const nearHelpers = require('./helpers');
 const { NearProvider, nearWeb3Extensions } = require('../src/index');
 
 // TODO: update nearEvmFile frequently when near_evm work is being done
@@ -29,9 +25,9 @@ const ACCOUNT = require(config.keyPath);
 // Main/Sender Account. Default is test.near
 const ACCOUNT_ID = ACCOUNT.account_id;
 const ACCOUNT_KEY = ACCOUNT.secret_key;
-const ACCOUNT_KEYPAIR = nearlib.utils.KeyPair.fromString(ACCOUNT_KEY);
+const ACCOUNT_KEYPAIR = nearAPI.utils.KeyPair.fromString(ACCOUNT_KEY);
 
-const testNearProvider = new nearlib.providers.JsonRpcProvider(NODE_URL);
+const testNearProvider = new nearAPI.providers.JsonRpcProvider(NODE_URL);
 
 console.log(`-----------------------
 Running tests on ${NEAR_ENV} network
@@ -42,7 +38,7 @@ Public Key: ${ACCOUNT.public_key}
 
 const withWeb3 = (fn) => {
     const web = new web3();
-    const keyStore = new nearlib.keyStores.InMemoryKeyStore();
+    const keyStore = new nearAPI.keyStores.InMemoryKeyStore();
     keyStore.setKey('test', ACCOUNT_ID, ACCOUNT_KEYPAIR);
 
     web.setProvider(new NearProvider(NODE_URL, keyStore, ACCOUNT_ID));
@@ -57,7 +53,7 @@ async function deployContract(web) {
     const evmAccountId = 'evm';
     const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
     const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-    const keyPair = createKeyPair(nearlib);
+    const keyPair = nearHelpers.createKeyPair(nearAPI);
 
     console.log(`Deploying contract on NEAR_ENV: "${NEAR_ENV}"`);
 
@@ -158,7 +154,7 @@ describe('\n---- PROVIDER ----', () => {
         describe('isSyncing | eth_syncing', () => {
             test('returns correct type - Boolean|Object', withWeb3(async (web) => {
                 try {
-                    const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+                    const keyPair = await nearAPI.KeyPair.fromRandom('ed25519');
                     const newAccount = await web._provider.account.createAccount('test.sync', keyPair.getPublicKey(), 2);
                     expect(newAccount).toBe('object');
 
@@ -558,7 +554,7 @@ describe('\n---- PROVIDER ----', () => {
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
 
         beforeAll(withWeb3(async (web) => {
-            const newBlock = await getLatestBlockInfo(testNearProvider);
+            const newBlock = await nearHelpers.getLatestBlockInfo(testNearProvider);
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
 
@@ -691,7 +687,7 @@ describe('\n---- PROVIDER ----', () => {
 
         describe('getBlockNumber | eth_blockNumber', () => {
             test('returns the most recent blockNumber', withWeb3(async (web) => {
-                await waitForABlock();
+                await nearHelpers.waitForABlock();
                 let blockNumber = await web.eth.getBlockNumber();
                 expect(blockNumber).not.toBeNaN();
                 expect(blockNumber).toBeGreaterThanOrEqual(blockHeight);
@@ -754,7 +750,7 @@ describe('\n---- PROVIDER ----', () => {
             test('gets block by string - "latest"', withWeb3(async (web) => {
                 const blockString = 'latest';
 
-                await waitForABlock();
+                await nearHelpers.waitForABlock();
 
                 try {
                     const block = await web.eth.getBlock(blockString);
