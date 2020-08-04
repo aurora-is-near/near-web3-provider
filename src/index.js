@@ -1,7 +1,7 @@
 const BN = require('bn.js');
 const assert = require('bsert');
 const web3Utils = require('web3-utils');
-const nearlib = require('near-api-js');
+const nearAPI = require('near-api-js');
 
 const NEAR_NET_VERSION = '99';
 const NEAR_NET_VERSION_TEST = '98';
@@ -14,31 +14,37 @@ const GAS_AMOUNT = new BN('200000000000000');
 const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
 class NearProvider {
-    constructor(url, keyStore, accountId, networkId, evmContractName) {
-        this.networkId = networkId || process.env.NODE_ENV || 'default';
-        this.evm_contract = evmContractName || 'evm';
+    constructor(
+        url,
+        keyStore,
+        accountId,
+        networkId,
+        evmContractName = 'evm'
+    ) {
         this.url = url;
+        this.keyStore = keyStore;
+        this.accountId = accountId;
+        this.networkId = networkId || process.env.NODE_ENV || 'default';
+        this.evm_contract = evmContractName;
+
         this.version = networkId === 'local' || networkId === 'test'
             ? NEAR_NET_VERSION_TEST
             : NEAR_NET_VERSION;
-        this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
 
-        this.keyStore = keyStore;
-        this.signer = new nearlib.InMemorySigner(this.keyStore);
-
-        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
-        this.accountId = accountId;
-        this.account = new nearlib.Account(this.connection, accountId);
+        this.nearProvider = new nearAPI.providers.JsonRpcProvider(url);
+        this.signer = new nearAPI.InMemorySigner(this.keyStore);
+        this.connection = new nearAPI.Connection(this.networkId, this.nearProvider, this.signer);
+        this.account = new nearAPI.Account(this.connection, accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
     }
 
     async _createNewAccount(accountId) {
         // create keypair
-        const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+        const keyPair = await nearAPI.KeyPair.fromRandom('ed25519');
         await this.keyStore.setKey(this.networkId, accountId, keyPair);
-        this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
-        this.signer = new nearlib.InMemorySigner(this.keyStore);
-        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
+        this.accounts[accountId] = new nearAPI.Account(this.connection, accountId);
+        this.signer = new nearAPI.InMemorySigner(this.keyStore);
+        this.connection = new nearAPI.Connection(this.networkId, this.nearProvider, this.signer);
     }
 
     async _viewEvmContract(method, methodArgs) {
@@ -873,4 +879,4 @@ class NearProvider {
     }
 }
 
-module.exports = { NearProvider, nearlib, nearWeb3Extensions };
+module.exports = { NearProvider, nearAPI, nearWeb3Extensions };
