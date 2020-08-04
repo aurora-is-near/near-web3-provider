@@ -69,47 +69,23 @@ describe('Near Connection', () => {
       expect(block.header.hash).toEqual(blockHash);
     });
 
+    // PASSES
+    test('gets block information by block Id { blockId } - HEIGHT', async () => {
+      const blockHeight = blockInfo.blockHeight;
+      const block = await nearProvider.block({ blockId: blockHeight });
+      expect(block).toBeTruthy();
+      expect(block.header.height).toEqual(blockHeight);
+    });
 
-    // FAILS [-32602] Invalid params: Failed parsing args: invalid type: sequence, expected string or map
-    test('gets block information by block Id { blockId }', async () => {
+    // PASSES
+    test('gets block information by block Id { blockId } - HASH ', async () => {
       const blockHash = blockInfo.blockHash;
-      const block = await nearProvider.block({ "blockId": blockHash });
+      const block = await nearProvider.block({ blockId: blockHash });
       expect(block).toBeTruthy();
       expect(block.header.hash).toEqual(blockHash);
     });
 
-    // FAILS. BlockQuery vs blockId
-    test('gets block information by block QUERY { blockQuery }', async () => {
-      const blockHash = blockInfo.blockHash;
-      const block = await nearProvider.block({ blockQuery: blockHash });
-      expect(block).toBeTruthy();
-      expect(block.header.hash).toEqual(blockHash);
-    });
-
-    // FAILS. [-32602]...{ blockQuery: { blockId }}?
-    test('gets block information by block QUERY { blockquery: { blockId }}', async () => {
-      const blockHash = blockInfo.blockHash;
-      const block = await nearProvider.block({ blockQuery: { blockId: blockHash }});
-      expect(block).toBeTruthy();
-      expect(block.header.hash).toEqual(blockHash);
-    });
-
-    // FAILS. [-32602]...{ blockQuery: { blockId }}...stringify because it wants a string or a map?
-    test('gets block information by block QUERY JSON.stringify({ blockQuery: { blockId }})', async () => {
-      const blockHash = blockInfo.blockHash;
-      const block = await nearProvider.block(JSON.stringify({ blockQuery: { blockId: blockHash }}));
-      expect(block).toBeTruthy();
-      expect(block.header.hash).toEqual(blockHash);
-    });
-
-    // FAILS. how to pass through finality?
-    test('gets block information by block FINALITY - string', async () => {
-      const finality = 'near-final';
-      const block = await nearProvider.block(finality);
-      expect(block).toBeTruthy()
-    });
-
-    // FAILS [-32602] Invalid params: Failed parsing args: invalid type: sequence, expected string or map
+    // PASSES
     test('gets block information by block FINALITY - object', async () => {
       const finality = 'near-final';
       const block = await nearProvider.block({ finality });
