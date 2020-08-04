@@ -53,7 +53,7 @@ describe('Near Connection', () => {
     });
 
     // PASSES. why no throw deprecating error?
-    test('gets block information by block HEIGHT', async () => {
+    test('gets block information by block HEIGHT - number', async () => {
       const blockHeight = blockInfo.blockHeight;
       const block = await nearProvider.block(blockHeight);
       expect(block).toBeTruthy();
@@ -62,7 +62,7 @@ describe('Near Connection', () => {
 
     // PASSES, but args is supposed to be an object according to docs...
     // https://github.com/near/near-api-js/blob/158327ef7000958668d8bb0eda0e662cff433299/src/providers/json-rpc-provider.ts#L86
-    test('gets block information by block HASH', async () => {
+    test('gets block information by block HASH - string', async () => {
       const blockHash = blockInfo.blockHash;
       const block = await nearProvider.block(blockHash);
       expect(block).toBeTruthy();
@@ -71,7 +71,7 @@ describe('Near Connection', () => {
 
 
     // FAILS [-32602] Invalid params: Failed parsing args: invalid type: sequence, expected string or map
-    test('gets block information by block HASH', async () => {
+    test('gets block information by block Id { blockId }', async () => {
       const blockHash = blockInfo.blockHash;
       const block = await nearProvider.block({ "blockId": blockHash });
       expect(block).toBeTruthy();
@@ -79,7 +79,7 @@ describe('Near Connection', () => {
     });
 
     // FAILS. BlockQuery vs blockId
-    test('gets block information by block HASH', async () => {
+    test('gets block information by block QUERY { blockQuery }', async () => {
       const blockHash = blockInfo.blockHash;
       const block = await nearProvider.block({ blockQuery: blockHash });
       expect(block).toBeTruthy();
@@ -87,7 +87,7 @@ describe('Near Connection', () => {
     });
 
     // FAILS. [-32602]...{ blockQuery: { blockId }}?
-    test('gets block information by block HASH', async () => {
+    test('gets block information by block QUERY { blockquery: { blockId }}', async () => {
       const blockHash = blockInfo.blockHash;
       const block = await nearProvider.block({ blockQuery: { blockId: blockHash }});
       expect(block).toBeTruthy();
@@ -95,7 +95,7 @@ describe('Near Connection', () => {
     });
 
     // FAILS. [-32602]...{ blockQuery: { blockId }}...stringify because it wants a string or a map?
-    test('gets block information by block HASH', async () => {
+    test('gets block information by block QUERY JSON.stringify({ blockQuery: { blockId }})', async () => {
       const blockHash = blockInfo.blockHash;
       const block = await nearProvider.block(JSON.stringify({ blockQuery: { blockId: blockHash }}));
       expect(block).toBeTruthy();
@@ -103,9 +103,16 @@ describe('Near Connection', () => {
     });
 
     // FAILS. how to pass through finality?
-    test('gets block information by block FINALITY', async () => {
+    test('gets block information by block FINALITY - string', async () => {
       const finality = 'near-final';
       const block = await nearProvider.block(finality);
+      expect(block).toBeTruthy()
+    });
+
+    // FAILS [-32602] Invalid params: Failed parsing args: invalid type: sequence, expected string or map
+    test('gets block information by block FINALITY - object', async () => {
+      const finality = 'near-final';
+      const block = await nearProvider.block({ finality });
       expect(block).toBeTruthy()
     });
 
