@@ -345,15 +345,28 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
 function parseLogs(receipts_outcome, params, contractAddress) {
     let nearLogs = receipts_outcome.map(({ outcome }) => outcome.logs).reduce((a, b) => a.concat(b));
     let logs = nearLogs.map((log, i) => {
+        log = log.replace(/.*evm log: /, '')
+
+        // parse topics out of log
+        let topics = []
+        // first hex byte signifies # of topics
+        let topicsLen = parseInt(log.substr(0,2), 16)
+        // first topic begins at second hex byte (index 2)
+        let topicsCursor = 2
+        for (let i = 0; i < topicsLen; i++) {
+            topics.push(utils.include0x(log.substr(topicsCursor, 64)))
+            topicsCursor += 64
+        }
+
         return {
-            logIndex: '0x' + i.toString(16),
+            logIndex: utils.include0x(i.toString(16)),
             blockNumber: params.blockNumber,
             blockHash: params.blockHash,
             transactionHash: params.transactionHash,
             transactionIndex: '0x0',
             address: contractAddress || params.to,
-            data: '0x' + log.replace(/.*evm log: /, ''),
-            topics: []
+            data: utils.include0x(log.slice(topicsCursor, log.length)),
+            topics,
         };
     });
     return logs;
