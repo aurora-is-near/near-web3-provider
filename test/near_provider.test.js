@@ -11,6 +11,7 @@ const utils = require('../src/utils');
 const { NearProvider, nearWeb3Extensions } = require('../src/index');
 
 // TODO: update nearEvmFile frequently when near_evm work is being done
+ // near-evm master currently unstable. Compiled contract from https://github.com/near/near-evm/tree/web3_compat
 const nearEvmFile = './artifacts/near_evm.wasm';
 const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
