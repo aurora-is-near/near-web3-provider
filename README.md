@@ -40,6 +40,17 @@ $ cd nearcore
 $ ./scripts/start_unittest.py --local
 ```
 
+Build test environment:
+```bash
+
+# grant executable access to build.sh if not yet done
+chmod +x test/build.sh
+
+# build solidity contracts
+# necessary on first ever test run then update build per contract changes
+cd test && ./build.sh && cd ..
+```
+
 Run tests
 ```
 $ npm run test
