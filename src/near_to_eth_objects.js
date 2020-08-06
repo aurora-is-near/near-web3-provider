@@ -195,9 +195,6 @@ nearToEth.transactionObj = async function(tx, txIndex) {
     }
 
     return {
-        // DATA 32 bytes - hash of the transaction
-        hash: `${transaction.hash}:${transaction.signer_id}`,
-
         // QUANTITY - the number of txs made by the sender prior to this one
         nonce: utils.decToHex(tx.nonce),
 
@@ -241,7 +238,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     }
 
     // TODO: translate logs
-    const { gas_burnt, logs } = transaction_outcome.outcome;
+    const { gas_burnt } = transaction_outcome.outcome;
     let sharedParams = processSharedParams(
         transaction,
         block.header.hash,
@@ -252,9 +249,6 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     )
 
     return {
-        // DATA Hash of the transaction
-        transactionHash: `${transaction.hash}:${accountId}`,
-
         ...sharedParams,
 
         // DATA The contract address created, if the transaction was a contract
@@ -262,7 +256,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
         contractAddress: contractAddress,
 
         // ARRAY Array of log objects, which this transaction generated
-        logs: logs,
+        logs: parseLogs(nearTxObj.receipts_outcome, sharedParams, contractAddress),
 
         // QUANTITY either 1 (success) or 0 (failure)
         status: responseData ? '0x1' : '0x0',
@@ -310,6 +304,7 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
         }
     }
 
+    let transactionHash = `${transaction.hash}:${transaction.signer_id}`
     let obj =  {
         // DATA hash of the block where this transaction was in
         blockHash: utils.base58ToHex(blockHash),
@@ -326,11 +321,15 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     let additionalParams
     if (isReceipt) {
         additionalParams = {
+            // DATA 32 bytes - Hash of the transaction
+            transactionHash,
             // QUANTITY The amount of gas used by this specific transaction alone
-            gasUsed: gas
+            gasUsed: gas,
         }
     } else {
         additionalParams = {
+            // DATA 32 bytes - Hash of the transaction
+            hash: transactionHash,
             // QUANTITY The amount of gas used by this specific transaction alone
             gas,
             // QUANTITY - value transferred in wei (yoctoNEAR)
@@ -341,6 +340,36 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     }
 
     return { ...obj, ...additionalParams }
+}
+
+function parseLogs(receipts_outcome, params, contractAddress) {
+    let nearLogs = receipts_outcome.map(({ outcome }) => outcome.logs).reduce((a, b) => a.concat(b));
+    let logs = nearLogs.map((log, i) => {
+        log = log.replace(/.*evm log: /, '')
+
+        // parse topics out of log
+        let topics = []
+        // first hex byte signifies # of topics
+        let topicsLen = parseInt(log.substr(0,2), 16)
+        // first topic begins at second hex byte (index 2)
+        let topicsCursor = 2
+        for (let i = 0; i < topicsLen; i++) {
+            topics.push(utils.include0x(log.substr(topicsCursor, 64)))
+            topicsCursor += 64
+        }
+
+        return {
+            logIndex: utils.include0x(i.toString(16)),
+            blockNumber: params.blockNumber,
+            blockHash: params.blockHash,
+            transactionHash: params.transactionHash,
+            transactionIndex: '0x0',
+            address: contractAddress || params.to,
+            data: utils.include0x(log.slice(topicsCursor, log.length)),
+            topics,
+        };
+    });
+    return logs;
 }
 
 module.exports = nearToEth;

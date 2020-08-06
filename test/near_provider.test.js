@@ -11,6 +11,7 @@ const utils = require('../src/utils');
 const { NearProvider, nearWeb3Extensions } = require('../src/index');
 
 // TODO: update nearEvmFile frequently when near_evm work is being done
+ // near-evm master currently unstable. Compiled contract from https://github.com/near/near-evm/tree/web3_compat
 const nearEvmFile = './artifacts/near_evm.wasm';
 const zombieCodeFile = './artifacts/zombieAttack.bin';
 const zombieABIFile = './artifacts/zombieAttack.abi';
@@ -835,6 +836,47 @@ describe('\n---- PROVIDER ----', () => {
                 expect(typeof txResult).toBeTruthy();
                 expect(typeof txResult).toStrictEqual('object');
                 expect(txResult.transactionHash).toStrictEqual(txReceipt.transactionHash);
+            }));
+
+            test('has correct paramters', withWeb3(async (web) => {
+                // hardcoded data
+                const eventRawData = "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000209e105f40198c000000000000000000000000000000000000000000000000000000000000000667656f7267650000000000000000000000000000000000000000000000000000"
+                const topics = ['0x88f026aacbbecc90c18411df4b1185fd8d9be2470f1962f192bf84a27d0704b7']
+                const id = "log_"
+                const zombieDNA = "9180992409442700"
+                const zombieName = "george"
+                const zombieId = '0'
+
+                // deploy zombie code
+                let zombieCode = fs.readFileSync(zombieCodeFile).toString();
+                const deployResult = await web.eth.sendTransaction({
+                    from: `0x${'00'.repeat(20)}`,
+                    to: undefined,
+                    value: 10,
+                    gas: 0,
+                    data: `0x${zombieCode}`
+                });
+                let zombieAddress = deployResult.contractAddress;
+                let zombieABI = JSON.parse(fs.readFileSync(zombieABIFile).toString());
+                let zombies = new web.eth.Contract(zombieABI, zombieAddress);
+                let txReceipt = await zombies.methods.createRandomZombie(zombieName)
+                    .send({from: web._provider.accountEvmAddress});
+
+                expect(txReceipt.from).toStrictEqual(web._provider.accountEvmAddress)
+                expect(txReceipt.to).toStrictEqual(zombieAddress.toLowerCase())
+                expect(txReceipt.events.NewZombie.blockNumber).toStrictEqual(txReceipt.blockNumber)
+                expect(txReceipt.events.NewZombie.blockHash).toStrictEqual(txReceipt.blockHash)
+                expect(txReceipt.events.NewZombie.address).toStrictEqual(zombieAddress)
+                expect(txReceipt.events.NewZombie.signature).toStrictEqual(topics[0])
+                expect(txReceipt.events.NewZombie.id).toContain(id)
+                expect(txReceipt.events.NewZombie.transactionHash).toStrictEqual(txReceipt.transactionHash)
+                expect(txReceipt.events.NewZombie.raw.data).toStrictEqual(eventRawData)
+                expect(txReceipt.events.NewZombie.raw.topics).toStrictEqual(topics)
+                expect(txReceipt.events.NewZombie.event).toStrictEqual('NewZombie')
+                expect(txReceipt.events.NewZombie.returnValues.name).toStrictEqual(zombieName)
+                expect(txReceipt.events.NewZombie.returnValues.dna).toStrictEqual(zombieDNA)
+                expect(txReceipt.events.NewZombie.returnValues.zombieId).toStrictEqual('0')
+
             }));
 
             test('errors if not a real txhash', withWeb3(async (web) => {
