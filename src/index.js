@@ -42,33 +42,25 @@ class NearProvider {
     }
 
     async _viewEvmContract(method, methodArgs) {
-        try {
-            const result = await this.account.viewFunction(
-                this.evm_contract,
-                method,
-                methodArgs
-            );
-            return result;
-        } catch (e) {
-            return e;
-        }
+        const result = await this.account.viewFunction(
+            this.evm_contract,
+            method,
+            methodArgs
+        );
+        return result;
     }
 
     /**
      * Calls a block and fills it up
      */
     async _getBlock(blockHeight, returnTxObjects, returnNearBlock) {
-        try {
-            const block = await this.nearProvider.block(blockHeight);
-            const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
+        const block = await this.nearProvider.block(blockHeight);
+        const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
 
-            if (returnNearBlock) {
-                return [fullBlock, block];
-            }
-            return fullBlock;
-        } catch (e) {
-            return e;
+        if (returnNearBlock) {
+            return [fullBlock, block];
         }
+        return fullBlock;
     }
 
     unsupportedMethodErrorMsg(method) {
@@ -261,8 +253,7 @@ class NearProvider {
                 result
             });
         }, (err) => {
-            console.error(err);
-            return new Error(`NearProvider: ${err}`);
+            cb(err)
         });
     }
 
@@ -274,8 +265,7 @@ class NearProvider {
                 result
             });
         }, (err) => {
-            console.error(err);
-            throw new Error(`NearProvider: ${err}`);
+            cb(err)
         });
     }
 
@@ -304,15 +294,11 @@ class NearProvider {
      * @returns {boolean}
      */
     async routeNetListening() {
-        try {
-            const status = await this.nearProvider.status();
-            if (status) {
-                return true;
-            } else {
-                return false;
-            }
-        } catch (e) {
-            return e;
+        const status = await this.nearProvider.status();
+        if (status) {
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -321,12 +307,8 @@ class NearProvider {
      * @returns {String} the current NEAR protocol version
      */
     async routeEthProtocolVersion() {
-        try {
-            const { version } = await this.nearProvider.status();
-            return web3Utils.toHex(version.version);
-        } catch (e) {
-            return e;
-        }
+        const { version } = await this.nearProvider.status();
+        return web3Utils.toHex(version.version);
     }
 
     /**
@@ -335,15 +317,11 @@ class NearProvider {
      * currently syncing or 'false'
      */
     async routeEthSyncing() {
-        try {
-            const { sync_info } = await this.nearProvider.status();
-            if (!sync_info.syncing) {
-                return false;
-            } else {
-                return nearToEth.syncObj(sync_info);
-            }
-        } catch (e) {
-            return e;
+        const { sync_info } = await this.nearProvider.status();
+        if (!sync_info.syncing) {
+            return false;
+        } else {
+            return nearToEth.syncObj(sync_info);
         }
     }
 
@@ -353,14 +331,10 @@ class NearProvider {
      * yoctoNEAR
      */
     async routeEthGasPrice() {
-        try {
-            const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
-            const result = await this.nearProvider.block(latest_block_hash);
+        const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
+        const result = await this.nearProvider.block(latest_block_hash);
 
-            return new BN(result.header.gas_price);
-        } catch (e) {
-            return e;
-        }
+        return new BN(result.header.gas_price);
     }
 
     /**
@@ -370,15 +344,11 @@ class NearProvider {
      */
     // TODO: Is this useful? will web3 let us pass back Near accountIds?
     async routeEthAccounts() {
-        try {
-            const networkId = this.connection.networkId;
-            const accounts = await this.keyStore.getAccounts(networkId);
+        const networkId = this.connection.networkId;
+        const accounts = await this.keyStore.getAccounts(networkId);
 
-            const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
-            return evmAccounts;
-        } catch (e) {
-            return e;
-        }
+        const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
+        return evmAccounts;
     }
 
     /**
@@ -387,12 +357,8 @@ class NearProvider {
      * client is on
      */
     async routeEthBlockNumber() {
-        try {
-            const status = await this.nearProvider.status();
-            return utils.decToHex(status.sync_info.latest_block_height);
-        } catch (e) {
-            return e;
-        }
+        const status = await this.nearProvider.status();
+        return utils.decToHex(status.sync_info.latest_block_height);
     }
 
     /**
@@ -402,15 +368,11 @@ class NearProvider {
      */
     async routeEthGetBalance(params) {
         const address = utils.remove0x(params[0]);
-        try {
-            const balance = await this._viewEvmContract(
-                'balance_of_evm_address',
-                { address }
-            );
-            return '0x' + new BN(balance, 10).toString(16);
-        } catch (e) {
-            return e;
-        }
+        const balance = await this._viewEvmContract(
+            'balance_of_evm_address',
+            { address }
+        );
+        return '0x' + new BN(balance, 10).toString(16);
     }
 
     /**
@@ -420,19 +382,15 @@ class NearProvider {
      * @returns {String} The value at this storage position
      */
     async routeEthGetStorageAt([address, position]) {
-        try {
-            // string magic makes a fixed-length hex string from the int
-            const key = `${'00'.repeat(32)}${utils.remove0x(position.toString(16))}`.slice(-64);
-            address = utils.remove0x(address);
+        // string magic makes a fixed-length hex string from the int
+        const key = `${'00'.repeat(32)}${utils.remove0x(position.toString(16))}`.slice(-64);
+        address = utils.remove0x(address);
 
-            let result = await this._viewEvmContract(
-                'get_storage_at',
-                { address, key }
-            );
-            return `0x${result}`;
-        } catch (e) {
-            return ;
-        }
+        let result = await this._viewEvmContract(
+            'get_storage_at',
+            { address, key }
+        );
+        return `0x${result}`;
     }
 
     /**
@@ -440,15 +398,11 @@ class NearProvider {
      * @param {String} address 20-byte address to get the code from
      */
     async routeEthGetCode([address]) {
-        try {
-            address = utils.remove0x(address);
-            let result = await this._viewEvmContract(
-                'get_code',
-                { address });
-            return '0x' + result;
-        } catch (e) {
-            return e;
-        }
+        address = utils.remove0x(address);
+        let result = await this._viewEvmContract(
+            'get_code',
+            { address });
+        return '0x' + result;
     }
 
     /**
@@ -461,15 +415,11 @@ class NearProvider {
      * @returns {Object} returns block object
      */
     async routeEthGetBlockByHash([blockHash, returnTxObjects]) {
-        try {
-            assert(blockHash, 'Must pass in blockHash');
-            blockHash = utils.hexToBase58(blockHash);
-            const block = await this._getBlock(blockHash, returnTxObjects);
+        assert(blockHash, 'Must pass in blockHash');
+        blockHash = utils.hexToBase58(blockHash);
+        const block = await this._getBlock(blockHash, returnTxObjects);
 
-            return block;
-        } catch (e) {
-            return e;
-        }
+        return block;
     }
 
     /**
@@ -483,14 +433,10 @@ class NearProvider {
      * @returns {Object} returns block object
      */
     async routeEthGetBlockByNumber([blockHeight, returnTxObjects]) {
-        try {
-            blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
-            const block = await this._getBlock(blockHeight, returnTxObjects);
+        blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
+        const block = await this._getBlock(blockHeight, returnTxObjects);
 
-            return block;
-        } catch (e) {
-            return e;
-        }
+        return block;
     }
 
     /**
@@ -503,15 +449,11 @@ class NearProvider {
      * @returns {Quantity} Integer of the number of txs in this block
      */
     async routeEthGetBlockTransactionCountByHash([blockHash]) {
-        try {
-            blockHash = utils.hexToBase58(blockHash);
-            const block = await this._getBlock(blockHash);
-            const txCount = block.transactions.length;
+        blockHash = utils.hexToBase58(blockHash);
+        const block = await this._getBlock(blockHash);
+        const txCount = block.transactions.length;
 
-            return utils.decToHex(txCount);
-        } catch (e) {
-            return e;
-        }
+        return utils.decToHex(txCount);
     }
 
     /**
@@ -524,15 +466,11 @@ class NearProvider {
      * @returns {Quantity} Integer of the number of txs in this block
      */
     async routeEthGetBlockTransactionCountByNumber([blockHeight]) {
-        try {
-            blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
-            const block = await this._getBlock(blockHeight);
+        blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
+        const block = await this._getBlock(blockHeight);
 
-            const txCount = block.transactions.length;
-            return utils.decToHex(txCount);
-        } catch (e) {
-            return e;
-        }
+        const txCount = block.transactions.length;
+        return utils.decToHex(txCount);
     }
 
     /**
@@ -543,28 +481,19 @@ class NearProvider {
      */
     // TODO: Update accountID references to be signerID (more explicit)
     async routeEthGetTransactionByHash([txHashAndAccountId]) {
-        try {
-            // NB: provider.txStatus requires txHash to be a Uint8Array of
-            //     the base58 tx hash. Since txHash is hex, it is converted to
-            //     base58, and then turned into a Buffer
-            let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
-            accountId = accountId || this.accountId;
-            const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(
-                utils.base58ToUint8(txHash),
-                accountId
-            );
-            const block = await this._getBlock(block_hash, true);
-            const findTx = block.transactions.find((t) => t.hash === txHashAndAccountId);
+        // NB: provider.txStatus requires txHash to be a Uint8Array of
+        //     the base58 tx hash. Since txHash is hex, it is converted to
+        //     base58, and then turned into a Buffer
+        let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
+        accountId = accountId || this.accountId;
+        const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(
+            utils.base58ToUint8(txHash),
+            accountId
+        );
+        const block = await this._getBlock(block_hash, true);
+        const findTx = block.transactions.find((t) => t.hash === txHashAndAccountId);
 
-            return findTx;
-        } catch (e) {
-            if (e.type == 'TimeoutError') {
-                // NB: Near RPC won't respond null. It'll timeout.
-                //     So if it times out, the tx doesn't exist
-                return null;
-            }
-            return e;
-        }
+        return findTx;
     }
 
     /**
@@ -579,19 +508,15 @@ class NearProvider {
      */
     // TODO: Fix to get transactions from chunks
     async routeEthGetTransactionByBlockHashAndIndex([blockHash, txIndex]) {
-        try {
-            blockHash = utils.hexToBase58(blockHash);
-            txIndex = utils.hexToDec(txIndex);
+        blockHash = utils.hexToBase58(blockHash);
+        txIndex = utils.hexToDec(txIndex);
 
-            assert(blockHash, 'Must pass in block hash as first argument');
-            assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
+        assert(blockHash, 'Must pass in block hash as first argument');
+        assert(txIndex !== undefined && typeof txIndex === 'number', 'Must pass in tx index as second argument');
 
-            const block = await this._getBlock(blockHash, true);
-            const tx = block.transactions[txIndex];
-            return tx || null;
-        } catch (e) {
-            return e;
-        }
+        const block = await this._getBlock(blockHash, true);
+        const tx = block.transactions[txIndex];
+        return tx || null;
     }
 
     /**
@@ -605,23 +530,19 @@ class NearProvider {
      * @returns {Object} returns transaction object
      */
     async routeEthGetTransactionByBlockNumberAndIndex([blockHeight, txIndex]) {
-        try {
-            txIndex = utils.hexToDec(txIndex);
+        txIndex = utils.hexToDec(txIndex);
 
-            assert(txIndex !== undefined,
-                'Must pass in tx index as second argument');
-            assert(blockHeight,
-                'Must pass in block height as first argument');
+        assert(txIndex !== undefined,
+            'Must pass in tx index as second argument');
+        assert(blockHeight,
+            'Must pass in block height as first argument');
 
-            blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
+        blockHeight = await utils.convertBlockHeight(blockHeight, this.nearProvider);
 
-            const block = await this._getBlock(blockHeight, true);
-            const tx = block.transactions[txIndex];
+        const block = await this._getBlock(blockHeight, true);
+        const tx = block.transactions[txIndex];
 
-            return tx || null;
-        } catch (e) {
-            return e;
-        }
+        return tx || null;
     }
 
     /**
@@ -630,21 +551,17 @@ class NearProvider {
      * @returns {Object} returns transaction receipt object or null
      */
     async routeEthGetTransactionReceipt([fullTxHash]) {
-        try {
-            assert(fullTxHash, 'Must pass in transaction hash');
-            const { txHash, accountId } = utils.getTxHashAndAccountId(fullTxHash);
+        assert(fullTxHash, 'Must pass in transaction hash');
+        const { txHash, accountId } = utils.getTxHashAndAccountId(fullTxHash);
 
-            const fullTx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
+        const fullTx = await this.nearProvider.txStatus(utils.base58ToUint8(txHash), accountId);
 
-            const [block, nearBlock] = await this._getBlock(fullTx.transaction_outcome.block_hash, false, true);
-            const txIndex = block.transactions.indexOf(fullTxHash);
+        const [block, nearBlock] = await this._getBlock(fullTx.transaction_outcome.block_hash, false, true);
+        const txIndex = block.transactions.indexOf(fullTxHash);
 
-            const result = nearToEth.transactionReceiptObj(nearBlock, fullTx, txIndex, accountId);
+        const result = nearToEth.transactionReceiptObj(nearBlock, fullTx, txIndex, accountId);
 
-            return result;
-        } catch (e) {
-            return e;
-        }
+        return result;
     }
 
     /**
@@ -654,17 +571,13 @@ class NearProvider {
      * from this address
      */
     async routeEthGetTransactionCount([address]) {
-        try {
-            address = utils.remove0x(address);
+        address = utils.remove0x(address);
 
-            let result = await this._viewEvmContract(
-                'nonce_of_evm_address',
-                { address }
-            );
-            return `0x${new BN(result, 10).toString(16)}`;
-        } catch (e) {
-            return e;
-        }
+        let result = await this._viewEvmContract(
+            'nonce_of_evm_address',
+            { address }
+        );
+        return `0x${new BN(result, 10).toString(16)}`;
     }
 
     /**
@@ -685,57 +598,53 @@ class NearProvider {
      */
     // TODO: Account for passed in gas
     async routeEthSendTransaction([txObj]) {
-        try {
-            const { from, to, value, data } = txObj;
+        const { from, to, value, data } = txObj;
 
-            let outcome;
-            let val = value ? utils.hexToBN(value) : new BN(0)
+        let outcome;
+        let val = value ? utils.hexToBN(value) : new BN(0)
 
-            if (data === undefined) {
-                // send funds
-                if (to !== ZERO_ADDRESS && to === from) {
-                    // Add near to corresponding evm account
-                    outcome = await this.account.functionCall(
-                        this.evm_contract,
-                        'add_near',
-                        {},
-                        GAS_AMOUNT,
-                        val
-                    )
-                } else  {
-                    // Simple Transfer b/w EVM accounts
-                    let zeroVal = new BN(0)
-                    outcome = await this.account.functionCall(
-                        this.evm_contract,
-                        'move_funds_to_evm_address',
-                        { 'address': utils.remove0x(to), 'amount': val.toString() },
-                        GAS_AMOUNT,
-                        zeroVal
-                    );
-                }
-            } else if (to === undefined) {
-                // Contract deployment
+        if (data === undefined) {
+            // send funds
+            if (to !== ZERO_ADDRESS && to === from) {
+                // Add near to corresponding evm account
                 outcome = await this.account.functionCall(
                     this.evm_contract,
-                    'deploy_code',
-                    { bytecode: utils.remove0x(data) },
+                    'add_near',
+                    {},
                     GAS_AMOUNT,
                     val
-                );
-            } else {
-                // Function Call
+                )
+            } else  {
+                // Simple Transfer b/w EVM accounts
+                let zeroVal = new BN(0)
                 outcome = await this.account.functionCall(
                     this.evm_contract,
-                    'call_contract',
-                    { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                    GAS_AMOUNT.toString(),
-                    val
+                    'move_funds_to_evm_address',
+                    { 'address': utils.remove0x(to), 'amount': val.toString() },
+                    GAS_AMOUNT,
+                    zeroVal
                 );
             }
-            return `${outcome.transaction_outcome.id}:${this.accountId}`;
-        } catch (e) {
-            return e;
+        } else if (to === undefined) {
+            // Contract deployment
+            outcome = await this.account.functionCall(
+                this.evm_contract,
+                'deploy_code',
+                { bytecode: utils.remove0x(data) },
+                GAS_AMOUNT,
+                val
+            );
+        } else {
+            // Function Call
+            outcome = await this.account.functionCall(
+                this.evm_contract,
+                'call_contract',
+                { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
+                GAS_AMOUNT.toString(),
+                val
+            );
         }
+        return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
     /**
@@ -748,20 +657,16 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearRetrieveNear([txObj]) {
-        try {
-            const { to, value } = txObj
-            let val = value ? utils.hexToBN(value) : new BN(0)
-            let outcome = await this.account.functionCall(
-                this.evm_contract,
-                'retrieve_near',
-                { 'recipient': to, 'amount': val.toString() },
-                GAS_AMOUNT,
-                new BN(0)
-            );
-            return `${outcome.transaction_outcome.id}:${this.accountId}`;
-        } catch (e) {
-            return e
-        }
+        const { to, value } = txObj
+        let val = value ? utils.hexToBN(value) : new BN(0)
+        let outcome = await this.account.functionCall(
+            this.evm_contract,
+            'retrieve_near',
+            { 'recipient': to, 'amount': val.toString() },
+            GAS_AMOUNT,
+            new BN(0)
+        );
+        return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
     /**
@@ -774,20 +679,16 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearTransferNear([txObj]) {
-        try {
-            const { to, value } = txObj
-            let val = value ? utils.hexToBN(value) : new BN(0)
-            let outcome = await this.account.functionCall(
-                this.evm_contract,
-                'move_funds_to_near_account',
-                { 'address': to, 'amount': val.toString() },
-                GAS_AMOUNT,
-                new BN(0)
-            );
-            return `${outcome.transaction_outcome.id}:${this.accountId}`;
-        } catch (e) {
-            return e
-        }
+        const { to, value } = txObj
+        let val = value ? utils.hexToBN(value) : new BN(0)
+        let outcome = await this.account.functionCall(
+            this.evm_contract,
+            'move_funds_to_near_account',
+            { 'address': to, 'amount': val.toString() },
+            GAS_AMOUNT,
+            new BN(0)
+        );
+        return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
     /**
@@ -818,27 +719,23 @@ class NearProvider {
      * @returns {String} the return value of the executed contract
      */
     async routeEthCall([txCallObj]) {
-        try {
-            const { to, from, value, data } = txCallObj;
-            const sender = from
-                ? from
-                : utils.nearAccountToEvmAddress(this.accountId);
+        const { to, from, value, data } = txCallObj;
+        const sender = from
+            ? from
+            : utils.nearAccountToEvmAddress(this.accountId);
 
-            const val = value
-                ? new BN(utils.remove0x(value), 16)
-                : new BN(0);
-            const result = await this._viewEvmContract(
-                'view_call_contract',
-                {
-                    contract_address: utils.remove0x(to),
-                    encoded_input: utils.remove0x(data),
-                    sender: utils.remove0x(sender),
-                    value: val.toString()
-                });
-            return '0x' + result;
-        } catch (e) {
-            return e;
-        }
+        const val = value
+            ? new BN(utils.remove0x(value), 16)
+            : new BN(0);
+        const result = await this._viewEvmContract(
+            'view_call_contract',
+            {
+                contract_address: utils.remove0x(to),
+                encoded_input: utils.remove0x(data),
+                sender: utils.remove0x(sender),
+                value: val.toString()
+            });
+        return '0x' + result;
     }
 }
 
