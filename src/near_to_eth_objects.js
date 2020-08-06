@@ -54,107 +54,103 @@ nearToEth._getGasUsed = function(chunks) {
  * @returns {Object} returns ETH block object
  */
 nearToEth.blockObj = async function(block, returnTxObjects, nearProvider) {
-    try {
-        block = await this.hydrate.block(block, nearProvider);
+    block = await this.hydrate.block(block, nearProvider);
 
-        if (typeof block === 'string' && block === 'empty') {
-            return {
-                number: null,
-                hash: null,
-                parentHash: null,
-                nonce: null,
-                transactionsRoot: '',
-                gasLimit: '',
-                gasUsed: '',
-                timestamp: '0x',
-                transactions: []
-            };
-        }
-
-        const { header } = block;
-
-        let transactions;
-
-        if (block.transactions.length <= 0) {
-            transactions = [];
-        } else {
-            if (!returnTxObjects) {
-                transactions = block.transactions.map((tx) => `${tx.hash }:${ tx.signer_id }`);
-            } else {
-                const hydratedTransactions = await hydrate.allTransactions(block, nearProvider);
-
-                const promiseArray = hydratedTransactions.map((tx, txIndex) => {
-                    return this.transactionObj(tx, txIndex);
-                });
-
-                transactions = await Promise.all(promiseArray);
-            }
-        }
-
+    if (typeof block === 'string' && block === 'empty') {
         return {
-            /**---------------- TODO: --------------- */
-
-            // DATA hash of the generated proof-of-work. null when its pending block
+            number: null,
+            hash: null,
+            parentHash: null,
             nonce: null,
-
-            // DATA the root of the transaction trie of the block
-            // TODO: There is no such thing as transaction trie of the block.
-            // Transactions live on chunks, there is a tx_root on each chunk. Could
-            // hash all of them into one hash?
-            transactionsRoot: '0x00000000000000000000000000000000',
-
-            // TODO: is this block.header.total_weight?
-            // QUANTITY integer of the size of this block in bytes
-            // size: '',
-
-            // QUANTITTY the block number. 'null' when it's pending block
-            number: utils.decToHex(header.height),
-
-            // DATA hash of the block. null when it's pending block
-            hash: utils.base58ToHex(header.hash),
-
-            // DATA hash of the parent block
-            parentHash: utils.base58ToHex(header.prev_hash),
-
-            // QUANTITY the maximum gas allowed in this block
-            gasLimit: utils.decToHex(getMaxGas(block.chunks)),
-
-            // QUANTITY the total used gas by all transactions in this block
-            gasUsed: utils.decToHex(this._getGasUsed(block.chunks)),
-
-            // QUANTITY the unix timestamp for when the block was collated
-            timestamp: utils.convertTimestamp(header.timestamp),
-
-            // ARRAY Array of transaction objects, or 32 bytes transaction hashes
-            transactions: transactions
-
-            /**------------UNSUPPORTED VALUES--------- */
-            // DATA sha3 of the uncles data in the block
-            // sha3Uncles: '',
-
-            // DATA the bloom filter for the logs of the block. null when its pending block
-            // logsBloom: '',
-
-            // ARRAY Array of uncle hashes
-            // uncles: [],
-
-            // DATA the root of the final state trie of the block
-            // stateRoot: '',
-
-            // DATA the address of the beneficiary to whom the mining rewards were given
-            // miner: '',
-
-            // QUANTITY integer of the difficulty for this block
-            // difficulty: null,
-
-            // QUANTITY integer of the total difficulty of the chain until this block
-            // totalDifficulty: null,
-            // DATA the extra data field of this block
-            // extraData: '',
+            transactionsRoot: '',
+            gasLimit: '',
+            gasUsed: '',
+            timestamp: '0x',
+            transactions: []
         };
-    } catch (e) {
-        return e;
     }
+
+    const { header } = block;
+
+    let transactions;
+
+    if (block.transactions.length <= 0) {
+        transactions = [];
+    } else {
+        if (!returnTxObjects) {
+            transactions = block.transactions.map((tx) => `${tx.hash }:${ tx.signer_id }`);
+        } else {
+            const hydratedTransactions = await hydrate.allTransactions(block, nearProvider);
+
+            const promiseArray = hydratedTransactions.map((tx, txIndex) => {
+                return this.transactionObj(tx, txIndex);
+            });
+
+            transactions = await Promise.all(promiseArray);
+        }
+    }
+
+    return {
+        /**---------------- TODO: --------------- */
+
+        // DATA hash of the generated proof-of-work. null when its pending block
+        nonce: null,
+
+        // DATA the root of the transaction trie of the block
+        // TODO: There is no such thing as transaction trie of the block.
+        // Transactions live on chunks, there is a tx_root on each chunk. Could
+        // hash all of them into one hash?
+        transactionsRoot: '0x00000000000000000000000000000000',
+
+        // TODO: is this block.header.total_weight?
+        // QUANTITY integer of the size of this block in bytes
+        // size: '',
+
+        // QUANTITTY the block number. 'null' when it's pending block
+        number: utils.decToHex(header.height),
+
+        // DATA hash of the block. null when it's pending block
+        hash: utils.base58ToHex(header.hash),
+
+        // DATA hash of the parent block
+        parentHash: utils.base58ToHex(header.prev_hash),
+
+        // QUANTITY the maximum gas allowed in this block
+        gasLimit: utils.decToHex(getMaxGas(block.chunks)),
+
+        // QUANTITY the total used gas by all transactions in this block
+        gasUsed: utils.decToHex(this._getGasUsed(block.chunks)),
+
+        // QUANTITY the unix timestamp for when the block was collated
+        timestamp: utils.convertTimestamp(header.timestamp),
+
+        // ARRAY Array of transaction objects, or 32 bytes transaction hashes
+        transactions: transactions
+
+        /**------------UNSUPPORTED VALUES--------- */
+        // DATA sha3 of the uncles data in the block
+        // sha3Uncles: '',
+
+        // DATA the bloom filter for the logs of the block. null when its pending block
+        // logsBloom: '',
+
+        // ARRAY Array of uncle hashes
+        // uncles: [],
+
+        // DATA the root of the final state trie of the block
+        // stateRoot: '',
+
+        // DATA the address of the beneficiary to whom the mining rewards were given
+        // miner: '',
+
+        // QUANTITY integer of the difficulty for this block
+        // difficulty: null,
+
+        // QUANTITY integer of the total difficulty of the chain until this block
+        // totalDifficulty: null,
+        // DATA the extra data field of this block
+        // extraData: '',
+    };
 
     /**
      * Get the maximum gas limit allowed in this block. Since gas limit is

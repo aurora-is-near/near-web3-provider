@@ -40,8 +40,8 @@ const withWeb3 = (fn) => {
     const web = new web3();
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
     keyStore.setKey('test', ACCOUNT_ID, ACCOUNT_KEYPAIR);
-
-    web.setProvider(new NearProvider(NODE_URL, keyStore, ACCOUNT_ID));
+    let provider = new NearProvider(NODE_URL, keyStore, ACCOUNT_ID)
+    web.setProvider(provider);
     web.extend(nearWeb3Extensions(web))
     return () => fn(web);
 };
