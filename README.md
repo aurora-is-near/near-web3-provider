@@ -64,7 +64,7 @@ The web3 Provider also needs to be tested against the `near-evm` contract.
 
 Follow the testing instructions on the [near-evm repo](https://github.com/near/near-evm#testing).
 
-If you're developing against an in-flux contract, make sure to build the wasm code from `near-evm` and update the wasm code for the provider: `/artifacts/near_evm.wasm`.
+If you're developing against an in-flux contract, make sure to build the wasm code from `near-evm` and update the wasm code for the provider: `test/artifacts/near_evm.wasm`.
 
 ## General Usage
 
