@@ -40,6 +40,17 @@ $ cd nearcore
 $ ./scripts/start_unittest.py --local
 ```
 
+Build test environment:
+```bash
+
+# grant executable access to build.sh if not yet done
+chmod +x test/build.sh
+
+# build solidity contracts
+# necessary on first ever test run then update build per contract changes
+cd test && ./build.sh && cd ..
+```
+
 Run tests
 ```
 $ npm run test
@@ -53,7 +64,7 @@ The web3 Provider also needs to be tested against the `near-evm` contract.
 
 Follow the testing instructions on the [near-evm repo](https://github.com/near/near-evm#testing).
 
-If you're developing against an in-flux contract, make sure to build the wasm code from `near-evm` and update the wasm code for the provider: `/artifacts/near_evm.wasm`.
+If you're developing against an in-flux contract, make sure to build the wasm code from `near-evm` and update the wasm code for the provider: `test/artifacts/near_evm.wasm`.
 
 ## General Usage
 
