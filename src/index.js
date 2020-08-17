@@ -368,7 +368,7 @@ class NearProvider {
         let accounts = await this.keyStore.getAccounts(networkId);
 
         // The main account should go first.
-        accounts = [this.accountId].concat(accounts.filter((accountId) => accountId === this.accountId));
+        accounts = [this.accountId].concat(accounts.filter((accountId) => accountId !== this.accountId));
 
         const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
         return evmAccounts;
