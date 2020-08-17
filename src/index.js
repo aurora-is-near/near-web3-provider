@@ -9,6 +9,7 @@ const NEAR_NET_VERSION_TEST = '98';
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
+const { Account } = require('near-api-js');
 
 const GAS_AMOUNT = new BN('300000000000000');
 const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
@@ -30,15 +31,15 @@ class NearProvider {
         this.accountId = accountId;
         this.account = new nearlib.Account(this.connection, accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
+        this.accounts = new Map();
+        this.accounts.set(this.accountId, this.account);
     }
 
     async _createNewAccount(accountId) {
-        // create keypair
+        // Create keypair.
         const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
         await this.keyStore.setKey(this.networkId, accountId, keyPair);
         this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
-        this.signer = new nearlib.InMemorySigner(this.keyStore);
-        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
     }
 
     async _viewEvmContract(method, methodArgs) {
@@ -48,6 +49,22 @@ class NearProvider {
             methodArgs
         );
         return result;
+    }
+
+    /** Returns account id for given address, if this account is known. */
+    async _addressToAccountId(address) {
+        // TODO: optimize & cache this.
+        let accounts = await this.keyStore.getAccounts(this.networkId);
+        let addressToAccountId = new Map();
+        accounts.forEach((account) => addressToAccountId.set(utils.nearAccountToEvmAddress(account), account));
+        return addressToAccountId.get(address);
+    }
+
+    _getAccount(accountId) {
+        if (!this.accounts.has(accountId)) {
+            this.accounts.set(accountId, new Account(this.connection, accountId));
+        }
+        return this.accounts.get(accountId);
     }
 
     /**
@@ -182,6 +199,10 @@ class NearProvider {
                 return new Error(this.unsupportedMethodErrorMsg(method));
             }
 
+            case 'eth_getLogs': {
+                return new Error(this.unsupportedMethodErrorMsg(method));
+            }
+
             case 'eth_getPastLogs': {
                 return new Error(this.unsupportedMethodErrorMsg(method));
             }
@@ -240,7 +261,7 @@ class NearProvider {
             }
 
             default: {
-                return new Error(`NearProvider: Unknown method: ${method} with params ${params}`);
+                return new Error(`NearProvider: Unknown method: ${method} with params ${JSON.stringify(params)}`);
             }
         }
     }
@@ -253,7 +274,7 @@ class NearProvider {
                 result
             });
         }, (err) => {
-            cb(err)
+            cb(err);
         });
     }
 
@@ -600,6 +621,10 @@ class NearProvider {
     async routeEthSendTransaction([txObj]) {
         const { from, to, value, data } = txObj;
 
+        const accountId = await this._addressToAccountId(from);
+        assert(accountId !== null && accountId !== undefined, `Unknown address ${from}. Check your key store to make sure you have it available.`);
+        const account = this._getAccount(accountId);
+
         let outcome;
         let val = value ? utils.hexToBN(value) : new BN(0);
 
@@ -607,7 +632,7 @@ class NearProvider {
             // send funds
             if (to !== ZERO_ADDRESS && to === from) {
                 // Add near to corresponding evm account
-                outcome = await this.account.functionCall(
+                outcome = await account.functionCall(
                     this.evm_contract,
                     'add_near',
                     {},
@@ -617,7 +642,7 @@ class NearProvider {
             } else  {
                 // Simple Transfer b/w EVM accounts
                 let zeroVal = new BN(0);
-                outcome = await this.account.functionCall(
+                outcome = await account.functionCall(
                     this.evm_contract,
                     'move_funds_to_evm_address',
                     { 'address': utils.remove0x(to), 'amount': val.toString() },
@@ -627,7 +652,7 @@ class NearProvider {
             }
         } else if (to === undefined) {
             // Contract deployment
-            outcome = await this.account.functionCall(
+            outcome = await account.functionCall(
                 this.evm_contract,
                 'deploy_code',
                 { bytecode: utils.remove0x(data) },
@@ -637,7 +662,7 @@ class NearProvider {
         } else {
             // Function Call
             try {
-                outcome = await this.account.functionCall(
+                outcome = await account.functionCall(
                     this.evm_contract,
                     'call_contract',
                     { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
@@ -645,10 +670,15 @@ class NearProvider {
                     val
                 );
             } catch (error) {
-                throw Error(`revert ${utils.hexToString(error.panic_msg)}`);
+                let panic_msg = utils.hexToString(error.panic_msg);
+                // In some cases message is doubly encoded.
+                if (utils.isHex(panic_msg)) {
+                    panic_msg = utils.hexToString(panic_msg);
+                }
+                throw Error(`revert ${panic_msg}`);
             }
         }
-        return `${outcome.transaction_outcome.id}:${this.accountId}`;
+        return `${outcome.transaction_outcome.id}:${accountId}`;
     }
 
     /**
