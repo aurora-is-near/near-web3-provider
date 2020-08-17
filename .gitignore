@@ -18,3 +18,5 @@ package\-lock\.json
 
 # VS Code
 *.code-workspace
+
+test/artifacts/

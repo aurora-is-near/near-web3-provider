@@ -225,24 +225,24 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     const responseData = utils.base64ToString(status.SuccessValue);
     const functionCall = transaction.actions[0].FunctionCall;
 
-    // if it's deploy, get the address
+    // If it's a deploy, get the address.
     if (responseData) {
-      const responsePayload = responseData.slice(1, -1);
-      if (functionCall && functionCall.method_name == 'deploy_code') {
-        contractAddress = responsePayload;
-      }
+        const responsePayload = responseData.slice(1, -1);
+        if (functionCall && functionCall.method_name == 'deploy_code') {
+            contractAddress = responsePayload;
+        }
     }
 
     // TODO: translate logs
-    const { gas_burnt } = transaction_outcome.outcome;
     let sharedParams = processSharedParams(
         transaction,
         block.header.hash,
         block.header.height,
+        // TODO(#50): correctly compute gas burnt based on receipts.
         transaction_outcome.outcome.gas_burnt,
         nearTxObjIndex,
         isReceipt,
-    )
+    );
 
     return {
         ...sharedParams,

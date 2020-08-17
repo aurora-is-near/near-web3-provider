@@ -10,7 +10,7 @@ const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
 
-const GAS_AMOUNT = new BN('200000000000000');
+const GAS_AMOUNT = new BN('300000000000000');
 const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
 class NearProvider {
@@ -53,8 +53,8 @@ class NearProvider {
     /**
      * Calls a block and fills it up
      */
-    async _getBlock(blockHeight, returnTxObjects, returnNearBlock) {
-        const block = await this.nearProvider.block(blockHeight);
+    async _getBlock(blockId, returnTxObjects, returnNearBlock) {
+        const block = await this.nearProvider.block({ blockId });
         const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
 
         if (returnNearBlock) {
@@ -342,10 +342,12 @@ class NearProvider {
      * controls
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
-    // TODO: Is this useful? will web3 let us pass back Near accountIds?
     async routeEthAccounts() {
         const networkId = this.connection.networkId;
-        const accounts = await this.keyStore.getAccounts(networkId);
+        let accounts = await this.keyStore.getAccounts(networkId);
+
+        // The main account should go first.
+        accounts = [this.accountId].concat(accounts.filter((accountId) => accountId === this.accountId));
 
         const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
         return evmAccounts;
@@ -559,9 +561,7 @@ class NearProvider {
         const [block, nearBlock] = await this._getBlock(fullTx.transaction_outcome.block_hash, false, true);
         const txIndex = block.transactions.indexOf(fullTxHash);
 
-        const result = nearToEth.transactionReceiptObj(nearBlock, fullTx, txIndex, accountId);
-
-        return result;
+        return nearToEth.transactionReceiptObj(nearBlock, fullTx, txIndex, accountId);
     }
 
     /**
@@ -601,7 +601,7 @@ class NearProvider {
         const { from, to, value, data } = txObj;
 
         let outcome;
-        let val = value ? utils.hexToBN(value) : new BN(0)
+        let val = value ? utils.hexToBN(value) : new BN(0);
 
         if (data === undefined) {
             // send funds
@@ -613,10 +613,10 @@ class NearProvider {
                     {},
                     GAS_AMOUNT,
                     val
-                )
+                );
             } else  {
                 // Simple Transfer b/w EVM accounts
-                let zeroVal = new BN(0)
+                let zeroVal = new BN(0);
                 outcome = await this.account.functionCall(
                     this.evm_contract,
                     'move_funds_to_evm_address',
@@ -636,13 +636,17 @@ class NearProvider {
             );
         } else {
             // Function Call
-            outcome = await this.account.functionCall(
-                this.evm_contract,
-                'call_contract',
-                { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                GAS_AMOUNT.toString(),
-                val
-            );
+            try {
+                outcome = await this.account.functionCall(
+                    this.evm_contract,
+                    'call_contract',
+                    { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
+                    GAS_AMOUNT.toString(),
+                    val
+                );
+            } catch (error) {
+                throw Error(`revert ${utils.hexToString(error.panic_msg)}`);
+            }
         }
         return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
@@ -708,15 +712,16 @@ class NearProvider {
 
     /**
      * Executes a new message call immediately without creating a
-     * transaction on the block chain
-     * @param {Object} txCallObj transaction call object
-     * @property {String} to the address the tx is directed to
-     * @property {String} from (optional) the address the tx is sent from
+     * transaction on the block chain.
+     * @param {Object} txCallObj transaction call object.
+     * @property {String} to the address the tx is directed to.
+     * @property {String} from (optional) the address the tx is sent from.
      * @property {Quantity} value (optional) integer of the value sent
-     * with this tx
+     * with this tx.
      * @property {String} data (optional) hash of the method signature
-     * and encoded parameters
-     * @returns {String} the return value of the executed contract
+     * and encoded parameters.
+     * @returns {String} the return value of the executed contract.
+     * @throws {Error(String)} error when contract exection fails.
      */
     async routeEthCall([txCallObj]) {
         const { to, from, value, data } = txCallObj;
@@ -735,8 +740,14 @@ class NearProvider {
                 sender: utils.remove0x(sender),
                 value: val.toString()
             });
+
+        // TODO: add more logic here for various types of errors.
+        if (result.toLowerCase().includes('reverted')) {
+            const [errorType, message] = result.split(' ');
+            throw new Error(`${errorType.toLowerCase()} ${utils.hexToString(message)}`);
+        }
         return '0x' + result;
     }
 }
 
-module.exports = { NearProvider, nearlib, nearWeb3Extensions };
+module.exports = { NearProvider, nearlib, nearWeb3Extensions, utils };

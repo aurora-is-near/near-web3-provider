@@ -2,6 +2,7 @@ const assert = require('bsert');
 const bs58 = require('bs58');
 const web3Utils = require('web3-utils');
 const BN = require('bn.js');
+const nearlib = require('near-api-js');
 
 const utils = {};
 
@@ -36,7 +37,7 @@ utils.include0x = function(value) {
     assert(typeof value === 'string', 'include0x: must pass in string');
 
     if (value.slice(0, 2) === '0x') {
-        return value
+        return value;
     } else {
         return `0x${value}`;
     }
@@ -89,8 +90,8 @@ utils.decToHex = function(value) {
  *
  * Deserializes a hex string into a Uint8Array
  *
- * @param {Uint8Array}    hexStr The value as a hex string
- * @returns {String}      The value as a u8a
+ * @param {String}    hexStr The value as a hex string
+ * @returns {Uint8Array}      The value as a u8a
  */
 utils.deserializeHex = function(hexStr) {
     if (!hexStr) {
@@ -138,6 +139,18 @@ utils.hexToDec = function(value) {
     assert(utils.isHex(value), 'hexToDec: must pass in hex string');
 
     return parseInt(utils.remove0x(value), 16);
+};
+
+/**
+ * Converts hex to string.
+ * @param {String} value hex string to convert to number.
+ * @returns {String} decoded string.
+ */
+utils.hexToString = function(value) {
+    assert(typeof value === 'string', 'hexToDec: must pass in hex string');
+    assert(utils.isHex(value), 'hexToDec: must pass in hex string');
+
+    return Buffer.from(utils.remove0x(value), 'hex').toString();
 };
 
 /**
@@ -290,6 +303,26 @@ utils.convertBlockHeight = async function(blockHeight, nearProvider) {
     } catch (e) {
         return e;
     }
+};
+
+/**
+ * Creates set of test accounts given provider.
+ */
+utils.createTestAccounts = async function(provider, numAccounts) {
+    const currentAccounts = await provider.keyStore.getAccounts(provider.networkId);
+    const numCurrentAccounts = currentAccounts.length;
+    if (numCurrentAccounts >= numAccounts) {
+        return;
+    }
+    for (let i = 0; i < numAccounts - numCurrentAccounts; ++i) {
+        const accountId = `${Date.now()}.${provider.accountId}`;
+        const keyPair = nearlib.utils.KeyPair.fromRandom('ed25519');
+        await provider.keyStore.setKey(provider.networkId, accountId, keyPair);
+        await provider.account.createAccount(
+            accountId, keyPair.publicKey.toString(),
+            nearlib.utils.format.parseNearAmount('1'));
+    }
+    console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
 };
 
 module.exports = utils;
