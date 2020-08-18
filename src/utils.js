@@ -62,7 +62,7 @@ utils.isHex = function(value) {
  */
 utils.isValidAccountID = function(value) {
     assert(typeof value === 'string', 'isValidAccountID: must pass in string');
-    assert(value == value.toLowerCase(), `isValidAccountID: near accountID cannot have uppercase letters: ${value}`)
+    assert(value == value.toLowerCase(), `isValidAccountID: near accountID cannot have uppercase letters: ${value}`);
 
     const accountIDTest = /^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/;
     return (
@@ -212,9 +212,9 @@ utils.base58ToUint8 = function(value) {
  * @returns {Uint8Array} returns hex string in Uint8Array
  */
 utils.hexToBN = function(hex) {
-    const remove = utils.remove0x(hex.toString())
-    return new BN(remove, 16)
-}
+    const remove = utils.remove0x(hex.toString());
+    return new BN(remove, 16);
+};
 
 /**
  * Convert timestamp in NEAR to hex

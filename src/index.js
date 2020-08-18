@@ -12,7 +12,7 @@ const nearWeb3Extensions = require('./near_web3_extensions');
 const { Account } = require('near-api-js');
 
 const GAS_AMOUNT = new BN('300000000000000');
-const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
+const ZERO_ADDRESS = `0x${'00'.repeat(20)}`;
 
 class NearProvider {
     constructor(url, keyStore, accountId, networkId, evmContractName) {
@@ -87,182 +87,182 @@ class NearProvider {
     // Maps ethereum RPC into NEAR RPC requests and remaps back the responses.
     async routeRPC(method, params) {
         switch (method) {
-            /**
+        /**
              * Returns the current network id
              * @returns {String}
              */
-            case 'net_version': {
-                return this.version;
-            }
+        case 'net_version': {
+            return this.version;
+        }
 
-            case 'net_listening': {
-                return this.routeNetListening(params);
-            }
+        case 'net_listening': {
+            return this.routeNetListening(params);
+        }
 
-            case 'eth_protocolVersion': {
-                return this.routeEthProtocolVersion(params);
-            }
+        case 'eth_protocolVersion': {
+            return this.routeEthProtocolVersion(params);
+        }
 
-            case 'eth_syncing': {
-                return this.routeEthSyncing(params);
-            }
+        case 'eth_syncing': {
+            return this.routeEthSyncing(params);
+        }
 
-            case 'eth_gasPrice': {
-                return this.routeEthGasPrice(params);
-            }
+        case 'eth_gasPrice': {
+            return this.routeEthGasPrice(params);
+        }
 
-            case 'eth_accounts': {
-                return this.routeEthAccounts(params);
-            }
+        case 'eth_accounts': {
+            return this.routeEthAccounts(params);
+        }
 
-            case 'eth_blockNumber': {
-                return this.routeEthBlockNumber(params);
-            }
+        case 'eth_blockNumber': {
+            return this.routeEthBlockNumber(params);
+        }
 
-            case 'eth_getBalance': {
-                return this.routeEthGetBalance(params);
-            }
+        case 'eth_getBalance': {
+            return this.routeEthGetBalance(params);
+        }
 
-            case 'eth_getStorageAt': {
-                return this.routeEthGetStorageAt(params);
-            }
+        case 'eth_getStorageAt': {
+            return this.routeEthGetStorageAt(params);
+        }
 
-            case 'eth_getCode': {
-                return this.routeEthGetCode(params);
-            }
+        case 'eth_getCode': {
+            return this.routeEthGetCode(params);
+        }
 
-            case 'eth_getBlockByHash': {
-                return this.routeEthGetBlockByHash(params);
-            }
+        case 'eth_getBlockByHash': {
+            return this.routeEthGetBlockByHash(params);
+        }
 
-            case 'eth_getBlockByNumber': {
-                return this.routeEthGetBlockByNumber(params);
-            }
+        case 'eth_getBlockByNumber': {
+            return this.routeEthGetBlockByNumber(params);
+        }
 
-            case 'eth_getBlockTransactionCountByHash': {
-                return this.routeEthGetBlockTransactionCountByHash(params);
-            }
+        case 'eth_getBlockTransactionCountByHash': {
+            return this.routeEthGetBlockTransactionCountByHash(params);
+        }
 
-            case 'eth_getBlockTransactionCountByNumber': {
-                return this.routeEthGetBlockTransactionCountByNumber(params);
-            }
+        case 'eth_getBlockTransactionCountByNumber': {
+            return this.routeEthGetBlockTransactionCountByNumber(params);
+        }
 
-            case 'eth_getTransactionByHash': {
-                return this.routeEthGetTransactionByHash(params);
-            }
+        case 'eth_getTransactionByHash': {
+            return this.routeEthGetTransactionByHash(params);
+        }
 
-            case 'eth_getTransactionByBlockHashAndIndex': {
-                return this.routeEthGetTransactionByBlockHashAndIndex(params);
-            }
+        case 'eth_getTransactionByBlockHashAndIndex': {
+            return this.routeEthGetTransactionByBlockHashAndIndex(params);
+        }
 
-            case 'eth_getTransactionByBlockNumberAndIndex': {
-                return this.routeEthGetTransactionByBlockNumberAndIndex(params);
-            }
+        case 'eth_getTransactionByBlockNumberAndIndex': {
+            return this.routeEthGetTransactionByBlockNumberAndIndex(params);
+        }
 
-            case 'eth_getTransactionReceipt': {
-                return this.routeEthGetTransactionReceipt(params);
-            }
+        case 'eth_getTransactionReceipt': {
+            return this.routeEthGetTransactionReceipt(params);
+        }
 
-            case 'eth_getTransactionCount': {
-                return this.routeEthGetTransactionCount(params);
-            }
+        case 'eth_getTransactionCount': {
+            return this.routeEthGetTransactionCount(params);
+        }
 
-            case 'eth_sendTransaction': {
-                return this.routeEthSendTransaction(params);
-            }
+        case 'eth_sendTransaction': {
+            return this.routeEthSendTransaction(params);
+        }
 
-            case 'near_retrieveNear': {
-                return this.routeNearRetrieveNear(params);
-            }
+        case 'near_retrieveNear': {
+            return this.routeNearRetrieveNear(params);
+        }
 
-            case 'near_transferNear': {
-                return this.routeNearTransferNear(params);
-            }
+        case 'near_transferNear': {
+            return this.routeNearTransferNear(params);
+        }
 
-            case 'eth_sendRawTransaction': {
-                return this.routeEthSendRawTransaction(params);
-            }
+        case 'eth_sendRawTransaction': {
+            return this.routeEthSendRawTransaction(params);
+        }
 
-            case 'eth_call': {
-                return this.routeEthCall(params);
-            }
+        case 'eth_call': {
+            return this.routeEthCall(params);
+        }
 
-            /**
+        /**
              * Always 0
              */
-            case 'eth_estimateGas': {
-                return '0x0';
-            }
+        case 'eth_estimateGas': {
+            return '0x0';
+        }
 
-            /**-----------UNSUPPORTED METHODS------------**/
-            case 'eth_sign': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        /**-----------UNSUPPORTED METHODS------------**/
+        case 'eth_sign': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getLogs': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getLogs': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getPastLogs': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getPastLogs': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_pendingTransactions': {
-                // return [];
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_pendingTransactions': {
+            // return [];
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getUncleByBlockHashAndIndex': {
-                // return nearToEth.blockObj('empty');
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getUncleByBlockHashAndIndex': {
+            // return nearToEth.blockObj('empty');
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getUncleByBlockNumberAndIndex': {
-                // return nearToEth.blockObj('empty');
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getUncleByBlockNumberAndIndex': {
+            // return nearToEth.blockObj('empty');
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_newFilter': {
-                // return '0x0';
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_newFilter': {
+            // return '0x0';
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_newBlockFilter': {
-                // return '0x0';
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_newBlockFilter': {
+            // return '0x0';
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_newPendingTransactionFilter': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_newPendingTransactionFilter': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_uninstallFilter': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_uninstallFilter': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getFilterChanges': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getFilterChanges': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getFilterLogs': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getFilterLogs': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getWork': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getWork': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_submitWork': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_submitWork': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_submitHashrate': {
-                throw new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_submitHashrate': {
+            throw new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            default: {
-                return new Error(`NearProvider: Unknown method: ${method} with params ${JSON.stringify(params)}`);
-            }
+        default: {
+            return new Error(`NearProvider: Unknown method: ${method} with params ${JSON.stringify(params)}`);
+        }
         }
     }
 
@@ -286,7 +286,7 @@ class NearProvider {
                 result
             });
         }, (err) => {
-            cb(err)
+            cb(err);
         });
     }
 
@@ -691,8 +691,8 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearRetrieveNear([txObj]) {
-        const { to, value } = txObj
-        let val = value ? utils.hexToBN(value) : new BN(0)
+        const { to, value } = txObj;
+        let val = value ? utils.hexToBN(value) : new BN(0);
         let outcome = await this.account.functionCall(
             this.evm_contract,
             'retrieve_near',
@@ -713,8 +713,8 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearTransferNear([txObj]) {
-        const { to, value } = txObj
-        let val = value ? utils.hexToBN(value) : new BN(0)
+        const { to, value } = txObj;
+        let val = value ? utils.hexToBN(value) : new BN(0);
         let outcome = await this.account.functionCall(
             this.evm_contract,
             'move_funds_to_near_account',
