@@ -11,7 +11,7 @@ const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
 const { Account } = require('near-api-js');
 
-const GAS_AMOUNT = new BN('300000000000000');
+const GAS_AMOUNT = new BN('1000000000000000');
 const ZERO_ADDRESS = `0x${'00'.repeat(20)}`;
 
 class NearProvider {
