@@ -698,8 +698,10 @@ class NearProvider {
                     val
                 );
             } catch (error) {
-                console.log('aloha web3 error0', error);
-                console.log(this.evm_contract, to, data);
+                console.log('aloha web3 error0', error, from, to, data, account);
+                if (error.panic_msg === null || error.panic_msg === undefined) {
+                    throw Error(`Unknown error: ${JSON.stringify(error)}`);
+                }
                 let panic_msg = utils.hexToString(error.panic_msg);
                 // In some cases message is doubly encoded.
                 if (utils.isHex(panic_msg)) {
