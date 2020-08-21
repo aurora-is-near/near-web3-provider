@@ -163,6 +163,11 @@ class NearProvider {
             return this.routeEthGetTransactionReceipt(params);
         }
 
+        // TODO: this is a hack and has hardcoded values
+        case 'eth_getLogs': {
+            return this.routeEthGetLogs(params);
+        }
+
         case 'eth_getTransactionCount': {
             return this.routeEthGetTransactionCount(params);
         }
@@ -199,9 +204,9 @@ class NearProvider {
             return new Error(this.unsupportedMethodErrorMsg(method));
         }
 
-        case 'eth_getLogs': {
-            return new Error(this.unsupportedMethodErrorMsg(method));
-        }
+        // case 'eth_getLogs': {
+        //     return new Error(this.unsupportedMethodErrorMsg(method));
+        // }
 
         case 'eth_getPastLogs': {
             return new Error(this.unsupportedMethodErrorMsg(method));
@@ -586,6 +591,26 @@ class NearProvider {
     }
 
     /**
+     * Temporarily hardcode to provide something for eth_getLogs
+     * Returns the logs of a transaction
+     * @param {String} fullTxHash transaction hash (base58hash:accountId)
+     * @returns {Object} returns TODO
+     */
+    async routeEthGetLogs([fromBlock]) {
+        const i = 0;
+        return [{
+            logIndex: utils.include0x(i.toString(16)),
+            blockNumber: 19,
+            blockHash: 'fakeblockhash',
+            transactionHash: 'hello',
+            transactionIndex: '0x0',
+            address: 'hardcoded',
+            data: '0xhardcoded',
+            topics: [],
+        }];
+    }
+
+    /**
      * Returns the number of transactions SENT from an address
      * @param {String} address 20-byte address
      * @returns {Quantity} Integer of the number of transactions sent
@@ -670,10 +695,13 @@ class NearProvider {
                     val
                 );
             } catch (error) {
+                console.log('aloha web3 error0', error);
                 let panic_msg = utils.hexToString(error.panic_msg);
                 // In some cases message is doubly encoded.
                 if (utils.isHex(panic_msg)) {
+                    console.log('aloha web3 error1');
                     panic_msg = utils.hexToString(panic_msg);
+                    console.log('aloha web3 error1', panic_msg);
                 }
                 throw Error(`revert ${panic_msg}`);
             }
@@ -771,7 +799,7 @@ class NearProvider {
                 value: val.toString()
             });
 
-        // TODO: add more logic here for various types of errors.
+        // TODO: add more logic here for various types of errors. heheh
         if (result.toLowerCase().includes('reverted')) {
             const [errorType, message] = result.split(' ');
             throw new Error(`${errorType.toLowerCase()} ${utils.hexToString(message)}`);
