@@ -33,6 +33,7 @@ class NearProvider {
 
         this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
         this.accountId = masterAccountId;
+        assert(this.accountId !== undefined && this.accountId !== null, 'Must pass master account id');
         this.account = new nearlib.Account(this.connection, this.accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
         this.accounts = new Map();
