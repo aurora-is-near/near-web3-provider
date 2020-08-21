@@ -192,6 +192,10 @@ class NearProvider {
             return this.routeEthCall(params);
         }
 
+        case 'eth_getLogs': {
+            return this.routeEthLogs(params);
+        }
+
         /**
              * Always 0
              */
@@ -203,10 +207,6 @@ class NearProvider {
         case 'eth_sign': {
             return new Error(this.unsupportedMethodErrorMsg(method));
         }
-
-        // case 'eth_getLogs': {
-        //     return new Error(this.unsupportedMethodErrorMsg(method));
-        // }
 
         case 'eth_getPastLogs': {
             return new Error(this.unsupportedMethodErrorMsg(method));
@@ -805,6 +805,13 @@ class NearProvider {
             throw new Error(`${errorType.toLowerCase()} ${utils.hexToString(message)}`);
         }
         return '0x' + result;
+    }
+
+    async routeEthLogs([logsParams]) {
+        const { address, fromBlock, toBlock, topics } = logsParams;
+
+        // TODO: implement fetching logs fromBlock..toBlock with filtering for specific address.
+        return [];
     }
 }
 
