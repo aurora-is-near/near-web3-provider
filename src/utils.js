@@ -6,6 +6,8 @@ const nearlib = require('near-api-js');
 
 const utils = {};
 
+const CREDENTIALS_DIR = '.near-credentials';
+
 utils.keccak256 = web3Utils.keccak256;
 
 /**
@@ -322,10 +324,21 @@ utils.createTestAccounts = async function(provider, numAccounts) {
         await provider.account.createAccount(
             accountId, keyPair.publicKey.toString(),
             nearlib.utils.format.parseNearAmount('100'));
-        newAccountIds.push(accountId)
+        newAccountIds.push(accountId);
     }
     console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
-    return newAccountIds
+    return newAccountIds;
+};
+
+utils.createLocalKeyStore = function() {
+    const os = require('os');
+    const path = require('path');
+    const credentialsPath = path.join(os.homedir(), CREDENTIALS_DIR);
+    const keyStores = [
+        new nearlib.keyStores.UnencryptedFileSystemKeyStore(credentialsPath),
+        new nearlib.keyStores.UnencryptedFileSystemKeyStore('./neardev')
+    ];
+    return new nearlib.keyStores.MergeKeyStore(keyStores);
 };
 
 module.exports = utils;

@@ -15,21 +15,25 @@ const GAS_AMOUNT = new BN('1000000000000000');
 const ZERO_ADDRESS = `0x${'00'.repeat(20)}`;
 
 class NearProvider {
-    constructor(url, keyStore, accountId, networkId, evmContractName) {
-        this.networkId = networkId || process.env.NODE_ENV || 'default';
-        this.evm_contract = evmContractName || 'evm';
-        this.url = url;
+    constructor(params) {
+        const {
+            nodeUrl, keyStore, masterAccountId, networkId, evmAccountId
+        } = params;
+        this.networkId = networkId || process.env.NEAR_ENV || 'default';
+        this.evm_contract = evmAccountId || 'evm';
+        this.url = nodeUrl;
         this.version = networkId === 'local' || networkId === 'test'
             ? NEAR_NET_VERSION_TEST
             : NEAR_NET_VERSION;
-        this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
+        this.nearProvider = new nearlib.providers.JsonRpcProvider(this.url);
 
-        this.keyStore = keyStore;
+        // TODO: make sure this works in the browser, when disk is not available.
+        this.keyStore = keyStore || utils.createLocalKeyStore();
         this.signer = new nearlib.InMemorySigner(this.keyStore);
 
         this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
-        this.accountId = accountId;
-        this.account = new nearlib.Account(this.connection, accountId);
+        this.accountId = masterAccountId;
+        this.account = new nearlib.Account(this.connection, this.accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
         this.accounts = new Map();
         this.accounts.set(this.accountId, this.account);
@@ -190,10 +194,6 @@ class NearProvider {
 
         case 'eth_call': {
             return this.routeEthCall(params);
-        }
-
-        case 'eth_getLogs': {
-            return this.routeEthLogs(params);
         }
 
         /**
@@ -592,11 +592,14 @@ class NearProvider {
 
     /**
      * Temporarily hardcode to provide something for eth_getLogs
-     * Returns the logs of a transaction
-     * @param {String} fullTxHash transaction hash (base58hash:accountId)
+     * Returns the logs from set of blocks.
+     * @param TODO
      * @returns {Object} returns TODO
      */
-    async routeEthGetLogs([fromBlock]) {
+    async routeEthGetLogs([logsParams]) {
+        const { address, fromBlock, toBlock, topics } = logsParams;
+
+        // TODO: implement fetching logs fromBlock..toBlock with filtering for specific address.
         const i = 0;
         return [{
             logIndex: utils.include0x(i.toString(16)),
@@ -696,6 +699,7 @@ class NearProvider {
                 );
             } catch (error) {
                 console.log('aloha web3 error0', error);
+                console.log(this.evm_contract, to, data);
                 let panic_msg = utils.hexToString(error.panic_msg);
                 // In some cases message is doubly encoded.
                 if (utils.isHex(panic_msg)) {
@@ -805,13 +809,6 @@ class NearProvider {
             throw new Error(`${errorType.toLowerCase()} ${utils.hexToString(message)}`);
         }
         return '0x' + result;
-    }
-
-    async routeEthLogs([logsParams]) {
-        const { address, fromBlock, toBlock, topics } = logsParams;
-
-        // TODO: implement fetching logs fromBlock..toBlock with filtering for specific address.
-        return [];
     }
 }
 
