@@ -314,15 +314,18 @@ utils.createTestAccounts = async function(provider, numAccounts) {
     if (numCurrentAccounts >= numAccounts) {
         return;
     }
+    let newAccountIds = [];
     for (let i = 0; i < numAccounts - numCurrentAccounts; ++i) {
         const accountId = `${Date.now()}.${provider.accountId}`;
         const keyPair = nearlib.utils.KeyPair.fromRandom('ed25519');
         await provider.keyStore.setKey(provider.networkId, accountId, keyPair);
         await provider.account.createAccount(
             accountId, keyPair.publicKey.toString(),
-            nearlib.utils.format.parseNearAmount('1'));
+            nearlib.utils.format.parseNearAmount('100'));
+        newAccountIds.push(accountId)
     }
     console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
+    return newAccountIds
 };
 
 module.exports = utils;
