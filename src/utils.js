@@ -323,7 +323,7 @@ utils.createTestAccounts = async function(provider, numAccounts) {
         await provider.keyStore.setKey(provider.networkId, accountId, keyPair);
         await provider.account.createAccount(
             accountId, keyPair.publicKey.toString(),
-            nearlib.utils.format.parseNearAmount('100'));
+            nearlib.utils.format.parseNearAmount('8600'));
         newAccountIds.push(accountId);
     }
     console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
