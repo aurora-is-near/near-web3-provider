@@ -11,7 +11,7 @@ const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
 const { Account } = require('near-api-js');
 
-const GAS_AMOUNT = new BN('1000000000000000');
+const GAS_AMOUNT = new BN('300000000000000');
 const ZERO_ADDRESS = `0x${'00'.repeat(20)}`;
 
 class NearProvider {
@@ -681,13 +681,18 @@ class NearProvider {
             }
         } else if (to === undefined) {
             // Contract deployment
-            outcome = await account.functionCall(
-                this.evm_contract,
-                'deploy_code',
-                { bytecode: utils.remove0x(data) },
-                GAS_AMOUNT,
-                val
-            );
+            try {
+                outcome = await account.functionCall(
+                    this.evm_contract,
+                    'deploy_code',
+                    { bytecode: utils.remove0x(data) },
+                    GAS_AMOUNT,
+                    val
+                );
+            } catch (error) {
+                console.log(JSON.stringify(error));
+                throw error;
+            }
         } else {
             // Function Call
             try {
