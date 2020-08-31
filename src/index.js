@@ -359,7 +359,7 @@ class NearProvider {
      */
     async routeEthGasPrice() {
         const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
-        const result = await this.nearProvider.block(latest_block_hash);
+        const result = await this.nearProvider.block({ blockId: latest_block_hash});
 
         return new BN(result.header.gas_price);
     }
