@@ -9,36 +9,42 @@ const NEAR_NET_VERSION_TEST = '98';
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
+const { Account } = require('near-api-js');
 
-const GAS_AMOUNT = new BN('200000000000000');
-const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
+const GAS_AMOUNT = new BN('300000000000000');
+const ZERO_ADDRESS = `0x${'00'.repeat(20)}`;
 
 class NearProvider {
-    constructor(url, keyStore, accountId, networkId, evmContractName) {
-        this.networkId = networkId || process.env.NODE_ENV || 'default';
-        this.evm_contract = evmContractName || 'evm';
-        this.url = url;
+    constructor(params) {
+        const {
+            nodeUrl, keyStore, masterAccountId, networkId, evmAccountId
+        } = params;
+        this.networkId = networkId || process.env.NEAR_ENV || 'default';
+        this.evm_contract = evmAccountId || 'evm';
+        this.url = nodeUrl;
         this.version = networkId === 'local' || networkId === 'test'
             ? NEAR_NET_VERSION_TEST
             : NEAR_NET_VERSION;
-        this.nearProvider = new nearlib.providers.JsonRpcProvider(url);
+        this.nearProvider = new nearlib.providers.JsonRpcProvider(this.url);
 
-        this.keyStore = keyStore;
+        // TODO: make sure this works in the browser, when disk is not available.
+        this.keyStore = keyStore || utils.createLocalKeyStore();
         this.signer = new nearlib.InMemorySigner(this.keyStore);
 
         this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
-        this.accountId = accountId;
-        this.account = new nearlib.Account(this.connection, accountId);
+        this.accountId = masterAccountId;
+        assert(this.accountId !== undefined && this.accountId !== null, 'Must pass master account id');
+        this.account = new nearlib.Account(this.connection, this.accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
+        this.accounts = new Map();
+        this.accounts.set(this.accountId, this.account);
     }
 
     async _createNewAccount(accountId) {
-        // create keypair
+        // Create keypair.
         const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
         await this.keyStore.setKey(this.networkId, accountId, keyPair);
         this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
-        this.signer = new nearlib.InMemorySigner(this.keyStore);
-        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
     }
 
     async _viewEvmContract(method, methodArgs) {
@@ -50,11 +56,27 @@ class NearProvider {
         return result;
     }
 
+    /** Returns account id for given address, if this account is known. */
+    async _addressToAccountId(address) {
+        // TODO: optimize & cache this.
+        let accounts = await this.keyStore.getAccounts(this.networkId);
+        let addressToAccountId = new Map();
+        accounts.forEach((account) => addressToAccountId.set(utils.nearAccountToEvmAddress(account), account));
+        return addressToAccountId.get(address);
+    }
+
+    _getAccount(accountId) {
+        if (!this.accounts.has(accountId)) {
+            this.accounts.set(accountId, new Account(this.connection, accountId));
+        }
+        return this.accounts.get(accountId);
+    }
+
     /**
      * Calls a block and fills it up
      */
-    async _getBlock(blockHeight, returnTxObjects, returnNearBlock) {
-        const block = await this.nearProvider.block(blockHeight);
+    async _getBlock(blockId, returnTxObjects, returnNearBlock) {
+        const block = await this.nearProvider.block({ blockId });
         const fullBlock = await nearToEth.blockObj(block, returnTxObjects, this.nearProvider);
 
         if (returnNearBlock) {
@@ -70,178 +92,183 @@ class NearProvider {
     // Maps ethereum RPC into NEAR RPC requests and remaps back the responses.
     async routeRPC(method, params) {
         switch (method) {
-            /**
+        /**
              * Returns the current network id
              * @returns {String}
              */
-            case 'net_version': {
-                return this.version;
-            }
+        case 'net_version': {
+            return this.version;
+        }
 
-            case 'net_listening': {
-                return this.routeNetListening(params);
-            }
+        case 'net_listening': {
+            return this.routeNetListening(params);
+        }
 
-            case 'eth_protocolVersion': {
-                return this.routeEthProtocolVersion(params);
-            }
+        case 'eth_protocolVersion': {
+            return this.routeEthProtocolVersion(params);
+        }
 
-            case 'eth_syncing': {
-                return this.routeEthSyncing(params);
-            }
+        case 'eth_syncing': {
+            return this.routeEthSyncing(params);
+        }
 
-            case 'eth_gasPrice': {
-                return this.routeEthGasPrice(params);
-            }
+        case 'eth_gasPrice': {
+            return this.routeEthGasPrice(params);
+        }
 
-            case 'eth_accounts': {
-                return this.routeEthAccounts(params);
-            }
+        case 'eth_accounts': {
+            return this.routeEthAccounts(params);
+        }
 
-            case 'eth_blockNumber': {
-                return this.routeEthBlockNumber(params);
-            }
+        case 'eth_blockNumber': {
+            return this.routeEthBlockNumber(params);
+        }
 
-            case 'eth_getBalance': {
-                return this.routeEthGetBalance(params);
-            }
+        case 'eth_getBalance': {
+            return this.routeEthGetBalance(params);
+        }
 
-            case 'eth_getStorageAt': {
-                return this.routeEthGetStorageAt(params);
-            }
+        case 'eth_getStorageAt': {
+            return this.routeEthGetStorageAt(params);
+        }
 
-            case 'eth_getCode': {
-                return this.routeEthGetCode(params);
-            }
+        case 'eth_getCode': {
+            return this.routeEthGetCode(params);
+        }
 
-            case 'eth_getBlockByHash': {
-                return this.routeEthGetBlockByHash(params);
-            }
+        case 'eth_getBlockByHash': {
+            return this.routeEthGetBlockByHash(params);
+        }
 
-            case 'eth_getBlockByNumber': {
-                return this.routeEthGetBlockByNumber(params);
-            }
+        case 'eth_getBlockByNumber': {
+            return this.routeEthGetBlockByNumber(params);
+        }
 
-            case 'eth_getBlockTransactionCountByHash': {
-                return this.routeEthGetBlockTransactionCountByHash(params);
-            }
+        case 'eth_getBlockTransactionCountByHash': {
+            return this.routeEthGetBlockTransactionCountByHash(params);
+        }
 
-            case 'eth_getBlockTransactionCountByNumber': {
-                return this.routeEthGetBlockTransactionCountByNumber(params);
-            }
+        case 'eth_getBlockTransactionCountByNumber': {
+            return this.routeEthGetBlockTransactionCountByNumber(params);
+        }
 
-            case 'eth_getTransactionByHash': {
-                return this.routeEthGetTransactionByHash(params);
-            }
+        case 'eth_getTransactionByHash': {
+            return this.routeEthGetTransactionByHash(params);
+        }
 
-            case 'eth_getTransactionByBlockHashAndIndex': {
-                return this.routeEthGetTransactionByBlockHashAndIndex(params);
-            }
+        case 'eth_getTransactionByBlockHashAndIndex': {
+            return this.routeEthGetTransactionByBlockHashAndIndex(params);
+        }
 
-            case 'eth_getTransactionByBlockNumberAndIndex': {
-                return this.routeEthGetTransactionByBlockNumberAndIndex(params);
-            }
+        case 'eth_getTransactionByBlockNumberAndIndex': {
+            return this.routeEthGetTransactionByBlockNumberAndIndex(params);
+        }
 
-            case 'eth_getTransactionReceipt': {
-                return this.routeEthGetTransactionReceipt(params);
-            }
+        case 'eth_getTransactionReceipt': {
+            return this.routeEthGetTransactionReceipt(params);
+        }
 
-            case 'eth_getTransactionCount': {
-                return this.routeEthGetTransactionCount(params);
-            }
+        // TODO: this is a hack and has hardcoded values
+        case 'eth_getLogs': {
+            return this.routeEthGetLogs(params);
+        }
 
-            case 'eth_sendTransaction': {
-                return this.routeEthSendTransaction(params);
-            }
+        case 'eth_getTransactionCount': {
+            return this.routeEthGetTransactionCount(params);
+        }
 
-            case 'near_retrieveNear': {
-                return this.routeNearRetrieveNear(params);
-            }
+        case 'eth_sendTransaction': {
+            return this.routeEthSendTransaction(params);
+        }
 
-            case 'near_transferNear': {
-                return this.routeNearTransferNear(params);
-            }
+        case 'near_retrieveNear': {
+            return this.routeNearRetrieveNear(params);
+        }
 
-            case 'eth_sendRawTransaction': {
-                return this.routeEthSendRawTransaction(params);
-            }
+        case 'near_transferNear': {
+            return this.routeNearTransferNear(params);
+        }
 
-            case 'eth_call': {
-                return this.routeEthCall(params);
-            }
+        case 'eth_sendRawTransaction': {
+            return this.routeEthSendRawTransaction(params);
+        }
 
-            /**
+        case 'eth_call': {
+            return this.routeEthCall(params);
+        }
+
+        /**
              * Always 0
              */
-            case 'eth_estimateGas': {
-                return '0x0';
-            }
+        case 'eth_estimateGas': {
+            return '0x0';
+        }
 
-            /**-----------UNSUPPORTED METHODS------------**/
-            case 'eth_sign': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        /**-----------UNSUPPORTED METHODS------------**/
+        case 'eth_sign': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getPastLogs': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getPastLogs': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_pendingTransactions': {
-                // return [];
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_pendingTransactions': {
+            // return [];
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getUncleByBlockHashAndIndex': {
-                // return nearToEth.blockObj('empty');
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getUncleByBlockHashAndIndex': {
+            // return nearToEth.blockObj('empty');
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getUncleByBlockNumberAndIndex': {
-                // return nearToEth.blockObj('empty');
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getUncleByBlockNumberAndIndex': {
+            // return nearToEth.blockObj('empty');
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_newFilter': {
-                // return '0x0';
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_newFilter': {
+            // return '0x0';
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_newBlockFilter': {
-                // return '0x0';
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_newBlockFilter': {
+            // return '0x0';
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_newPendingTransactionFilter': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_newPendingTransactionFilter': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_uninstallFilter': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_uninstallFilter': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getFilterChanges': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getFilterChanges': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getFilterLogs': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getFilterLogs': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_getWork': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_getWork': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_submitWork': {
-                return new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_submitWork': {
+            return new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            case 'eth_submitHashrate': {
-                throw new Error(this.unsupportedMethodErrorMsg(method));
-            }
+        case 'eth_submitHashrate': {
+            throw new Error(this.unsupportedMethodErrorMsg(method));
+        }
 
-            default: {
-                return new Error(`NearProvider: Unknown method: ${method} with params ${params}`);
-            }
+        default: {
+            return new Error(`NearProvider: Unknown method: ${method} with params ${JSON.stringify(params)}`);
+        }
         }
     }
 
@@ -253,7 +280,7 @@ class NearProvider {
                 result
             });
         }, (err) => {
-            cb(err)
+            cb(err);
         });
     }
 
@@ -265,7 +292,7 @@ class NearProvider {
                 result
             });
         }, (err) => {
-            cb(err)
+            cb(err);
         });
     }
 
@@ -332,7 +359,7 @@ class NearProvider {
      */
     async routeEthGasPrice() {
         const { sync_info: { latest_block_hash } } = await this.nearProvider.status();
-        const result = await this.nearProvider.block(latest_block_hash);
+        const result = await this.nearProvider.block({ blockId: latest_block_hash});
 
         return new BN(result.header.gas_price);
     }
@@ -342,10 +369,12 @@ class NearProvider {
      * controls
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
-    // TODO: Is this useful? will web3 let us pass back Near accountIds?
     async routeEthAccounts() {
         const networkId = this.connection.networkId;
-        const accounts = await this.keyStore.getAccounts(networkId);
+        let accounts = await this.keyStore.getAccounts(networkId);
+
+        // The main account should go first.
+        accounts = [this.accountId].concat(accounts.filter((accountId) => accountId !== this.accountId));
 
         const evmAccounts = accounts.map(utils.nearAccountToEvmAddress);
         return evmAccounts;
@@ -559,9 +588,30 @@ class NearProvider {
         const [block, nearBlock] = await this._getBlock(fullTx.transaction_outcome.block_hash, false, true);
         const txIndex = block.transactions.indexOf(fullTxHash);
 
-        const result = nearToEth.transactionReceiptObj(nearBlock, fullTx, txIndex, accountId);
+        return nearToEth.transactionReceiptObj(nearBlock, fullTx, txIndex, accountId);
+    }
 
-        return result;
+    /**
+     * Temporarily hardcode to provide something for eth_getLogs
+     * Returns the logs from set of blocks.
+     * @param TODO
+     * @returns {Object} returns TODO
+     */
+    async routeEthGetLogs([logsParams]) {
+        const { address, fromBlock, toBlock, topics } = logsParams;
+
+        // TODO: implement fetching logs fromBlock..toBlock with filtering for specific address.
+        const i = 0;
+        return [{
+            logIndex: utils.include0x(i.toString(16)),
+            blockNumber: 19,
+            blockHash: 'fakeblockhash',
+            transactionHash: 'hello',
+            transactionIndex: '0x0',
+            address: 'hardcoded',
+            data: '0xhardcoded',
+            topics: [],
+        }];
     }
 
     /**
@@ -600,24 +650,28 @@ class NearProvider {
     async routeEthSendTransaction([txObj]) {
         const { from, to, value, data } = txObj;
 
+        const accountId = await this._addressToAccountId(from);
+        assert(accountId !== null && accountId !== undefined, `Unknown address ${from}. Check your key store to make sure you have it available.`);
+        const account = this._getAccount(accountId);
+
         let outcome;
-        let val = value ? utils.hexToBN(value) : new BN(0)
+        let val = value ? utils.hexToBN(value) : new BN(0);
 
         if (data === undefined) {
             // send funds
             if (to !== ZERO_ADDRESS && to === from) {
                 // Add near to corresponding evm account
-                outcome = await this.account.functionCall(
+                outcome = await account.functionCall(
                     this.evm_contract,
                     'add_near',
                     {},
                     GAS_AMOUNT,
                     val
-                )
+                );
             } else  {
                 // Simple Transfer b/w EVM accounts
-                let zeroVal = new BN(0)
-                outcome = await this.account.functionCall(
+                let zeroVal = new BN(0);
+                outcome = await account.functionCall(
                     this.evm_contract,
                     'move_funds_to_evm_address',
                     { 'address': utils.remove0x(to), 'amount': val.toString() },
@@ -627,24 +681,44 @@ class NearProvider {
             }
         } else if (to === undefined) {
             // Contract deployment
-            outcome = await this.account.functionCall(
-                this.evm_contract,
-                'deploy_code',
-                { bytecode: utils.remove0x(data) },
-                GAS_AMOUNT,
-                val
-            );
+            try {
+                outcome = await account.functionCall(
+                    this.evm_contract,
+                    'deploy_code',
+                    { bytecode: utils.remove0x(data) },
+                    GAS_AMOUNT,
+                    val
+                );
+            } catch (error) {
+                console.log(JSON.stringify(error));
+                throw error;
+            }
         } else {
             // Function Call
-            outcome = await this.account.functionCall(
-                this.evm_contract,
-                'call_contract',
-                { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                GAS_AMOUNT.toString(),
-                val
-            );
+            try {
+                outcome = await account.functionCall(
+                    this.evm_contract,
+                    'call_contract',
+                    { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
+                    GAS_AMOUNT.toString(),
+                    val
+                );
+            } catch (error) {
+                console.log('aloha web3 error0', error, from, to, data, account);
+                if (error.panic_msg === null || error.panic_msg === undefined) {
+                    throw Error(`Unknown error: ${JSON.stringify(error)}`);
+                }
+                let panic_msg = utils.hexToString(error.panic_msg);
+                // In some cases message is doubly encoded.
+                if (utils.isHex(panic_msg)) {
+                    console.log('aloha web3 error1');
+                    panic_msg = utils.hexToString(panic_msg);
+                    console.log('aloha web3 error1', panic_msg);
+                }
+                throw Error(`revert ${panic_msg}`);
+            }
         }
-        return `${outcome.transaction_outcome.id}:${this.accountId}`;
+        return `${outcome.transaction_outcome.id}:${accountId}`;
     }
 
     /**
@@ -657,8 +731,8 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearRetrieveNear([txObj]) {
-        const { to, value } = txObj
-        let val = value ? utils.hexToBN(value) : new BN(0)
+        const { to, value } = txObj;
+        let val = value ? utils.hexToBN(value) : new BN(0);
         let outcome = await this.account.functionCall(
             this.evm_contract,
             'retrieve_near',
@@ -679,8 +753,8 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearTransferNear([txObj]) {
-        const { to, value } = txObj
-        let val = value ? utils.hexToBN(value) : new BN(0)
+        const { to, value } = txObj;
+        let val = value ? utils.hexToBN(value) : new BN(0);
         let outcome = await this.account.functionCall(
             this.evm_contract,
             'move_funds_to_near_account',
@@ -708,15 +782,16 @@ class NearProvider {
 
     /**
      * Executes a new message call immediately without creating a
-     * transaction on the block chain
-     * @param {Object} txCallObj transaction call object
-     * @property {String} to the address the tx is directed to
-     * @property {String} from (optional) the address the tx is sent from
+     * transaction on the block chain.
+     * @param {Object} txCallObj transaction call object.
+     * @property {String} to the address the tx is directed to.
+     * @property {String} from (optional) the address the tx is sent from.
      * @property {Quantity} value (optional) integer of the value sent
-     * with this tx
+     * with this tx.
      * @property {String} data (optional) hash of the method signature
-     * and encoded parameters
-     * @returns {String} the return value of the executed contract
+     * and encoded parameters.
+     * @returns {String} the return value of the executed contract.
+     * @throws {Error(String)} error when contract exection fails.
      */
     async routeEthCall([txCallObj]) {
         const { to, from, value, data } = txCallObj;
@@ -735,8 +810,14 @@ class NearProvider {
                 sender: utils.remove0x(sender),
                 value: val.toString()
             });
+
+        // TODO: add more logic here for various types of errors. heheh
+        if (result.toLowerCase().includes('reverted')) {
+            const [errorType, message] = result.split(' ');
+            throw new Error(`${errorType.toLowerCase()} ${utils.hexToString(message)}`);
+        }
         return '0x' + result;
     }
 }
 
-module.exports = { NearProvider, nearlib, nearWeb3Extensions };
+module.exports = { NearProvider, nearlib, nearWeb3Extensions, utils };

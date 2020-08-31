@@ -40,9 +40,9 @@ const withWeb3 = (fn) => {
     const web = new web3();
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
     keyStore.setKey('test', ACCOUNT_ID, ACCOUNT_KEYPAIR);
-    let provider = new NearProvider(NODE_URL, keyStore, ACCOUNT_ID)
+    let provider = new NearProvider({ nodeUrl: NODE_URL, keyStore, masterAccountId: ACCOUNT_ID });
     web.setProvider(provider);
-    web.extend(nearWeb3Extensions(web))
+    web.extend(nearWeb3Extensions(web));
     return () => fn(web);
 };
 
@@ -540,9 +540,9 @@ describe('\n---- PROVIDER ----', () => {
         let txIndex;
         let blockWithTxsHash;
         let blockWithTxsNumber;
-        let zombieCode
-        let zombieAddress
-        const value = 10
+        let zombieCode;
+        let zombieAddress;
+        const value = 10;
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
 
         beforeAll(withWeb3(async (web) => {

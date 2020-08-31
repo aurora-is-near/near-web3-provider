@@ -43,7 +43,7 @@ nearToEth._getGasUsed = function(chunks) {
     const gasUsed = chunks.map((c) => c.gas_used);
     const accumulated = gasUsed.reduce((a, b) => a + b);
     return accumulated;
-}
+};
 
 /**
  * Maps NEAR Block to ETH Block Object
@@ -182,7 +182,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
         tx.block_height,
         transaction_outcome.outcome.gas_burnt,
         txIndex
-    )
+    );
     if (sharedParams.value === null) {
         sharedParams.value = transaction.actions.map(v => {
             const k = Object.keys(v)[0];
@@ -225,24 +225,24 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     const responseData = utils.base64ToString(status.SuccessValue);
     const functionCall = transaction.actions[0].FunctionCall;
 
-    // if it's deploy, get the address
+    // If it's a deploy, get the address.
     if (responseData) {
-      const responsePayload = responseData.slice(1, -1);
-      if (functionCall && functionCall.method_name == 'deploy_code') {
-        contractAddress = responsePayload;
-      }
+        const responsePayload = responseData.slice(1, -1);
+        if (functionCall && functionCall.method_name == 'deploy_code') {
+            contractAddress = responsePayload;
+        }
     }
 
     // TODO: translate logs
-    const { gas_burnt } = transaction_outcome.outcome;
     let sharedParams = processSharedParams(
         transaction,
         block.header.hash,
         block.header.height,
+        // TODO(#50): correctly compute gas burnt based on receipts.
         transaction_outcome.outcome.gas_burnt,
         nearTxObjIndex,
         isReceipt,
-    )
+    );
 
     return {
         ...sharedParams,
@@ -273,7 +273,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
 };
 
 function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIndex, isReceipt = false) {
-    const gas = utils.decToHex(gasBurnt)
+    const gas = utils.decToHex(gasBurnt);
     let destination = null;
     let data = null;
     let value = null;
@@ -283,24 +283,24 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     if (functionCall) {
         const args = JSON.parse(utils.base64ToString(functionCall.args));
         switch (functionCall.method_name) {
-            case 'call_contract':
-                destination = args.contract_address;
-                data = args.encoded_input;
-                break;
-            case 'deploy_code':
-                data = args.bytecode;
-                break;
-            case 'add_near':
-                destination = utils.nearAccountToEvmAddress(transaction.signer_id);
-                break;
-            case 'move_funds_to_evm_address':
-                destination = args.address;
-                value = parseInt(args.amount)
-                break;
+        case 'call_contract':
+            destination = args.contract_address;
+            data = args.encoded_input;
+            break;
+        case 'deploy_code':
+            data = args.bytecode;
+            break;
+        case 'add_near':
+            destination = utils.nearAccountToEvmAddress(transaction.signer_id);
+            break;
+        case 'move_funds_to_evm_address':
+            destination = args.address;
+            value = parseInt(args.amount);
+            break;
         }
     }
 
-    let transactionHash = `${transaction.hash}:${transaction.signer_id}`
+    let transactionHash = `${transaction.hash}:${transaction.signer_id}`;
     let obj =  {
         // DATA hash of the block where this transaction was in
         blockHash: utils.base58ToHex(blockHash),
@@ -312,16 +312,16 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
         from: utils.nearAccountToEvmAddress(transaction.signer_id),
         // DATA address of the receiver, null when it's a contract creation tx
         to: destination ? utils.include0x(destination) : null,
-    }
+    };
 
-    let additionalParams
+    let additionalParams;
     if (isReceipt) {
         additionalParams = {
             // DATA 32 bytes - Hash of the transaction
             transactionHash,
             // QUANTITY The amount of gas used by this specific transaction alone
             gasUsed: gas,
-        }
+        };
     } else {
         additionalParams = {
             // DATA 32 bytes - Hash of the transaction
@@ -330,28 +330,28 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
             gas,
             // QUANTITY - value transferred in wei (yoctoNEAR)
             value: value ? utils.decToHex(value) : null,
-             // DATA - the data sent along with the transaction
+            // DATA - the data sent along with the transaction
             input: data ? utils.include0x(data) : '',
-        }
+        };
     }
 
-    return { ...obj, ...additionalParams }
+    return { ...obj, ...additionalParams };
 }
 
 function parseLogs(receipts_outcome, params, contractAddress) {
     let nearLogs = receipts_outcome.map(({ outcome }) => outcome.logs).reduce((a, b) => a.concat(b));
     let logs = nearLogs.map((log, i) => {
-        log = log.replace(/.*evm log: /, '')
+        log = log.replace(/.*evm log: /, '');
 
         // parse topics out of log
-        let topics = []
+        let topics = [];
         // first hex byte signifies # of topics
-        let topicsLen = parseInt(log.substr(0,2), 16)
+        let topicsLen = parseInt(log.substr(0,2), 16);
         // first topic begins at second hex byte (index 2)
-        let topicsCursor = 2
+        let topicsCursor = 2;
         for (let i = 0; i < topicsLen; i++) {
-            topics.push(utils.include0x(log.substr(topicsCursor, 64)))
-            topicsCursor += 64
+            topics.push(utils.include0x(log.substr(topicsCursor, 64)));
+            topicsCursor += 64;
         }
 
         return {
