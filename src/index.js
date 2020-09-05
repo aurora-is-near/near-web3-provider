@@ -785,20 +785,11 @@ class NearProvider {
      */
     async routeEthCall([txCallObj]) {
         const { to, from, value, data } = txCallObj;
-        const sender = from
-            ? from
-            : utils.nearAccountToEvmAddress(this.accountId);
-
-        const val = value
-            ? new BN(utils.remove0x(value), 16)
-            : new BN(0);
-
         let result;
         try {
             result = await this._viewEvmContract(
                 consts.VIEW_CALL_FUNCTION_METHOD_NAME,
-                // TODO: sender, value?
-                utils.encodeCallArgs(to, data),
+                utils.encodeViewCallArgs(from, to, value ? value : '0x0', data),
             );
         } catch (error) {
             // TODO: add more logic here for various types of errors.

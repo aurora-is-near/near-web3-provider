@@ -386,6 +386,15 @@ utils.encodeCallArgs = function(contractId, encodedInput) {
     return Buffer.concat([utils.deserializeHex(contractId, 20), utils.deserializeHex(encodedInput)]);
 }
 
+utils.encodeViewCallArgs = function(from, contractId, value, encodedInput) {
+    return Buffer.concat([
+        utils.deserializeHex(from, 20),
+        utils.deserializeHex(contractId, 20),
+        utils.deserializeHex(value, 32),
+        utils.deserializeHex(encodedInput)
+    ]);
+}
+
 utils.decodeCallArgs = function(bytes) {
     return {
         contractId: bytes.slice(0, 20).toString('hex'),
