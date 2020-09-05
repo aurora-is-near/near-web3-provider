@@ -10,9 +10,6 @@ const nearlib = require('near-api-js');
 const utils = require('../src/utils');
 const { NearProvider, nearWeb3Extensions } = require('../src/index');
 
-// TODO: update nearEvmFile frequently when near_evm work is being done
- // near-evm master currently unstable. Compiled contract from https://github.com/near/near-evm/tree/web3_compat
-const nearEvmFile = './test/artifacts/near_evm.wasm';
 const zombieCodeFile = './test/artifacts/zombieAttack.bin';
 const zombieABIFile = './test/artifacts/zombieAttack.abi';
 
@@ -50,44 +47,6 @@ const withWeb3 = (fn) => {
     web.extend(nearWeb3Extensions(web));
     return () => fn(web);
 };
-
-/**
- * Deploys evm contract
- */
-async function deployContract(web) {
-    const evmAccountId = 'evm';
-    const evmCode = fs.readFileSync(nearEvmFile).toString('hex');
-    const evmBytecode = Uint8Array.from(Buffer.from(evmCode, 'hex'));
-    const keyPair = createKeyPair();
-
-    console.log(`Deploying contract on NEAR_ENV: "${NEAR_ENV}"`);
-
-    try {
-        await web._provider.keyStore.setKey(NEAR_ENV, evmAccountId, keyPair);
-    } catch (e) {
-        throw new Error('Error setting key', e);
-    }
-
-    try {
-        // Minimum amount required to cover storage - LackBalanceForState
-        const startingBalance = BigInt(99999999999999999999999999999999);
-        const contract = await web._provider.account.createAndDeployContract(
-            evmAccountId,
-            keyPair.getPublicKey(),
-            evmBytecode,
-            startingBalance);  // NEAR value
-        console.log('deployed EVM contract', contract);
-        return true;
-    } catch (e) {
-        if (e.type === 'ActionError::AccountAlreadyExists') {
-            console.log('EVM already deployed');
-            return true;
-        } else {
-            console.log('EVM deploy error', e);
-            return false;
-        }
-    }
-}
 
 /**
  * Checks if account exists
@@ -128,15 +87,8 @@ async function createEvmTransaction(web) {
 
 describe('\n---- PROVIDER ----', () => {
     beforeAll(withWeb3(async (web) => {
-        try {
-            const exists = await accountExists(web, 'evm');
-            if (exists) {
-                return true;
-            }
-            return await deployContract(web);
-        } catch (e) {
-            console.error('Error in beforeAll', e);
-        }
+        const exists = await accountExists(web, 'evm');
+        expect(exists).toBeTruthy();
     }));
 
     describe('\n---- BASIC QUERIES ----', () => {
