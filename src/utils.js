@@ -355,8 +355,8 @@ utils.createLocalKeyStore = function() {
     const path = require('path');
     const credentialsPath = path.join(os.homedir(), CREDENTIALS_DIR);
     const keyStores = [
+        new nearAPI.keyStores.UnencryptedFileSystemKeyStore('./neardev'),
         new nearAPI.keyStores.UnencryptedFileSystemKeyStore(credentialsPath),
-        new nearAPI.keyStores.UnencryptedFileSystemKeyStore('./neardev')
     ];
     return new nearAPI.keyStores.MergeKeyStore(keyStores);
 };

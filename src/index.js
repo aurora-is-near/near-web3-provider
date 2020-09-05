@@ -259,7 +259,7 @@ class NearProvider {
         }
 
         case 'eth_submitHashrate': {
-            throw new Error(this.unsupportedMethodErrorMsg(method));
+            return new Error(this.unsupportedMethodErrorMsg(method));
         }
 
         default: {
@@ -697,18 +697,13 @@ class NearProvider {
                     val
                 );
             } catch (error) {
-                console.log('aloha web3 error0', error, from, to, data, account);
-                if (error.panic_msg === null || error.panic_msg === undefined) {
-                    throw Error(`Unknown error: ${JSON.stringify(error)}`);
+                if (error.type === 'FunctionCallError') {
+                    if (error.kind.EvmError.Revert) {
+                        let message = utils.hexToString(error.kind.EvmError.Revert);
+                        throw Error(`revert ${message}`);
+                    }
                 }
-                let panic_msg = utils.hexToString(error.panic_msg);
-                // In some cases message is doubly encoded.
-                if (utils.isHex(panic_msg)) {
-                    console.log('aloha web3 error1');
-                    panic_msg = utils.hexToString(panic_msg);
-                    console.log('aloha web3 error1', panic_msg);
-                }
-                throw Error(`revert ${panic_msg}`);
+                throw Error(`Unknown error: ${JSON.stringify(error)}`);
             }
         }
         return `${outcome.transaction_outcome.id}:${accountId}`;
@@ -797,19 +792,28 @@ class NearProvider {
         const val = value
             ? new BN(utils.remove0x(value), 16)
             : new BN(0);
-        const result = await this._viewEvmContract(
-            consts.VIEW_CALL_FUNCTION_METHOD_NAME,
-            // TODO: sender, value?
-            utils.encodeCallArgs(to, data),
-        );
+
+        let result;
+        try {
+            result = await this._viewEvmContract(
+                consts.VIEW_CALL_FUNCTION_METHOD_NAME,
+                // TODO: sender, value?
+                utils.encodeCallArgs(to, data),
+            );
+        } catch (error) {
+            // TODO: add more logic here for various types of errors.
+            const errorObj = JSON.parse(error.message.slice(error.message.indexOf('\n') + 1));
+            if (errorObj.error.includes("wasm execution failed with error:")) {
+                const REVERT_PREFIX = 'FunctionCallError(EvmError(Revert("';
+                if (errorObj.error.includes(REVERT_PREFIX)) {
+                    const message = errorObj.error.slice(errorObj.error.indexOf(REVERT_PREFIX) + REVERT_PREFIX.length, errorObj.error.length - 4);
+                    throw new Error(`revert` + (message ? (' ' + utils.hexToString(message)) : ''));
+                }
+            }
+            throw error;
+        }
 
         const output = Buffer.from(result);
-
-        // TODO: add more logic here for various types of errors. heheh
-        if (output.toString().toLowerCase().includes('reverted')) {
-            const [errorType, message] = output.toString().split(' ');
-            throw new Error(`${errorType.toLowerCase()}` + (message ? utils.hexToString(message) : ''));
-        }
         return `0x${output.toString('hex')}`;
     }
 }
