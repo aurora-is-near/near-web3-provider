@@ -2,7 +2,7 @@ const assert = require('bsert');
 const bs58 = require('bs58');
 const web3Utils = require('web3-utils');
 const BN = require('bn.js');
-const nearlib = require('near-api-js');
+const nearAPI = require('near-api-js');
 
 const utils = {};
 
@@ -95,7 +95,7 @@ utils.decToHex = function(value) {
  * @param {String}    hexStr The value as a hex string
  * @returns {Uint8Array}      The value as a u8a
  */
-utils.deserializeHex = function(hexStr) {
+utils.deserializeHex = function(hexStr, fixedLen) {
     if (!hexStr) {
         return new Uint8Array();
     }
@@ -111,11 +111,22 @@ utils.deserializeHex = function(hexStr) {
         hex = hexStr;
     }
 
+    // Append 0 in front if it's odd number of characters.
     if (hex.length % 2 !== 0) {
-        throw new TypeError('Error deserializing hex, string length is odd');
+        hex = `0${hex}`;
     }
 
+    assert(!fixedLen || (hex.length / 2 <= fixedLen));
+
     const a = [];
+
+    // Pad with 0s for fixed length arrays.
+    if (fixedLen) {
+        for (let i = hex.length / 2; i < fixedLen; i += 1) {
+            a.push(0);
+        }
+    }
+
     for (let i = 0; i < hex.length; i += 2) {
         const byte = hex.substr(i, 2);
         const uint8 = parseInt(byte, 16);
@@ -175,6 +186,15 @@ utils.hexToBase58 = function(value) {
     value = utils.remove0x(value);
 
     return bs58.encode(Buffer.from(value, 'hex'));
+};
+
+/**
+ * Converts base64 object to string
+ * @param {String|Array|Buffer|ArrayBuffer} value base64 object
+ * @returns {Buffer} bytes equivalent of base64 object
+ */
+utils.base64ToBuffer = function (value) {
+    return Buffer.from(value, 'base64');
 };
 
 /**
@@ -319,11 +339,11 @@ utils.createTestAccounts = async function(provider, numAccounts) {
     let newAccountIds = [];
     for (let i = 0; i < numAccounts - numCurrentAccounts; ++i) {
         const accountId = `${Date.now()}.${provider.accountId}`;
-        const keyPair = nearlib.utils.KeyPair.fromRandom('ed25519');
+        const keyPair = nearAPI.utils.KeyPair.fromRandom('ed25519');
         await provider.keyStore.setKey(provider.networkId, accountId, keyPair);
         await provider.account.createAccount(
             accountId, keyPair.publicKey.toString(),
-            nearlib.utils.format.parseNearAmount('8600'));
+            nearAPI.utils.format.parseNearAmount('8600'));
         newAccountIds.push(accountId);
     }
     console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
@@ -335,10 +355,70 @@ utils.createLocalKeyStore = function() {
     const path = require('path');
     const credentialsPath = path.join(os.homedir(), CREDENTIALS_DIR);
     const keyStores = [
-        new nearlib.keyStores.UnencryptedFileSystemKeyStore(credentialsPath),
-        new nearlib.keyStores.UnencryptedFileSystemKeyStore('./neardev')
+        new nearAPI.keyStores.UnencryptedFileSystemKeyStore(credentialsPath),
+        new nearAPI.keyStores.UnencryptedFileSystemKeyStore('./neardev')
     ];
-    return new nearlib.keyStores.MergeKeyStore(keyStores);
+    return new nearAPI.keyStores.MergeKeyStore(keyStores);
 };
+
+/** Sends a function call without using JSON to encode arguments. */
+utils.rawFunctionCall = async function (account, contractId, methodName, serializedArgs, gas, deposit) {
+    const action = new nearAPI.transactions.Action({
+        functionCall: new nearAPI.transactions.FunctionCall({
+            methodName,
+            args: serializedArgs,
+            gas,
+            deposit
+        })
+    })
+    return account.signAndSendTransaction(contractId, [action]);
+}
+
+utils.rawViewCall = async function (account, contractId, methodName, serializedArgs) {
+    const result = await account.connection.provider.query(`call/${contractId}/${methodName}`, nearAPI.utils.serialize.base_encode(serializedArgs));
+    if (result.logs) {
+        account.printLogs(contractId, result.logs);
+    }
+    return result.result;
+}
+
+utils.encodeCallArgs = function(contractId, encodedInput) {
+    return Buffer.concat([utils.deserializeHex(contractId, 20), utils.deserializeHex(encodedInput)]);
+}
+
+utils.decodeCallArgs = function(bytes) {
+    return {
+        contractId: bytes.slice(0, 20).toString('hex'),
+        encodedInput: bytes.slice(20).toString('hex'),
+    };
+}
+
+utils.encodeTransferArgs = function(address, value) {
+    return Buffer.concat([utils.deserializeHex(address, 20), utils.deserializeHex(value, 32)]);
+}
+
+utils.decodeTransferArgs = function(bytes) {
+    return {
+        address: bytes.slice(0, 20).toString('hex'),
+        amount: bytes.slice(20, 52).toString('hex'),
+    }
+}
+
+utils.encodeStorageAtArgs = function(address, key) {
+    return Buffer.concat([utils.deserializeHex(address, 20), utils.deserializeHex(key, 32)])
+}
+
+class WithdrawArgs {}
+
+const SCHEMA = new Map([
+    [WithdrawArgs, {kind: 'struct', fields: [['account_id', 'string'], ['amount', [32]]]}]
+]);
+
+utils.encodeWithdrawArgs = function(recipient, amount) {
+    withdrawArgs = new WithdrawArgs();
+    withdrawArgs.account_id = recipient;
+    withdrawArgs.amount = utils.deserializeHex(amount, 32);
+    return nearAPI.utils.serialize.serialize(SCHEMA, withdrawArgs);
+}
 
 module.exports = utils;

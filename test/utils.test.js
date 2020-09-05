@@ -106,6 +106,26 @@ describe('utils', () => {
 
     });
 
+    describe('#deserializeHex', () => {
+        test('single digit', () => {
+            const value = Buffer.from(utils.deserializeHex(utils.decToHex(1))).toString('hex');
+            expect(value).toStrictEqual('01');
+        });
+
+        test('round trip', () => {
+            const value = "0xcbda96b3f2b8";
+            const newValue = Buffer.from(utils.deserializeHex(value)).toString('hex');
+            expect(`0x${newValue}`).toStrictEqual(value);
+        });
+
+        test('fixed len hex', () => {
+            const value = "0xcbda96b3f2b8eb962f97ae50c3852ca97674";
+            const expectedValue = "0000cbda96b3f2b8eb962f97ae50c3852ca97674";
+            const newValue = Buffer.from(utils.deserializeHex(value, 20)).toString('hex');
+            expect(newValue).toStrictEqual(expectedValue);
+        });
+    });
+
     describe('#hexToDec', () => {
 
     });

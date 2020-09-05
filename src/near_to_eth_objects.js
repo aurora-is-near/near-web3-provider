@@ -4,6 +4,7 @@
 const assert = require('bsert');
 const utils = require('./utils');
 const hydrate = require('./hydrate');
+const consts = require('./consts');
 
 const nearToEth = {
     hydrate
@@ -222,14 +223,13 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
 
     const isReceipt = true;
     const { transaction, transaction_outcome, status } = nearTxObj;
-    const responseData = utils.base64ToString(status.SuccessValue);
+    const responseData = utils.base64ToBuffer(status.SuccessValue);
     const functionCall = transaction.actions[0].FunctionCall;
 
     // If it's a deploy, get the address.
     if (responseData) {
-        const responsePayload = responseData.slice(1, -1);
         if (functionCall && functionCall.method_name == 'deploy_code') {
-            contractAddress = responsePayload;
+            contractAddress = responseData.toString('hex');
         }
     }
 
@@ -281,21 +281,23 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     // function specific parameters
     const functionCall = transaction.actions[0].FunctionCall;
     if (functionCall) {
-        const args = JSON.parse(utils.base64ToString(functionCall.args));
+        const args = utils.base64ToBuffer(functionCall.args);
         switch (functionCall.method_name) {
-        case 'call_contract':
-            destination = args.contract_address;
-            data = args.encoded_input;
+        case consts.CALL_FUNCTION_METHOD_NAME:
+            const { contractId, encodedInput } = utils.decodeCallArgs(args);
+            destination = contractId;
+            data = encodedInput;
             break;
-        case 'deploy_code':
-            data = args.bytecode;
+        case consts.DEPLOY_CODE_METHOD_NAME:
+            data = args.toString('hex');
             break;
-        case 'add_near':
+        case consts.DEPOSIT_METHOD_NAME:
             destination = utils.nearAccountToEvmAddress(transaction.signer_id);
             break;
-        case 'move_funds_to_evm_address':
-            destination = args.address;
-            value = parseInt(args.amount);
+        case consts.TRANSFER_METHOD_NAME:
+            const { address, amount } = utils.decodeTransferArgs(args);
+            destination = address;
+            value = parseInt(amount);
             break;
         }
     }
@@ -341,12 +343,10 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
 function parseLogs(receipts_outcome, params, contractAddress) {
     let nearLogs = receipts_outcome.map(({ outcome }) => outcome.logs).reduce((a, b) => a.concat(b));
     let logs = nearLogs.map((log, i) => {
-        log = log.replace(/.*evm log: /, '');
-
         // parse topics out of log
         let topics = [];
         // first hex byte signifies # of topics
-        let topicsLen = parseInt(log.substr(0,2), 16);
+        let topicsLen = parseInt(log.substr(0, 2), 16);
         // first topic begins at second hex byte (index 2)
         let topicsCursor = 2;
         for (let i = 0; i < topicsLen; i++) {
