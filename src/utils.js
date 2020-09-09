@@ -2,6 +2,7 @@ const assert = require('bsert');
 const bs58 = require('bs58');
 const web3Utils = require('web3-utils');
 const BN = require('bn.js');
+const fs = require('fs');
 const nearAPI = require('near-api-js');
 
 const utils = {};
@@ -327,30 +328,63 @@ utils.convertBlockHeight = async function(blockHeight, nearProvider) {
     }
 };
 
-/**
- * Creates set of test accounts given provider.
- */
-utils.createTestAccounts = async function(provider, numAccounts) {
-    const currentAccounts = await provider.keyStore.getAccounts(provider.networkId);
+// A singleton of current createTestAccount promise.
+let __CREATE_ACCOUNT_PROMISE;
+
+// A singleton for account validation to not revalidate every time.
+let __CREATE_ACCOUNT_VALIDATION_CACHE = false;
+
+async function _createTestAccount(masterAccount, numAccounts) {
+    const currentAccounts = await masterAccount.connection.signer.keyStore.getAccounts(masterAccount.connection.networkId);
     const numCurrentAccounts = currentAccounts.length;
+    if (!__CREATE_ACCOUNT_VALIDATION_CACHE) {
+        // Double check that all available accounts are valid accounts for this network.
+        for (let i = 0; i < numCurrentAccounts; ++i) {
+            try {
+                let account = new nearAPI.Account(masterAccount.connection, currentAccounts[i]);
+                await account.fetchState();
+            } catch (_error) {
+                throw Error(`Found account ${currentAccounts[i]} is not available on the network ${masterAccount.connection.networkId}`);
+            }
+        }
+    }
     if (numCurrentAccounts >= numAccounts) {
+        __CREATE_ACCOUNT_VALIDATION_CACHE = true;
         return;
     }
     let newAccountIds = [];
     for (let i = 0; i < numAccounts - numCurrentAccounts; ++i) {
-        const accountId = `${Date.now()}.${provider.accountId}`;
+        const accountId = `${Date.now()}.${masterAccount.accountId}`;
         const keyPair = nearAPI.utils.KeyPair.fromRandom('ed25519');
-        await provider.keyStore.setKey(provider.networkId, accountId, keyPair);
-        await provider.account.createAccount(
+        await masterAccount.connection.signer.keyStore.setKey(masterAccount.connection.networkId, accountId, keyPair);
+        await masterAccount.createAccount(
             accountId, keyPair.publicKey.toString(),
             nearAPI.utils.format.parseNearAmount('8600'));
         newAccountIds.push(accountId);
     }
     console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
+    __CREATE_ACCOUNT_VALIDATION_CACHE = true;
     return newAccountIds;
+}
+
+/**
+ * Creates given number of test accounts given masterAccounts.
+ * Makes sure that if enough accounts are in the key store, they are all available.
+ * This can only run once at a time, hence some magic async code.
+ */
+utils.createTestAccounts = async function(masterAccount, numAccounts) {
+    if (__CREATE_ACCOUNT_VALIDATION_CACHE) return 0;
+    while (__CREATE_ACCOUNT_PROMISE) await __CREATE_ACCOUNT_PROMISE;
+    __CREATE_ACCOUNT_PROMISE = _createTestAccount(masterAccount, numAccounts);
+    try {
+        let result = await __CREATE_ACCOUNT_PROMISE;
+        return result;
+    } finally {
+        __CREATE_ACCOUNT_PROMISE = null;
+    }
 };
 
-utils.createLocalKeyStore = function() {
+utils.createLocalKeyStore = function(networkId, keyPath) {
     const os = require('os');
     const path = require('path');
     const credentialsPath = path.join(os.homedir(), CREDENTIALS_DIR);
@@ -358,6 +392,13 @@ utils.createLocalKeyStore = function() {
         new nearAPI.keyStores.UnencryptedFileSystemKeyStore('./neardev'),
         new nearAPI.keyStores.UnencryptedFileSystemKeyStore(credentialsPath),
     ];
+    if (keyPath) {
+        const account = JSON.parse(fs.readFileSync(keyPath).toString());
+        const keyPair = nearAPI.utils.KeyPair.fromString(account.secret_key);
+        const keyStore = new nearAPI.keyStores.InMemoryKeyStore();
+        keyStore.setKey(networkId, account.account_id, keyPair).then(() => {});
+        keyStores.push(keyStore);
+    }
     return new nearAPI.keyStores.MergeKeyStore(keyStores);
 };
 

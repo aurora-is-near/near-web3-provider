@@ -23,7 +23,7 @@ class NearProvider {
         this.nearProvider = new nearAPI.providers.JsonRpcProvider(this.url);
 
         // TODO: make sure this works in the browser, when disk is not available.
-        this.keyStore = keyStore || utils.createLocalKeyStore();
+        this.keyStore = keyStore || utils.createLocalKeyStore(this.networkId, params.keyPath);
         this.signer = new nearAPI.InMemorySigner(this.keyStore);
 
         this.connection = new nearAPI.Connection(this.networkId, this.nearProvider, this.signer);
@@ -33,6 +33,12 @@ class NearProvider {
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
         this.accounts = new Map();
         this.accounts.set(this.accountId, this.account);
+
+        if (params.numTestAccounts) {
+            // Creates test accounts if given parameter is passed.
+            utils.createTestAccounts(this.account, params.numTestAccounts)
+                .then(() => {}).catch((error) => { throw error });
+        }
     }
 
     async _createNewAccount(accountId) {
