@@ -6,9 +6,8 @@
 const fs = require('fs');
 const web3 = require('web3');
 const bn = web3.utils.BN
-const nearlib = require('near-api-js');
-const utils = require('../src/utils');
-const { NearProvider, nearWeb3Extensions } = require('../src/index');
+const { NearProvider, nearWeb3Extensions, nearAPI, utils } = require('../src/index');
+const nearlib = nearAPI;
 
 const zombieCodeFile = './test/artifacts/zombieAttack.bin';
 const zombieABIFile = './test/artifacts/zombieAttack.abi';
@@ -28,7 +27,7 @@ const testNearProvider = new nearlib.providers.JsonRpcProvider(NODE_URL);
 
 console.log(`-----------------------
 Running tests on ${NEAR_ENV} network
-NODE_URL: ${NODE_URL}
+NODE_URL: ${config.nodeUrl}
 Account Id: ${ACCOUNT_ID}
 Public Key: ${ACCOUNT.public_key}
 -----------------------`);
@@ -38,7 +37,7 @@ const withWeb3 = (fn) => {
     const keyStore = new nearlib.keyStores.InMemoryKeyStore();
     keyStore.setKey(NEAR_ENV, ACCOUNT_ID, ACCOUNT_KEYPAIR);
     let provider = new NearProvider({
-        nodeUrl: NODE_URL,
+        nodeUrl: config.nodeUrl,
         keyStore,
         masterAccountId: ACCOUNT_ID,
         networkId: NEAR_ENV,

@@ -3,6 +3,7 @@ const assert = require('bsert');
 const web3Utils = require('web3-utils');
 const nearAPI = require('near-api-js');
 const { Account } = require('near-api-js');
+var sigUtil = require('eth-sig-util');
 
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
@@ -204,6 +205,10 @@ class NearProvider {
              */
         case 'eth_estimateGas': {
             return '0x0';
+        }
+
+        case 'eth_signTypedData': {
+            return this.signTypedData(params);
         }
 
         /**-----------UNSUPPORTED METHODS------------**/
@@ -812,6 +817,19 @@ class NearProvider {
 
         const output = Buffer.from(result);
         return `0x${output.toString('hex')}`;
+    }
+
+    async signTypedData(params) {
+        const [address, typedDataToSign] = params;
+
+        const accountId = await this._addressToAccountId(address);
+        assert(accountId !== null && accountId !== undefined, `Unknown address ${address}. Check your key store to make sure you have it available.`);
+
+        // TODO: add a bunch of checks that it's a valid TypedData data.
+
+        const message = sigUtil.TypedDataUtils.sign(typedDataToSign);
+        const sig = await this.connection.signer.signMessage(message, accountId, this.networkId);
+        return `0x${new Buffer(sig.signature).toString('hex')}`;
     }
 }
 

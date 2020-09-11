@@ -389,8 +389,8 @@ utils.createLocalKeyStore = function(networkId, keyPath) {
     const path = require('path');
     const credentialsPath = path.join(os.homedir(), CREDENTIALS_DIR);
     const keyStores = [
-        new nearAPI.keyStores.UnencryptedFileSystemKeyStore('./neardev'),
         new nearAPI.keyStores.UnencryptedFileSystemKeyStore(credentialsPath),
+        new nearAPI.keyStores.UnencryptedFileSystemKeyStore('./neardev'),
     ];
     if (keyPath) {
         const account = JSON.parse(fs.readFileSync(keyPath).toString());
