@@ -61,10 +61,11 @@ class NearProvider {
 
     /** Returns account id for given address, if this account is known. */
     async _addressToAccountId(address) {
+        address = address.toLowerCase();
         // TODO: optimize & cache this.
         let accounts = await this.keyStore.getAccounts(this.networkId);
         let addressToAccountId = new Map();
-        accounts.forEach((account) => addressToAccountId.set(utils.nearAccountToEvmAddress(account), account));
+        accounts.forEach((account) => addressToAccountId.set(utils.nearAccountToEvmAddress(account).toLowerCase(), account));
         return addressToAccountId.get(address);
     }
 
