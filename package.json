@@ -24,7 +24,7 @@
     "bs58": "^4.0.1",
     "bsert": "0.0.10",
     "eth-sig-util": "^2.5.3",
-    "near-api-js": "^0.29.0",
+    "near-api-js": "git+https://github.com/near/near-api-js.git#81f6403eef19dfc35d7dc0e02542c96f6ae61c28",
     "tweetnacl": "^1.0.3",
     "web3-provider-engine": "^15.0.7",
     "web3-utils": "^1.2.8"
