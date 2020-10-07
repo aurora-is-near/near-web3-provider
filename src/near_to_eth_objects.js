@@ -283,7 +283,7 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     if (functionCall) {
         const args = utils.base64ToBuffer(functionCall.args);
         switch (functionCall.method_name) {
-        case consts.CALL_FUNCTION_METHOD_NAME:
+        case consts.CALL_METHOD_NAME:
             const { contractId, encodedInput } = utils.decodeCallArgs(args);
             destination = contractId;
             data = encodedInput;

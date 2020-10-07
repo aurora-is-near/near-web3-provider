@@ -703,7 +703,7 @@ class NearProvider {
                 outcome = await utils.rawFunctionCall(
                     account,
                     this.evm_contract,
-                    consts.CALL_FUNCTION_METHOD_NAME,
+                    consts.CALL_METHOD_NAME,
                     utils.encodeCallArgs(to, data),
                     consts.GAS_AMOUNT,
                     val
@@ -800,7 +800,7 @@ class NearProvider {
         let result;
         try {
             result = await this._viewEvmContract(
-                consts.VIEW_CALL_FUNCTION_METHOD_NAME,
+                consts.VIEW_METHOD_NAME,
                 utils.encodeViewCallArgs(from, to, value ? value : '0x0', data),
             );
         } catch (error) {
