@@ -424,15 +424,16 @@ utils.rawViewCall = async function (account, contractId, methodName, serializedA
 }
 
 utils.encodeCallArgs = function(contractId, encodedInput) {
-    return Buffer.concat([utils.deserializeHex(contractId, 20), utils.deserializeHex(encodedInput)]);
+    return Buffer.concat([Buffer.from(utils.deserializeHex(contractId, 20)),
+        Buffer.from(utils.deserializeHex(encodedInput))]);
 }
 
 utils.encodeViewCallArgs = function(from, contractId, value, encodedInput) {
     return Buffer.concat([
-        utils.deserializeHex(from, 20),
-        utils.deserializeHex(contractId, 20),
-        utils.deserializeHex(value, 32),
-        utils.deserializeHex(encodedInput)
+        Buffer.from(utils.deserializeHex(from, 20)),
+        Buffer.from(utils.deserializeHex(contractId, 20)),
+        Buffer.from(utils.deserializeHex(value, 32)),
+        Buffer.from(utils.deserializeHex(encodedInput))
     ]);
 }
 
@@ -444,7 +445,8 @@ utils.decodeCallArgs = function(bytes) {
 }
 
 utils.encodeTransferArgs = function(address, value) {
-    return Buffer.concat([utils.deserializeHex(address, 20), utils.deserializeHex(value, 32)]);
+    return Buffer.concat([Buffer.from(utils.deserializeHex(address, 20)),
+        Buffer.from(utils.deserializeHex(value, 32))]);
 }
 
 utils.decodeTransferArgs = function(bytes) {
@@ -455,7 +457,7 @@ utils.decodeTransferArgs = function(bytes) {
 }
 
 utils.encodeStorageAtArgs = function(address, key) {
-    return Buffer.concat([utils.deserializeHex(address, 20), utils.deserializeHex(key, 32)])
+    return Buffer.concat([Buffer.from(utils.deserializeHex(address, 20)), Buffer.from(utils.deserializeHex(key, 32))])
 }
 
 class WithdrawArgs {}
