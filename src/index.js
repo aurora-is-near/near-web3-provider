@@ -612,8 +612,8 @@ class NearProvider {
             blockHash: 'fakeblockhash',
             transactionHash: 'hello',
             transactionIndex: '0x0',
-            address: 'hardcoded',
-            data: '0xhardcoded',
+            address: '0x0000000000000000000000000000000000000000',
+            data: '0x19',
             topics: [],
         }];
     }
