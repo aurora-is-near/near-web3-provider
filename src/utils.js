@@ -423,17 +423,33 @@ utils.rawViewCall = async function (account, contractId, methodName, serializedA
     return result.result;
 }
 
+utils.getInputWithLengthPrefix = function(encodedInput) {
+    const encodedInputDeserialized = Buffer.from(utils.deserializeHex(encodedInput))
+    const dataView = new DataView(new ArrayBuffer(4));
+    dataView.setInt32(0, encodedInputDeserialized.length, true);
+    const bufferLength = dataView.buffer;
+    const bufferLengthWithInput = Buffer.concat([
+        Buffer.from(bufferLength),
+        encodedInputDeserialized
+    ]);
+    return utils.include0x(bufferLengthWithInput.toString('hex'));
+}
+
 utils.encodeCallArgs = function(contractId, encodedInput) {
+    const finalEncodedInput = utils.getInputWithLengthPrefix(encodedInput);
+
     return Buffer.concat([Buffer.from(utils.deserializeHex(contractId, 20)),
-        Buffer.from(utils.deserializeHex(encodedInput))]);
+        Buffer.from(utils.deserializeHex(finalEncodedInput))]);
 }
 
 utils.encodeViewCallArgs = function(from, contractId, value, encodedInput) {
+    const finalEncodedInput = utils.getInputWithLengthPrefix(encodedInput);
+
     return Buffer.concat([
         Buffer.from(utils.deserializeHex(from, 20)),
         Buffer.from(utils.deserializeHex(contractId, 20)),
         Buffer.from(utils.deserializeHex(value, 32)),
-        Buffer.from(utils.deserializeHex(encodedInput))
+        Buffer.from(utils.deserializeHex(finalEncodedInput))
     ]);
 }
 
