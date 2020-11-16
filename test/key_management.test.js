@@ -1,7 +1,7 @@
 const web3 = require('web3');
 const { NearProvider, nearWeb3Extensions, nearAPI, utils } = require('../src/index');
 
-const NEAR_ENV = process.env.NEAR_ENV || 'local';
+const NEAR_ENV = process.env.NEAR_ENV || 'test';
 const config = require('./config')[NEAR_ENV];
 const ACCOUNT = require(config.keyPath);
 const ACCOUNT_ID = ACCOUNT.account_id;
@@ -38,6 +38,6 @@ describe('\n---- KEY MANAGEMENT ----', () => {
                 resolve(result.result)
             }
         }));
-        expect(sig).toEqual('0x84af5d73797e9927ac16f3cebb6b6d8fbf90d3c12a876494ef2cb9f3ef6c193e380e01939e76b7ee22fe252cff7afa357151886df4159e360323b354ba95af08');
+        expect(sig).toEqual('0x0b67b4ec07370be7cc0a1a54b07058519bbf444ca89ffef9e36116fa40fe91688683e0e09cfa137fd6ac640a000cb50e693a0986aa039b2bd097edc8ef23da0e');
     }));
 });
