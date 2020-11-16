@@ -77,22 +77,22 @@ describe('utils', () => {
         });
 
         test('returns false if string has invalid symbols', () => {
-            const value = "invalid.&&id";
+            const value = 'invalid.&&id';
             expect(utils.isValidAccountID(value)).toBe(false);
         });
 
         test('returns false if there are consecutive periods', () => {
-            const value = "invalid..id";
+            const value = 'invalid..id';
             expect(utils.isValidAccountID(value)).toBe(false);
         });
 
         test('returns false if it is less than 2 characters', () => {
-            const value = "e";
+            const value = 'e';
             expect(utils.isValidAccountID(value)).toBe(false);
         });
 
         test('returns false if it is more than 64 characters', () => {
-            const value = "e".repeat(65);
+            const value = 'e'.repeat(65);
             expect(utils.isValidAccountID(value)).toBe(false);
         });
 
@@ -106,14 +106,34 @@ describe('utils', () => {
 
     });
 
+    describe('#deserializeHex', () => {
+        test('single digit', () => {
+            const value = Buffer.from(utils.deserializeHex(utils.decToHex(1))).toString('hex');
+            expect(value).toStrictEqual('01');
+        });
+
+        test('round trip', () => {
+            const value = '0xcbda96b3f2b8';
+            const newValue = Buffer.from(utils.deserializeHex(value)).toString('hex');
+            expect(`0x${newValue}`).toStrictEqual(value);
+        });
+
+        test('fixed len hex', () => {
+            const value = '0xcbda96b3f2b8eb962f97ae50c3852ca97674';
+            const expectedValue = '0000cbda96b3f2b8eb962f97ae50c3852ca97674';
+            const newValue = Buffer.from(utils.deserializeHex(value, 20)).toString('hex');
+            expect(newValue).toStrictEqual(expectedValue);
+        });
+    });
+
     describe('#hexToDec', () => {
 
     });
 
     describe('#base58ToHex', () => {
         test('returns the correct hex value', () => {
-            const base58 = "3qirLQdXAeug59YuXYk1eocA4BJ2";
-            const expectedHex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b";
+            const base58 = '3qirLQdXAeug59YuXYk1eocA4BJ2';
+            const expectedHex = '0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b';
             expect(utils.base58ToHex(base58)).toStrictEqual(expectedHex);
         });
 
@@ -123,21 +143,21 @@ describe('utils', () => {
         });
 
         test('throws error if input is not base58', () => {
-            const invalidBase58 = "10lI";
+            const invalidBase58 = '10lI';
             expect(() => utils.base58ToHex(invalidBase58)).toThrow();
         });
     });
 
     describe('#hexToBase58', () => {
         test('returns the correct base58 value for hex starting with 0x', () => {
-            const hex = "0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b";
-            const expectedBase58 = "3qirLQdXAeug59YuXYk1eocA4BJ2";
+            const hex = '0xcbda96b3f2b8eb962f97ae50c3852ca976740e2b';
+            const expectedBase58 = '3qirLQdXAeug59YuXYk1eocA4BJ2';
             expect(utils.hexToBase58(hex)).toStrictEqual(expectedBase58);
         });
 
         test('returns the correct base58 value for hex without 0x', () => {
-            const hex = "cbda96b3f2b8eb962f97ae50c3852ca976740e2b";
-            const expectedBase58 = "3qirLQdXAeug59YuXYk1eocA4BJ2";
+            const hex = 'cbda96b3f2b8eb962f97ae50c3852ca976740e2b';
+            const expectedBase58 = '3qirLQdXAeug59YuXYk1eocA4BJ2';
             expect(utils.hexToBase58(hex)).toStrictEqual(expectedBase58);
         });
 
@@ -147,7 +167,7 @@ describe('utils', () => {
         });
 
         test('throws error if input is not in hex format', () => {
-            const invalidHex = "ghjks";
+            const invalidHex = 'ghjks';
             expect(() => utils.hexToBase58(invalidHex)).toThrow();
         });
     });

@@ -1,18 +1,14 @@
 const BN = require('bn.js');
 const assert = require('bsert');
 const web3Utils = require('web3-utils');
-const nearlib = require('near-api-js');
-
-const NEAR_NET_VERSION = '99';
-const NEAR_NET_VERSION_TEST = '98';
+const nearAPI = require('near-api-js');
+const { Account } = require('near-api-js');
+var sigUtil = require('eth-sig-util');
 
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
-const { Account } = require('near-api-js');
-
-const GAS_AMOUNT = new BN('300000000000000');
-const ZERO_ADDRESS = `0x${'00'.repeat(20)}`;
+const consts = require('./consts');
 
 class NearProvider {
     constructor(params) {
@@ -23,32 +19,39 @@ class NearProvider {
         this.evm_contract = evmAccountId || 'evm';
         this.url = nodeUrl;
         this.version = networkId === 'local' || networkId === 'test'
-            ? NEAR_NET_VERSION_TEST
-            : NEAR_NET_VERSION;
-        this.nearProvider = new nearlib.providers.JsonRpcProvider(this.url);
+            ? consts.NEAR_NET_VERSION_TEST
+            : consts.NEAR_NET_VERSION;
+        this.nearProvider = new nearAPI.providers.JsonRpcProvider(this.url);
 
         // TODO: make sure this works in the browser, when disk is not available.
-        this.keyStore = keyStore || utils.createLocalKeyStore();
-        this.signer = new nearlib.InMemorySigner(this.keyStore);
+        this.keyStore = keyStore || utils.createLocalKeyStore(this.networkId, params.keyPath);
+        this.signer = new nearAPI.InMemorySigner(this.keyStore);
 
-        this.connection = new nearlib.Connection(this.networkId, this.nearProvider, this.signer);
+        this.connection = new nearAPI.Connection(this.networkId, this.nearProvider, this.signer);
         this.accountId = masterAccountId;
         assert(this.accountId !== undefined && this.accountId !== null, 'Must pass master account id');
-        this.account = new nearlib.Account(this.connection, this.accountId);
+        this.account = new nearAPI.Account(this.connection, this.accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
         this.accounts = new Map();
         this.accounts.set(this.accountId, this.account);
+
+        if (params.numTestAccounts) {
+            // Creates test accounts if given parameter is passed.
+            utils.createTestAccounts(this.account, params.numTestAccounts)
+                .then(() => {}).catch((error) => { throw error; });
+        }
     }
 
     async _createNewAccount(accountId) {
         // Create keypair.
-        const keyPair = await nearlib.KeyPair.fromRandom('ed25519');
+        const keyPair = await nearAPI.KeyPair.fromRandom('ed25519');
         await this.keyStore.setKey(this.networkId, accountId, keyPair);
-        this.accounts[accountId] = new nearlib.Account(this.connection, accountId);
+        this.accounts[accountId] = new nearAPI.Account(this.connection, accountId);
     }
 
     async _viewEvmContract(method, methodArgs) {
-        const result = await this.account.viewFunction(
+        const result = await utils.rawViewCall(
+            this.account,
             this.evm_contract,
             method,
             methodArgs
@@ -58,10 +61,11 @@ class NearProvider {
 
     /** Returns account id for given address, if this account is known. */
     async _addressToAccountId(address) {
+        address = address.toLowerCase();
         // TODO: optimize & cache this.
         let accounts = await this.keyStore.getAccounts(this.networkId);
         let addressToAccountId = new Map();
-        accounts.forEach((account) => addressToAccountId.set(utils.nearAccountToEvmAddress(account), account));
+        accounts.forEach((account) => addressToAccountId.set(utils.nearAccountToEvmAddress(account).toLowerCase(), account));
         return addressToAccountId.get(address);
     }
 
@@ -204,6 +208,10 @@ class NearProvider {
             return '0x0';
         }
 
+        case 'eth_signTypedData': {
+            return this.signTypedData(params);
+        }
+
         /**-----------UNSUPPORTED METHODS------------**/
         case 'eth_sign': {
             return new Error(this.unsupportedMethodErrorMsg(method));
@@ -263,7 +271,7 @@ class NearProvider {
         }
 
         case 'eth_submitHashrate': {
-            throw new Error(this.unsupportedMethodErrorMsg(method));
+            return new Error(this.unsupportedMethodErrorMsg(method));
         }
 
         default: {
@@ -396,12 +404,11 @@ class NearProvider {
      * @returns {Quantity} integer of the current balance in wei
      */
     async routeEthGetBalance(params) {
-        const address = utils.remove0x(params[0]);
-        const balance = await this._viewEvmContract(
-            'balance_of_evm_address',
-            { address }
+        const result = await this._viewEvmContract(
+            consts.GET_BALANCE_METHOD_NAME,
+            utils.deserializeHex(params[0])
         );
-        return '0x' + new BN(balance, 10).toString(16);
+        return `0x${Buffer.from(result).toString('hex')}`;
     }
 
     /**
@@ -413,13 +420,12 @@ class NearProvider {
     async routeEthGetStorageAt([address, position]) {
         // string magic makes a fixed-length hex string from the int
         const key = `${'00'.repeat(32)}${utils.remove0x(position.toString(16))}`.slice(-64);
-        address = utils.remove0x(address);
 
         let result = await this._viewEvmContract(
-            'get_storage_at',
-            { address, key }
+            consts.GET_STORAGE_AT_METHOD_NAME,
+            utils.encodeStorageAtArgs(address, key)
         );
-        return `0x${result}`;
+        return `0x${Buffer.from(result).toString('hex')}`;
     }
 
     /**
@@ -427,11 +433,9 @@ class NearProvider {
      * @param {String} address 20-byte address to get the code from
      */
     async routeEthGetCode([address]) {
-        address = utils.remove0x(address);
         let result = await this._viewEvmContract(
-            'get_code',
-            { address });
-        return '0x' + result;
+            consts.GET_CODE_METHOD_NAME, utils.deserializeHex(address));
+        return `0x${Buffer.from(result).toString('hex')}`;
     }
 
     /**
@@ -597,6 +601,7 @@ class NearProvider {
      * @param TODO
      * @returns {Object} returns TODO
      */
+    /* eslint-disable no-unused-vars */
     async routeEthGetLogs([logsParams]) {
         const { address, fromBlock, toBlock, topics } = logsParams;
 
@@ -608,8 +613,8 @@ class NearProvider {
             blockHash: 'fakeblockhash',
             transactionHash: 'hello',
             transactionIndex: '0x0',
-            address: 'hardcoded',
-            data: '0xhardcoded',
+            address: '0x0000000000000000000000000000000000000000',
+            data: '0x19',
             topics: [],
         }];
     }
@@ -621,13 +626,11 @@ class NearProvider {
      * from this address
      */
     async routeEthGetTransactionCount([address]) {
-        address = utils.remove0x(address);
-
         let result = await this._viewEvmContract(
-            'nonce_of_evm_address',
-            { address }
+            consts.GET_NONCE_METHOD_NAME,
+            utils.deserializeHex(address)
         );
-        return `0x${new BN(result, 10).toString(16)}`;
+        return `0x${Buffer.from(result).toString('hex')}`;
     }
 
     /**
@@ -655,64 +658,65 @@ class NearProvider {
         const account = this._getAccount(accountId);
 
         let outcome;
-        let val = value ? utils.hexToBN(value) : new BN(0);
+        let val = value ? utils.hexToBN(value): new BN(0);
 
         if (data === undefined) {
             // send funds
-            if (to !== ZERO_ADDRESS && to === from) {
+            if (to !== consts.ZERO_ADDRESS && to === from) {
                 // Add near to corresponding evm account
                 outcome = await account.functionCall(
                     this.evm_contract,
-                    'add_near',
-                    {},
-                    GAS_AMOUNT,
+                    consts.DEPOSIT_METHOD_NAME,
+                    utils.deserializeHex(from),
+                    consts.GAS_AMOUNT,
                     val
                 );
             } else  {
                 // Simple Transfer b/w EVM accounts
                 let zeroVal = new BN(0);
-                outcome = await account.functionCall(
+                outcome = await utils.rawFunctionCall(
+                    account,
                     this.evm_contract,
-                    'move_funds_to_evm_address',
-                    { 'address': utils.remove0x(to), 'amount': val.toString() },
-                    GAS_AMOUNT,
+                    consts.TRANSFER_METHOD_NAME,
+                    utils.encodeTransferArgs(to, value),
+                    consts.GAS_AMOUNT,
                     zeroVal
                 );
             }
         } else if (to === undefined) {
             // Contract deployment
             try {
-                outcome = await account.functionCall(
+                outcome = await utils.rawFunctionCall(
+                    account,
                     this.evm_contract,
-                    'deploy_code',
-                    { bytecode: utils.remove0x(data) },
-                    GAS_AMOUNT,
+                    consts.DEPLOY_CODE_METHOD_NAME,
+                    utils.deserializeHex(data),
+                    consts.GAS_AMOUNT,
                     val
                 );
             } catch (error) {
-                console.log(JSON.stringify(error));
+                console.log('ERROR: ', error);
                 throw error;
             }
         } else {
             // Function Call
             try {
-                outcome = await account.functionCall(
+                outcome = await utils.rawFunctionCall(
+                    account,
                     this.evm_contract,
-                    'call_contract',
-                    { contract_address: utils.remove0x(to), encoded_input: utils.remove0x(data) },
-                    GAS_AMOUNT.toString(),
+                    consts.CALL_METHOD_NAME,
+                    utils.encodeCallArgs(to, data),
+                    consts.GAS_AMOUNT,
                     val
                 );
             } catch (error) {
-                if (error.panic_msg === null || error.panic_msg === undefined) {
-                    throw Error(`Unknown error: ${JSON.stringify(error)}`);
+                if (error.type === 'FunctionCallError') {
+                    if (error.kind.EvmError.Revert) {
+                        let message = utils.hexToString(error.kind.EvmError.Revert);
+                        throw Error(`revert ${message}`);
+                    }
                 }
-                let panic_msg = utils.hexToString(error.panic_msg);
-                // In some cases message is doubly encoded.
-                if (utils.isHex(panic_msg)) {
-                    panic_msg = utils.hexToString(panic_msg);
-                }
-                throw Error(`revert ${panic_msg}`);
+                throw Error(`Unknown error: ${JSON.stringify(error)}`);
             }
         }
         return `${outcome.transaction_outcome.id}:${accountId}`;
@@ -728,13 +732,16 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearRetrieveNear([txObj]) {
-        const { to, value } = txObj;
-        let val = value ? utils.hexToBN(value) : new BN(0);
-        let outcome = await this.account.functionCall(
+        const { from, to, value } = txObj;
+        const accountId = await this._addressToAccountId(from);
+        assert(accountId !== null && accountId !== undefined, `Unknown address ${from}. Check your key store to make sure you have it available.`);
+        const account = this._getAccount(accountId);
+        let outcome = await utils.rawFunctionCall(
+            account,
             this.evm_contract,
-            'retrieve_near',
-            { 'recipient': to, 'amount': val.toString() },
-            GAS_AMOUNT,
+            consts.WITHDRAW_METHOD_NAME,
+            utils.encodeWithdrawArgs(to, value),
+            consts.GAS_AMOUNT,
             new BN(0)
         );
         return `${outcome.transaction_outcome.id}:${this.accountId}`;
@@ -751,13 +758,12 @@ class NearProvider {
      */
     async routeNearTransferNear([txObj]) {
         const { to, value } = txObj;
-        let val = value ? utils.hexToBN(value) : new BN(0);
         let outcome = await this.account.functionCall(
             this.evm_contract,
-            'move_funds_to_near_account',
-            { 'address': to, 'amount': val.toString() },
-            GAS_AMOUNT,
-            new BN(0)
+            consts.TRANSFER_METHOD_NAME,
+            utils.encodeTransferArgs(to, value),
+            consts.GAS_AMOUNT,
+            consts.zeroVal
         );
         return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
@@ -792,29 +798,41 @@ class NearProvider {
      */
     async routeEthCall([txCallObj]) {
         const { to, from, value, data } = txCallObj;
-        const sender = from
-            ? from
-            : utils.nearAccountToEvmAddress(this.accountId);
-
-        const val = value
-            ? new BN(utils.remove0x(value), 16)
-            : new BN(0);
-        const result = await this._viewEvmContract(
-            'view_call_contract',
-            {
-                contract_address: utils.remove0x(to),
-                encoded_input: utils.remove0x(data),
-                sender: utils.remove0x(sender),
-                value: val.toString()
-            });
-
-        // TODO: add more logic here for various types of errors. heheh
-        if (result.toLowerCase().includes('reverted')) {
-            const [errorType, message] = result.split(' ');
-            throw new Error(`${errorType.toLowerCase()} ${utils.hexToString(message)}`);
+        let result;
+        try {
+            result = await this._viewEvmContract(
+                consts.VIEW_METHOD_NAME,
+                utils.encodeViewCallArgs(from, to, value ? value : '0x0', data),
+            );
+        } catch (error) {
+            // TODO: add more logic here for various types of errors.
+            const errorObj = JSON.parse(error.message.slice(error.message.indexOf('\n') + 1));
+            if (errorObj.error.includes('wasm execution failed with error:')) {
+                const REVERT_PREFIX = 'FunctionCallError(EvmError(Revert("';
+                if (errorObj.error.includes(REVERT_PREFIX)) {
+                    const message = errorObj.error.slice(errorObj.error.indexOf(REVERT_PREFIX) + REVERT_PREFIX.length, errorObj.error.length - 4);
+                    throw new Error('revert' + (message ? (' ' + utils.hexToString(message)) : ''));
+                }
+            }
+            throw error;
         }
-        return '0x' + result;
+
+        const output = Buffer.from(result);
+        return `0x${output.toString('hex')}`;
+    }
+
+    async signTypedData(params) {
+        const [address, typedDataToSign] = params;
+
+        const accountId = await this._addressToAccountId(address);
+        assert(accountId !== null && accountId !== undefined, `Unknown address ${address}. Check your key store to make sure you have it available.`);
+
+        // TODO: add a bunch of checks that it's a valid TypedData data.
+
+        const message = sigUtil.TypedDataUtils.sign(typedDataToSign);
+        const sig = await this.connection.signer.signMessage(message, accountId, this.networkId);
+        return `0x${new Buffer(sig.signature).toString('hex')}`;
     }
 }
 
-module.exports = { NearProvider, nearlib, nearWeb3Extensions, utils };
+module.exports = { NearProvider, nearAPI, nearWeb3Extensions, utils };
