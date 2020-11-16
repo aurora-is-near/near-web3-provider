@@ -8,7 +8,7 @@
   },
   "main": "src/index.js",
   "scripts": {
-    "test": "jest test",
+    "test": "cd test && truffle compile && cd .. && jest test",
     "lint": "eslint test/ && eslint src/**/*.js && eslint src/",
     "lint:fix": "eslint test/ --fix && eslint src/**/*.js --fix && eslint src/ --fix"
   },
@@ -16,7 +16,8 @@
   "contributors": [
     "Barbara Liau <barbara@summa.one>",
     "James Prestwich <james@summa.one>",
-    "Mark Tyneway <mark.tyneway@gmail.com>"
+    "Mark Tyneway <mark.tyneway@gmail.com>",
+    "Mike Purvis <mike@near.org>"
   ],
   "license": "AGPL-3.0",
   "dependencies": {
