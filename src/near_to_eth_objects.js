@@ -218,6 +218,7 @@ nearToEth.transactionObj = async function(tx, txIndex) {
  * @param {Number} nearTxObjIndex index of NEAR tx in the block
  * @returns {Object} returns ETH transaction receipt object
  */
+/* eslint-disable no-unused-vars */
 nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, accountId) {
     let contractAddress = null;
 
@@ -283,6 +284,7 @@ function processSharedParams(transaction, blockHash, blockHeight, gasBurnt, txIn
     if (functionCall) {
         const args = utils.base64ToBuffer(functionCall.args);
         switch (functionCall.method_name) {
+        /* eslint-disable no-case-declarations */
         case consts.CALL_METHOD_NAME:
             const { contractId, encodedInput } = utils.decodeCallArgs(args);
             destination = contractId;

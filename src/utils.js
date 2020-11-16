@@ -67,7 +67,7 @@ utils.isValidAccountID = function(value) {
     assert(typeof value === 'string', 'isValidAccountID: must pass in string');
     assert(value == value.toLowerCase(), `isValidAccountID: near accountID cannot have uppercase letters: ${value}`);
 
-    const accountIDTest = /^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/;
+    const accountIDTest = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
     return (
         value.length >= 2 &&
         value.length <= 64 &&
@@ -411,9 +411,9 @@ utils.rawFunctionCall = async function (account, contractId, methodName, seriali
             gas,
             deposit
         })
-    })
+    });
     return account.signAndSendTransaction(contractId, [action]);
-}
+};
 
 utils.rawViewCall = async function (account, contractId, methodName, serializedArgs) {
     const result = await account.connection.provider.query(`call/${contractId}/${methodName}`, nearAPI.utils.serialize.base_encode(serializedArgs));
@@ -421,10 +421,10 @@ utils.rawViewCall = async function (account, contractId, methodName, serializedA
         account.printLogs(contractId, result.logs);
     }
     return result.result;
-}
+};
 
 utils.getInputWithLengthPrefix = function(encodedInput) {
-    const encodedInputDeserialized = Buffer.from(utils.deserializeHex(encodedInput))
+    const encodedInputDeserialized = Buffer.from(utils.deserializeHex(encodedInput));
     const dataView = new DataView(new ArrayBuffer(4));
     dataView.setInt32(0, encodedInputDeserialized.length, true);
     const bufferLength = dataView.buffer;
@@ -433,48 +433,50 @@ utils.getInputWithLengthPrefix = function(encodedInput) {
         encodedInputDeserialized
     ]);
     return utils.include0x(bufferLengthWithInput.toString('hex'));
-}
+};
 
 utils.encodeCallArgs = function(contractId, encodedInput) {
     const finalEncodedInput = utils.getInputWithLengthPrefix(encodedInput);
 
     return Buffer.concat([Buffer.from(utils.deserializeHex(contractId, 20)),
         Buffer.from(utils.deserializeHex(finalEncodedInput))]);
-}
+};
 
 utils.encodeViewCallArgs = function(from, contractId, value, encodedInput) {
     const finalEncodedInput = utils.getInputWithLengthPrefix(encodedInput);
 
-    return Buffer.concat([
+    const final = Buffer.concat([
         Buffer.from(utils.deserializeHex(from, 20)),
         Buffer.from(utils.deserializeHex(contractId, 20)),
         Buffer.from(utils.deserializeHex(value, 32)),
         Buffer.from(utils.deserializeHex(finalEncodedInput))
     ]);
-}
+    console.log('aloha final', final.toString('hex'));
+    return final;
+};
 
 utils.decodeCallArgs = function(bytes) {
     return {
         contractId: bytes.slice(0, 20).toString('hex'),
         encodedInput: bytes.slice(20).toString('hex'),
     };
-}
+};
 
 utils.encodeTransferArgs = function(address, value) {
     return Buffer.concat([Buffer.from(utils.deserializeHex(address, 20)),
         Buffer.from(utils.deserializeHex(value, 32))]);
-}
+};
 
 utils.decodeTransferArgs = function(bytes) {
     return {
         address: bytes.slice(0, 20).toString('hex'),
         amount: bytes.slice(20, 52).toString('hex'),
-    }
-}
+    };
+};
 
 utils.encodeStorageAtArgs = function(address, key) {
-    return Buffer.concat([Buffer.from(utils.deserializeHex(address, 20)), Buffer.from(utils.deserializeHex(key, 32))])
-}
+    return Buffer.concat([Buffer.from(utils.deserializeHex(address, 20)), Buffer.from(utils.deserializeHex(key, 32))]);
+};
 
 class WithdrawArgs {}
 
@@ -483,10 +485,10 @@ const SCHEMA = new Map([
 ]);
 
 utils.encodeWithdrawArgs = function(recipient, amount) {
-    withdrawArgs = new WithdrawArgs();
+    const withdrawArgs = new WithdrawArgs();
     withdrawArgs.account_id = recipient;
     withdrawArgs.amount = utils.deserializeHex(amount, 32);
     return nearAPI.utils.serialize.serialize(SCHEMA, withdrawArgs);
-}
+};
 
 module.exports = utils;

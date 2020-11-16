@@ -38,7 +38,7 @@ class NearProvider {
         if (params.numTestAccounts) {
             // Creates test accounts if given parameter is passed.
             utils.createTestAccounts(this.account, params.numTestAccounts)
-                .then(() => {}).catch((error) => { throw error });
+                .then(() => {}).catch((error) => { throw error; });
         }
     }
 
@@ -601,6 +601,7 @@ class NearProvider {
      * @param TODO
      * @returns {Object} returns TODO
      */
+    /* eslint-disable no-unused-vars */
     async routeEthGetLogs([logsParams]) {
         const { address, fromBlock, toBlock, topics } = logsParams;
 
@@ -657,7 +658,7 @@ class NearProvider {
         const account = this._getAccount(accountId);
 
         let outcome;
-        let val = value ? utils.hexToBN(value) : new BN(0);
+        let val = value ? utils.hexToBN(value): new BN(0);
 
         if (data === undefined) {
             // send funds
@@ -694,7 +695,7 @@ class NearProvider {
                     val
                 );
             } catch (error) {
-                console.log("ERROR: ", error);
+                console.log('ERROR: ', error);
                 throw error;
             }
         } else {
@@ -806,11 +807,11 @@ class NearProvider {
         } catch (error) {
             // TODO: add more logic here for various types of errors.
             const errorObj = JSON.parse(error.message.slice(error.message.indexOf('\n') + 1));
-            if (errorObj.error.includes("wasm execution failed with error:")) {
+            if (errorObj.error.includes('wasm execution failed with error:')) {
                 const REVERT_PREFIX = 'FunctionCallError(EvmError(Revert("';
                 if (errorObj.error.includes(REVERT_PREFIX)) {
                     const message = errorObj.error.slice(errorObj.error.indexOf(REVERT_PREFIX) + REVERT_PREFIX.length, errorObj.error.length - 4);
-                    throw new Error(`revert` + (message ? (' ' + utils.hexToString(message)) : ''));
+                    throw new Error('revert' + (message ? (' ' + utils.hexToString(message)) : ''));
                 }
             }
             throw error;
