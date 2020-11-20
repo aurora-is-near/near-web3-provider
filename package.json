@@ -43,7 +43,9 @@
     "coverageDirectory": "./coverage/",
     "collectCoverage": true,
     "testTimeout": 30000,
-    "testPathIgnorePatterns": ["node_modules"]
+    "testPathIgnorePatterns": [
+      "node_modules"
+    ]
   },
   "keywords": [
     "blockchain",
