@@ -445,14 +445,12 @@ utils.encodeCallArgs = function(contractId, encodedInput) {
 utils.encodeViewCallArgs = function(from, contractId, value, encodedInput) {
     const finalEncodedInput = utils.getInputWithLengthPrefix(encodedInput);
 
-    const final = Buffer.concat([
+    return Buffer.concat([
         Buffer.from(utils.deserializeHex(from, 20)),
         Buffer.from(utils.deserializeHex(contractId, 20)),
         Buffer.from(utils.deserializeHex(value, 32)),
         Buffer.from(utils.deserializeHex(finalEncodedInput))
     ]);
-    console.log('aloha final', final.toString('hex'));
-    return final;
 };
 
 utils.decodeCallArgs = function(bytes) {

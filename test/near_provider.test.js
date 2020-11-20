@@ -243,8 +243,6 @@ describe('\n---- PROVIDER ----', () => {
             test('calls view functions', withWeb3(async (web) => {
                 // this data blob calls getZombiesByOwner
                 // with an argument of an address consisting of 22
-                console.log('aloha zombieAddress', zombieAddress);
-                // web.eth.call()
                 let result = await web.eth.call({
                     from: zombieAddress.toLowerCase(),
                     to: zombieAddress.toLowerCase(),
