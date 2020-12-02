@@ -240,6 +240,16 @@ utils.hexToBN = function(hex) {
 };
 
 /**
+ * Converts raw message from EVM into character codes
+ * @param {String}  value string from EVM typically of the form '[8, 19, 0, 68…]'
+ * @returns {String} returns string
+ * Note: some characters may not be utf8 compatible
+ */
+utils.evmMessageToCharString = function(msg) {
+    return JSON.parse(msg).map(i => String.fromCharCode(i)).join('');
+};
+
+/**
  * Convert timestamp in NEAR to hex
  * @param {Number} value NEAR timestamp
  * @returns {String} hex string equivalent of timestamp
