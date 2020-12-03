@@ -345,7 +345,10 @@ let __CREATE_ACCOUNT_PROMISE;
 let __CREATE_ACCOUNT_VALIDATION_CACHE = false;
 
 async function _createTestAccount(masterAccount, numAccounts) {
-    const currentAccounts = await masterAccount.connection.signer.keyStore.getAccounts(masterAccount.connection.networkId);
+    let currentAccounts = await masterAccount.connection.signer.keyStore.getAccounts(masterAccount.connection.networkId);
+    // Remove the master account if it exists, otherwise it'll create one less than numAccounts
+    const masterAccountIndex = currentAccounts.indexOf(masterAccount.accountId);
+    if (masterAccountIndex !== -1) currentAccounts.splice(masterAccountIndex, 1);
     const numCurrentAccounts = currentAccounts.length;
     if (!__CREATE_ACCOUNT_VALIDATION_CACHE) {
         // Double check that all available accounts are valid accounts for this network.
