@@ -808,10 +808,10 @@ class NearProvider {
             // TODO: add more logic here for various types of errors.
             const errorObj = JSON.parse(error.message.slice(error.message.indexOf('\n') + 1));
             if (errorObj.error.includes('wasm execution failed with error:')) {
-                const REVERT_PREFIX = 'FunctionCallError(EvmError(Revert("';
+                const REVERT_PREFIX = 'FunctionCallError(EvmError(Revert(';
                 if (errorObj.error.includes(REVERT_PREFIX)) {
-                    const message = errorObj.error.slice(errorObj.error.indexOf(REVERT_PREFIX) + REVERT_PREFIX.length, errorObj.error.length - 4);
-                    throw new Error('revert' + (message ? (' ' + utils.hexToString(message)) : ''));
+                    const message = errorObj.error.slice(errorObj.error.indexOf(REVERT_PREFIX) + REVERT_PREFIX.length, errorObj.error.length - 3);
+                    throw new Error('revert' + (message ? (' ' + utils.evmMessageToCharString(message)) : ''));
                 }
             }
             throw error;
