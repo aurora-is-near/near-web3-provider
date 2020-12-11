@@ -21,8 +21,8 @@ const getNetworkConfig = function getNetworkConfig(networkId) {
                 nodeUrl: 'https://rpc.betanet.near.org',
                 networkId: 'betanet',
                 evmAccountId: 'evm',
-                walletUrl: 'https://wallet.testnet.near.org',
-                explorerUrl: 'https://explorer.testnet.near.org',
+                walletUrl: 'https://wallet.betanet.near.org',
+                explorerUrl: 'https://explorer.betanet.near.org',
             };
         case 'local':
             return {
