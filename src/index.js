@@ -3,43 +3,40 @@ const assert = require('bsert');
 const web3Utils = require('web3-utils');
 const nearAPI = require('near-api-js');
 const { Account } = require('near-api-js');
-var sigUtil = require('eth-sig-util');
+const sigUtil = require('eth-sig-util');
 
 const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
 const consts = require('./consts');
+const { getNetworkConfig } = require('./network-config');
 
 class NearProvider {
     constructor(params) {
         const {
-            nodeUrl, keyStore, masterAccountId, networkId, evmAccountId
+            nodeUrl, keyStore, masterAccountId, networkId, evmAccountId, walletUrl, explorerUrl
         } = params;
-        this.networkId = networkId || process.env.NEAR_ENV || 'default';
-        this.evm_contract = evmAccountId || 'evm';
-        this.url = nodeUrl;
+        const networkDefaults = getNetworkConfig(networkId);
+        this.networkId = networkId || process.env.NEAR_ENV || networkDefaults.networkId;
+        this.evm_contract = evmAccountId || networkDefaults.evmAccountId;
+        this.url = nodeUrl  || networkDefaults.nodeUrl;
         this.version = networkId === 'local' || networkId === 'test'
             ? consts.NEAR_NET_VERSION_TEST
             : consts.NEAR_NET_VERSION;
         this.nearProvider = new nearAPI.providers.JsonRpcProvider(this.url);
 
-        // TODO: make sure this works in the browser, when disk is not available.
-        this.keyStore = keyStore || utils.createLocalKeyStore(this.networkId, params.keyPath);
+        this.keyStore = keyStore  || utils.createLocalKeyStore(this.networkId, params.keyPath);
         this.signer = new nearAPI.InMemorySigner(this.keyStore);
 
         this.connection = new nearAPI.Connection(this.networkId, this.nearProvider, this.signer);
-        this.accountId = masterAccountId;
-        assert(this.accountId !== undefined && this.accountId !== null, 'Must pass master account id');
+        this.accountId = masterAccountId || process.env.NEAR_MASTER_ACCOUNT;
+        assert(this.accountId !== undefined && this.accountId !== null, 'Must pass master account id (also takes environment variable NEAR_MASTER_ACCOUNT)');
         this.account = new nearAPI.Account(this.connection, this.accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
         this.accounts = new Map();
         this.accounts.set(this.accountId, this.account);
-
-        if (params.numTestAccounts) {
-            // Creates test accounts if given parameter is passed.
-            utils.createTestAccounts(this.account, params.numTestAccounts)
-                .then(() => {}).catch((error) => { throw error; });
-        }
+        this.walletUrl = walletUrl || process.env.NEAR_WALLET_URL || networkDefaults.walletUrl || `https://wallet.${networkId}.near.org`;
+        this.explorerUrl = explorerUrl || process.env.NEAR_EXPLORER_URL || networkDefaults.explorerUrl || `https://explorer.${networkId}.near.org`;
     }
 
     async _createNewAccount(accountId) {
