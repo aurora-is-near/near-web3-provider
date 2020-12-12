@@ -372,7 +372,7 @@ async function _createTestAccount(masterAccount, numAccounts) {
         await masterAccount.connection.signer.keyStore.setKey(masterAccount.connection.networkId, accountId, keyPair);
         await masterAccount.createAccount(
             accountId, keyPair.publicKey.toString(),
-            nearAPI.utils.format.parseNearAmount('8600'));
+            nearAPI.utils.format.parseNearAmount('3'));
         newAccountIds.push(accountId);
     }
     console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
