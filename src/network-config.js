@@ -32,6 +32,12 @@ const getNetworkConfig = function getNetworkConfig(networkId) {
                 walletUrl: 'http://127.0.0.1:4000',
                 explorerUrl: 'http://127.0.0.1:3019',
             };
+        case 'test':
+            return {
+                networkId: 'test',
+                nodeUrl: 'http://localhost:3030',
+                keyPath: '../test/keys/test.near.json'
+            };
         default:
             throw Error(`Unconfigured environment '${networkId}'. Please see project README.`);
     }
