@@ -1,6 +1,6 @@
 {
   "name": "near-web3-provider",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "NEAR Web3 integration",
   "repository": "https://github.com/near/near-web3-provider",
   "engines": {
