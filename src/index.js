@@ -9,16 +9,16 @@ const utils = require('./utils');
 const nearToEth = require('./near_to_eth_objects');
 const nearWeb3Extensions = require('./near_web3_extensions');
 const consts = require('./consts');
-const { getNetworkConfig } = require('./network-config');
 
 class NearProvider {
     constructor(params) {
         const {
-            nodeUrl, keyStore, masterAccountId, networkId, evmAccountId, walletUrl, explorerUrl
+            nodeUrl, keyStore, masterAccountId, networkId, evmAccountId, walletUrl, explorerUrl, isReadOnly
         } = params;
-        const networkDefaults = getNetworkConfig(networkId);
+        const networkDefaults = utils.getNetworkConfig(networkId);
         this.networkId = networkId || process.env.NEAR_ENV || networkDefaults.networkId;
         this.evm_contract = evmAccountId || networkDefaults.evmAccountId;
+        this.isReadOnly = isReadOnly || false;
         this.url = nodeUrl  || networkDefaults.nodeUrl;
         this.version = networkId === 'local' || networkId === 'test'
             ? consts.NEAR_NET_VERSION_TEST
@@ -29,8 +29,13 @@ class NearProvider {
         this.signer = new nearAPI.InMemorySigner(this.keyStore);
 
         this.connection = new nearAPI.Connection(this.networkId, this.nearProvider, this.signer);
-        this.accountId = masterAccountId || process.env.NEAR_MASTER_ACCOUNT;
-        assert(this.accountId !== undefined && this.accountId !== null, 'Must pass master account id (also takes environment variable NEAR_MASTER_ACCOUNT)');
+        if (!isReadOnly) {
+            this.accountId = masterAccountId || process.env.NEAR_MASTER_ACCOUNT;
+            assert(this.accountId !== undefined && this.accountId !== null, 'Must pass master account id (also takes environment variable NEAR_MASTER_ACCOUNT)');
+        } else {
+            this.accountId = networkDefaults.evmAccountId;
+        }
+
         this.account = new nearAPI.Account(this.connection, this.accountId);
         this.accountEvmAddress = utils.nearAccountToEvmAddress(this.accountId);
         this.accounts = new Map();
@@ -375,6 +380,7 @@ class NearProvider {
      * @returns {String[]} array of 0x-prefixed 20 byte addresses
      */
     async routeEthAccounts() {
+        assert(!this.isReadOnly, 'Cannot use this for providers that are read-only');
         const networkId = this.connection.networkId;
         let accounts = await this.keyStore.getAccounts(networkId);
 
@@ -515,7 +521,11 @@ class NearProvider {
         //     the base58 tx hash. Since txHash is hex, it is converted to
         //     base58, and then turned into a Buffer
         let { txHash, accountId } = utils.getTxHashAndAccountId(txHashAndAccountId);
-        accountId = accountId || this.accountId;
+        if (this.isReadOnly) {
+            assert(accountId, 'Must pass accountId when calling from a read-only provider');
+        } else {
+            accountId = accountId || this.accountId;
+        }
         const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(
             utils.base58ToUint8(txHash),
             accountId
@@ -648,6 +658,7 @@ class NearProvider {
      */
     // TODO: Account for passed in gas
     async routeEthSendTransaction([txObj]) {
+        assert(!this.isReadOnly, 'The provider is read-only and cannot send transactions');
         const { from, to, value, data } = txObj;
 
         const accountId = await this._addressToAccountId(from);
@@ -729,6 +740,7 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearRetrieveNear([txObj]) {
+        assert(!this.isReadOnly, 'Cannot use this for providers that are read-only');
         const { from, to, value } = txObj;
         const accountId = await this._addressToAccountId(from);
         assert(accountId !== null && accountId !== undefined, `Unknown address ${from}. Check your key store to make sure you have it available.`);
@@ -754,6 +766,7 @@ class NearProvider {
      * @returns  {String} The resulting txid
      */
     async routeNearTransferNear([txObj]) {
+        assert(!this.isReadOnly, 'Cannot use this for providers that are read-only');
         const { to, value } = txObj;
         let outcome = await this.account.functionCall(
             this.evm_contract,
