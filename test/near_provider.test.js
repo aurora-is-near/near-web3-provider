@@ -48,6 +48,22 @@ const withWeb3 = (fn) => {
     return () => fn(web);
 };
 
+// Read-only provider
+const withWeb3View = (fn) => {
+    const web = new web3();
+    const keyStore = new nearAPI.keyStores.InMemoryKeyStore();
+    keyStore.setKey(NEAR_ENV, ACCOUNT_ID, ACCOUNT_KEYPAIR);
+    let provider = new NearProvider({
+        nodeUrl: config.nodeUrl,
+        keyStore,
+        isReadOnly: true,
+        networkId: NEAR_ENV,
+    });
+    web.setProvider(provider);
+    web.extend(nearWeb3Extensions(web));
+    return () => fn(web);
+};
+
 /**
  * Checks if account exists
  */
@@ -250,6 +266,17 @@ describe('\n---- PROVIDER ----', () => {
                 });
                 expect(result).toStrictEqual(`0x${'00'.repeat(31)}20${'00'.repeat(32)}`);
             }));
+
+            test('read-only provider calls view functions', withWeb3View(async (web) => {
+                // this data blob calls getZombiesByOwner
+                // with an argument of an address consisting of 22
+                let result = await web.eth.call({
+                    from: zombieAddress.toLowerCase(),
+                    to: zombieAddress.toLowerCase(),
+                    data: '0x4412e1040000000000000000000000002222222222222222222222222222222222222222'
+                });
+                expect(result).toStrictEqual(`0x${'00'.repeat(31)}20${'00'.repeat(32)}`);
+            }));
         });
 
         describe('sendTransaction | eth_sendTransaction', () => {
@@ -308,6 +335,25 @@ describe('\n---- PROVIDER ----', () => {
                 expect(newToBalance).toStrictEqual(prevToBalance + value);
             }));
         });
+
+        test('read-only provider cannot send transaction transferring tokens', withWeb3View(async(webView) => {
+            const from = utils.nearAccountToEvmAddress('thisaccountnamedoesntexist');
+            const to = utils.nearAccountToEvmAddress('random');
+            const value = 19 * (10 ** 18);
+
+            let err;
+            try {
+                await webView.eth.sendTransaction({
+                    from,
+                    to,
+                    value: value,
+                    gas: 0
+                });
+            } catch (e) {
+                err = e;
+            }
+            expect(err.message).toContain('The provider is read-only and cannot send transactions');
+        }));
 
         describe('retrieveNear | near_retrieveNear', () => {
             let account, value;
@@ -475,6 +521,21 @@ describe('\n---- PROVIDER ----', () => {
                 expect(callRes.length).toStrictEqual(1);
             }), 11000);
 
+            test('cannot make transactions with read-only provider', withWeb3View(async (web) => {
+                let zombies = new web.eth.Contract(zombieABI, zombieAddress, {
+                    from: '0x1941022347348828a24a5ff33c775d6769168119'
+                });
+
+                let err;
+                try {
+                    await zombies.methods.createRandomZombie('george').send({from: web._provider.accountEvmAddress});
+                } catch (e) {
+                    err = e;
+                }
+                expect(err).toBeTruthy();
+                expect(err.message).toContain('The provider is read-only and cannot send transactions');
+            }), 11000);
+
             test('can deploy', withWeb3(async (web) => {
                 let zombies = new web.eth.Contract(zombieABI);
                 let result = await zombies
@@ -520,7 +581,7 @@ describe('\n---- PROVIDER ----', () => {
         }));
 
         describe('getTransaction | eth_getTransactionByHash', () => {
-            test('fails to get non-existant transactions', withWeb3(async(web) => {
+            test('fails to get non-existent transactions', withWeb3(async(web) => {
                 let err;
                 try {
                     await web.eth.getTransaction(`${base58TxHash}:${ACCOUNT_ID}`);
