@@ -4,6 +4,7 @@ const web3Utils = require('web3-utils');
 const BN = require('bn.js');
 const fs = require('fs');
 const nearAPI = require('near-api-js');
+const { getNetworkConfig } = require('./network-config');
 
 const utils = {};
 
@@ -501,5 +502,9 @@ utils.encodeWithdrawArgs = function(recipient, amount) {
     withdrawArgs.amount = utils.deserializeHex(amount, 32);
     return nearAPI.utils.serialize.serialize(SCHEMA, withdrawArgs);
 };
+
+utils.getNetworkConfig = function(networkId) {
+    return getNetworkConfig(networkId);
+}
 
 module.exports = utils;
