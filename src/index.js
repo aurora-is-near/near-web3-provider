@@ -25,7 +25,7 @@ class NearProvider {
             : consts.NEAR_NET_VERSION;
         this.nearProvider = new nearAPI.providers.JsonRpcProvider(this.url);
 
-        this.keyStore = keyStore  || utils.createLocalKeyStore(this.networkId, params.keyPath);
+        this.keyStore = keyStore || utils.createLocalKeyStore(this.networkId, params.keyPath);
         this.signer = new nearAPI.InMemorySigner(this.keyStore);
 
         this.connection = new nearAPI.Connection(this.networkId, this.nearProvider, this.signer);

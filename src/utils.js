@@ -408,7 +408,7 @@ utils.createLocalKeyStore = function(networkId, keyPath) {
     ];
     if (keyPath) {
         const account = JSON.parse(fs.readFileSync(keyPath).toString());
-        const keyPair = nearAPI.utils.KeyPair.fromString(account.secret_key);
+        const keyPair = nearAPI.utils.KeyPair.fromString(account.private_key);
         const keyStore = new nearAPI.keyStores.InMemoryKeyStore();
         keyStore.setKey(networkId, account.account_id, keyPair).then(() => {});
         keyStores.push(keyStore);
