@@ -524,7 +524,7 @@ class NearProvider {
         if (this.isReadOnly) {
             assert(accountId, 'Must pass accountId when calling from a read-only provider');
         } else {
-            accountId ||= this.accountId;
+            accountId = accountId || this.accountId;
         }
         const { transaction_outcome: { block_hash }} = await this.nearProvider.txStatus(
             utils.base58ToUint8(txHash),
