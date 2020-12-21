@@ -503,8 +503,6 @@ utils.encodeWithdrawArgs = function(recipient, amount) {
     return nearAPI.utils.serialize.serialize(SCHEMA, withdrawArgs);
 };
 
-utils.getNetworkConfig = function(networkId) {
-    return getNetworkConfig(networkId);
-}
+utils.getNetworkConfig = getNetworkConfig;
 
 module.exports = utils;
