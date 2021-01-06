@@ -2,6 +2,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('bsert');
 const bs58 = require('bs58');
+const rlp = require('rlp');
 const web3Utils = require('web3-utils');
 const BN = require('bn.js');
 const fs = require('fs');
@@ -472,6 +473,26 @@ utils.encodeCallArgs = function(contractId, encodedInput) {
 
     return Buffer.concat([Buffer.from(utils.deserializeHex(contractId, 20)),
         Buffer.from(utils.deserializeHex(finalEncodedInput))]);
+};
+
+utils.bufferToBn = function(bytes) {
+    const hex = bytes.toString('hex');
+    return new BN(hex, 16);
+};
+
+utils.decodeEthTransaction = function(bytes) {
+    let [nonce, gasPrice, gas, to, value, data, v, r, s] = rlp.decode(bytes);
+    return {
+        nonce: utils.bufferToBn(nonce),
+        gasPrice: utils.bufferToBn(gasPrice),
+        gas: utils.bufferToBn(gas),
+        to: !to || to.length == 0 ? undefined : to.toString('hex'),
+        value: utils.bufferToBn(value),
+        data: data.toString('hex'),
+        v: utils.bufferToBn(v),
+        r,
+        s
+    };
 };
 
 utils.encodeViewCallArgs = function(from, contractId, value, encodedInput) {

@@ -27,6 +27,7 @@
     "bsert": "0.0.10",
     "eth-sig-util": "^2.5.3",
     "near-api-js": "^0.36.2",
+    "rlp": "^2.2.6",
     "tweetnacl": "^1.0.3",
     "web3-provider-engine": "^15.0.7",
     "web3-utils": "^1.2.8"

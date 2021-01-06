@@ -792,7 +792,6 @@ class NearProvider {
      */
     async routeEthSendRawTransaction(params) {
         const txData = params[0];
-        console.log(">> raw send <<");
         let outcome = await this.account.functionCall(
             this.evm_contract,
             consts.RAW_CALL_METHOD_NAME,
@@ -800,7 +799,6 @@ class NearProvider {
             consts.GAS_AMOUNT,
             consts.zeroVal
         );
-        console.log(`Outcome: ${JSON.stringify(outcome)}`);
         return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
