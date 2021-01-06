@@ -20,3 +20,4 @@ package\-lock\.json
 *.code-workspace
 
 test/build/
+test/artifacts/

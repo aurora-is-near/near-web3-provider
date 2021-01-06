@@ -203,6 +203,10 @@ class NearProvider {
             return this.routeEthCall(params);
         }
 
+        case 'eth_chainId': {
+            return web3Utils.toHex(this.version);
+        }
+
         /**
              * Always 0
              */
@@ -786,11 +790,18 @@ class NearProvider {
      * @returns {String} returns the 32-byte transaction hash, or the
      * zero hash if the transaction is not yet available
      */
-    async routeEthSendRawTransaction(/* params */) {
-        // const txData = params[0];
-        // https://docs.nearprotocol.com/docs/interaction/rpc#send-transaction-wait-until-done
-        // TODO: this ^
-        return '0x';
+    async routeEthSendRawTransaction(params) {
+        const txData = params[0];
+        console.log(">> raw send <<");
+        let outcome = await this.account.functionCall(
+            this.evm_contract,
+            consts.RAW_CALL_METHOD_NAME,
+            Buffer.from(utils.deserializeHex(txData)),
+            consts.GAS_AMOUNT,
+            consts.zeroVal
+        );
+        console.log(`Outcome: ${JSON.stringify(outcome)}`);
+        return `${outcome.transaction_outcome.id}:${this.accountId}`;
     }
 
     /**
