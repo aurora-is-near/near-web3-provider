@@ -382,7 +382,7 @@ async function _createTestAccount(masterAccount, numAccounts) {
             nearAPI.utils.format.parseNearAmount('3'));
         newAccountIds.push(accountId);
     }
-    console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
+    console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`); // TODO: silence this by default
     __CREATE_ACCOUNT_VALIDATION_CACHE = true;
     return newAccountIds;
 }

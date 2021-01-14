@@ -707,7 +707,7 @@ class NearProvider {
                     val
                 );
             } catch (error) {
-                console.log('ERROR: ', error);
+                console.error('ERROR: ', error);
                 throw error;
             }
         } else {

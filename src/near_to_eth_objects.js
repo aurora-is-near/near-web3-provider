@@ -233,7 +233,7 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
             contractAddress = responseData.toString('hex');
         } else if (functionCall.method_name == consts.RAW_CALL_METHOD_NAME) {
             let args = utils.decodeEthTransaction(utils.base64ToBuffer(functionCall.args));
-            console.log(JSON.stringify(args));
+            //console.log(JSON.stringify(args));
             if (!args.to) {
                 contractAddress = responseData.toString('hex');
             }
