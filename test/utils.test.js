@@ -1,4 +1,5 @@
 const utils = require('../src/utils');
+const BN = require('bn.js');
 
 describe('utils', () => {
     describe('#remove0x', () => {
@@ -145,6 +146,20 @@ describe('utils', () => {
         test('throws error if input is not base58', () => {
             const invalidBase58 = '10lI';
             expect(() => utils.base58ToHex(invalidBase58)).toThrow();
+        });
+    });
+
+    describe('#bufferToBn', () => {
+        test('0 works', () => {
+            let x = new BN('0');
+            let buff = x.toArrayLike(Buffer, 'be', 32);
+            expect(utils.bufferToBn(buff).eq(x)).toBe(true);
+        });
+
+        test('returns the correct output', () => {
+            let x = new BN('1123321312903213123');
+            let buff = x.toArrayLike(Buffer, 'be', 32);
+            expect(utils.bufferToBn(buff).eq(x)).toBe(true);
         });
     });
 

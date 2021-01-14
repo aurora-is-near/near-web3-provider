@@ -6,6 +6,7 @@ const consts = {};
 
 consts.DEPLOY_CODE_METHOD_NAME = 'deploy_code';
 consts.CALL_METHOD_NAME = 'call';
+consts.RAW_CALL_METHOD_NAME = 'raw_call';
 consts.META_CALL_METHOD_NAME = 'meta_call';
 consts.DEPOSIT_METHOD_NAME = 'deposit';
 consts.WITHDRAW_METHOD_NAME = 'withdraw';

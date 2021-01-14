@@ -227,10 +227,16 @@ nearToEth.transactionReceiptObj = function(block, nearTxObj, nearTxObjIndex, acc
     const responseData = utils.base64ToBuffer(status.SuccessValue);
     const functionCall = transaction.actions[0].FunctionCall;
 
-    // If it's a deploy, get the address.
-    if (responseData) {
-        if (functionCall && functionCall.method_name == 'deploy_code') {
+    // If it's a deploy or raw call with deploy action, get the address.
+    if (responseData && functionCall) {
+        if (functionCall.method_name == consts.DEPLOY_CODE_METHOD_NAME) {
             contractAddress = responseData.toString('hex');
+        } else if (functionCall.method_name == consts.RAW_CALL_METHOD_NAME) {
+            let args = utils.decodeEthTransaction(utils.base64ToBuffer(functionCall.args));
+            //console.log(JSON.stringify(args));
+            if (!args.to) {
+                contractAddress = responseData.toString('hex');
+            }
         }
     }
 

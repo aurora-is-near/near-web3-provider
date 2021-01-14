@@ -1,5 +1,8 @@
+const os = require('os');
+const path = require('path');
 const assert = require('bsert');
 const bs58 = require('bs58');
+const rlp = require('rlp');
 const web3Utils = require('web3-utils');
 const BN = require('bn.js');
 const fs = require('fs');
@@ -8,7 +11,7 @@ const { getNetworkConfig } = require('./network-config');
 
 const utils = {};
 
-const CREDENTIALS_DIR = '.near-credentials';
+const CREDENTIALS_DIR = '~/.near-credentials';
 
 utils.keccak256 = web3Utils.keccak256;
 
@@ -99,6 +102,9 @@ utils.decToHex = function(value) {
  */
 utils.deserializeHex = function(hexStr, fixedLen) {
     if (!hexStr) {
+        if (fixedLen) {
+            return new Uint8Array(fixedLen);
+        }
         return new Uint8Array();
     }
 
@@ -376,7 +382,7 @@ async function _createTestAccount(masterAccount, numAccounts) {
             nearAPI.utils.format.parseNearAmount('3'));
         newAccountIds.push(accountId);
     }
-    console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`);
+    console.log(`Created ${numAccounts - numCurrentAccounts} test accounts.`); // TODO: silence this by default
     __CREATE_ACCOUNT_VALIDATION_CACHE = true;
     return newAccountIds;
 }
@@ -398,19 +404,32 @@ utils.createTestAccounts = async function(masterAccount, numAccounts) {
     }
 };
 
+utils.resolveHomeDir = function(filePath) {
+    if (filePath[0] === '~') {
+        return path.join(os.homedir(), filePath.slice(1));
+    }
+    return filePath;
+};
+
+utils.readKeyFile = function(path) {
+    const accountInfo = JSON.parse(fs.readFileSync(path));
+    let privateKey = accountInfo.private_key;
+    if (!privateKey && accountInfo.secret_key) {
+        privateKey = accountInfo.secret_key;
+    }
+    return [accountInfo.account_id, nearAPI.utils.KeyPair.fromString(privateKey)];
+};
+
 utils.createLocalKeyStore = function(networkId, keyPath) {
-    const os = require('os');
-    const path = require('path');
-    const credentialsPath = path.join(os.homedir(), CREDENTIALS_DIR);
+    const credentialsPath = utils.resolveHomeDir(CREDENTIALS_DIR);
     const keyStores = [
         new nearAPI.keyStores.UnencryptedFileSystemKeyStore(credentialsPath),
         new nearAPI.keyStores.UnencryptedFileSystemKeyStore('./neardev'),
     ];
     if (keyPath) {
-        const account = JSON.parse(fs.readFileSync(keyPath).toString());
-        const keyPair = nearAPI.utils.KeyPair.fromString(account.private_key);
+        const [accountId, keyPair] = utils.readKeyFile(utils.resolveHomeDir(keyPath));
         const keyStore = new nearAPI.keyStores.InMemoryKeyStore();
-        keyStore.setKey(networkId, account.account_id, keyPair).then(() => {});
+        keyStore.setKey(networkId, accountId, keyPair).then(() => {});
         keyStores.push(keyStore);
     }
     return new nearAPI.keyStores.MergeKeyStore(keyStores);
@@ -454,6 +473,26 @@ utils.encodeCallArgs = function(contractId, encodedInput) {
 
     return Buffer.concat([Buffer.from(utils.deserializeHex(contractId, 20)),
         Buffer.from(utils.deserializeHex(finalEncodedInput))]);
+};
+
+utils.bufferToBn = function(bytes) {
+    const hex = bytes.toString('hex');
+    return new BN(hex, 16);
+};
+
+utils.decodeEthTransaction = function(bytes) {
+    let [nonce, gasPrice, gas, to, value, data, v, r, s] = rlp.decode(bytes);
+    return {
+        nonce: utils.bufferToBn(nonce),
+        gasPrice: utils.bufferToBn(gasPrice),
+        gas: utils.bufferToBn(gas),
+        to: !to || to.length == 0 ? undefined : to.toString('hex'),
+        value: utils.bufferToBn(value),
+        data: data.toString('hex'),
+        v: utils.bufferToBn(v),
+        r,
+        s
+    };
 };
 
 utils.encodeViewCallArgs = function(from, contractId, value, encodedInput) {
