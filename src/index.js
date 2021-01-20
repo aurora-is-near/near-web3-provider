@@ -20,9 +20,7 @@ class NearProvider {
         this.evm_contract = evmAccountId || networkDefaults.evmAccountId;
         this.isReadOnly = isReadOnly || false;
         this.url = nodeUrl  || networkDefaults.nodeUrl;
-        this.version = networkId === 'local' || networkId === 'test'
-            ? consts.NEAR_NET_VERSION_TEST
-            : consts.NEAR_NET_VERSION;
+        this.version = networkDefaults.version
         this.nearProvider = new nearAPI.providers.JsonRpcProvider(this.url);
 
         this.keyStore = keyStore || utils.createLocalKeyStore(this.networkId, params.keyPath);
