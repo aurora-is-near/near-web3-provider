@@ -22,6 +22,7 @@ consts.ZERO_ADDRESS = `0x${'00'.repeat(20)}`;
 
 consts.NEAR_NET_VERSION = '1313161554';
 consts.NEAR_NET_VERSION_TEST = '1313161555';
+consts.NEAR_NET_VERSION_BETANET = '1313161556';
 
 
 module.exports = consts;
