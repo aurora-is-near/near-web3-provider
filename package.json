@@ -10,7 +10,9 @@
   "scripts": {
     "test": "cd test && truffle compile && cd .. && jest test",
     "lint": "eslint test/ && eslint src/**/*.js && eslint src/",
-    "lint:fix": "eslint test/ --fix && eslint src/**/*.js --fix && eslint src/ --fix"
+    "lint:fix": "eslint test/ --fix && eslint src/**/*.js --fix && eslint src/ --fix",
+    "dist": "browserify browser-exports.js -o dist/near-web3-provider.js",
+    "postdist": "browserify browser-exports.js -g uglifyify -o dist/near-web3-provider.min.js"
   },
   "author": "NEAR Inc <hello@nearprotocol.com>",
   "contributors": [
@@ -33,10 +35,12 @@
     "web3-utils": "^1.2.8"
   },
   "devDependencies": {
+    "browserify": "^17.0.0",
     "eslint": "^6.8.0",
     "eslint-plugin-jest": "^23.13.1",
     "jest": "^26.6.3",
     "truffle": "^5.1.37",
+    "uglifyify": "^5.0.2",
     "web3": "^1.2.8"
   },
   "jest": {
