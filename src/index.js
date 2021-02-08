@@ -724,10 +724,10 @@ class NearProvider {
                     if (error.kind.EvmError.Revert) {
                         let message = utils.hexToString(error.kind.EvmError.Revert);
                         throw Error(`revert ${message}`);
-                    } else if (error.kind.HostError.GuestPanic) {
-                        let message = utils.hexToString(error.kind.HostError.GuestPanic.panic_msg);
-                        throw Error(`revert ${message}`);
                     }
+                } else if (error.type === 'GuestPanic') {
+                    let message = utils.hexToString(error.panic_msg);
+                    throw Error(`revert ${message}`);
                 }
                 throw Error(`Unknown error: ${JSON.stringify(error)}`);
             }
