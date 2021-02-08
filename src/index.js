@@ -724,6 +724,9 @@ class NearProvider {
                     if (error.kind.EvmError.Revert) {
                         let message = utils.hexToString(error.kind.EvmError.Revert);
                         throw Error(`revert ${message}`);
+                    } else if (error.kind.HostError.GuestPanic) {
+                        let message = utils.hexToString(error.kind.HostError.GuestPanic.panic_msg);
+                        throw Error(`revert ${message}`);
                     }
                 }
                 throw Error(`Unknown error: ${JSON.stringify(error)}`);
@@ -825,10 +828,14 @@ class NearProvider {
             // TODO: add more logic here for various types of errors.
             const errorObj = JSON.parse(error.message.slice(error.message.indexOf('\n') + 1));
             if (errorObj.error.includes('wasm execution failed with error:')) {
-                const REVERT_PREFIX = 'FunctionCallError(EvmError(Revert(';
-                if (errorObj.error.includes(REVERT_PREFIX)) {
-                    const message = errorObj.error.slice(errorObj.error.indexOf(REVERT_PREFIX) + REVERT_PREFIX.length, errorObj.error.length - 3);
+                const EVM_PRECOMPILE_REVERT_PREFIX = 'FunctionCallError(EvmError(Revert(';
+                const EVM_CONTRACT_REVERT_PREFIX = 'FunctionCallError(HostError(GuestPanic { panic_msg: "';
+                if (errorObj.error.includes(EVM_PRECOMPILE_REVERT_PREFIX)) {
+                    const message = errorObj.error.slice(errorObj.error.indexOf(EVM_PRECOMPILE_REVERT_PREFIX) + EVM_PRECOMPILE_REVERT_PREFIX.length, errorObj.error.length - 3);
                     throw new Error('revert' + (message ? (' ' + utils.evmMessageToCharString(message)) : ''));
+                } else if (errorObj.error.includes(EVM_CONTRACT_REVERT_PREFIX)) {
+                    const message = errorObj.error.slice(errorObj.error.indexOf(EVM_CONTRACT_REVERT_PREFIX) + EVM_CONTRACT_REVERT_PREFIX.length, errorObj.error.length - 5);
+                    throw new Error('revert' + (message ? (' ' + utils.hexToString(message)) : ''));
                 }
             }
             throw error;
