@@ -7,6 +7,7 @@ const fs = require('fs');
 const web3 = require('web3');
 const bn = web3.utils.BN;
 const { NearProvider, nearWeb3Extensions, nearAPI, utils } = require('../src/index');
+const { waitForABlock, getLatestBlockInfo } = require('./helpers');
 
 let source = fs.readFileSync('./test/build/contracts/ZombieAttack.json');
 const zombieCode = JSON.parse(source)['bytecode'];
@@ -569,7 +570,7 @@ describe('\n---- PROVIDER ----', () => {
         const base58TxHash = 'ByGDjvYxVZDxv69c86tFCFDRnJqK4zvj9uz4QVR4bH4P';
 
         beforeAll(withWeb3(async (web) => {
-            const newBlock = await getLatestBlockInfo();
+            const newBlock = await getLatestBlockInfo(testNearProvider);
             blockHash = newBlock.blockHash;
             blockHeight = newBlock.blockHeight;
 
@@ -945,21 +946,3 @@ describe('\n---- PROVIDER ----', () => {
         });
     });
 });
-
-/**
- * Helpers
- */
-async function getLatestBlockInfo () {
-    const { sync_info } = await testNearProvider.status();
-    const { latest_block_hash, latest_block_height } = sync_info;
-    const block = {
-        blockHash: utils.base58ToHex(latest_block_hash),
-        blockHeight: latest_block_height
-    };
-
-    return block;
-}
-
-async function waitForABlock () {
-    return await new Promise((r) => setTimeout(r, 1000));
-}
