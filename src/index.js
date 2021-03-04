@@ -91,16 +91,11 @@ class NearProvider {
      */
     async _getBlock(blockId, shouldReturnTxObjects, shouldReturnNearBlock) {
         const finalityEnums = ['final', 'near-final', 'optimistic'];
-        const isFinalityType = typeof blockId === 'string'
-            ? finalityEnums.find((f) => f === blockId)
-            : false;
-        const query = {};
-        if (typeof blockId === 'number') {
-            query.blockId = blockId;
-        } else if (isFinalityType) {
+        const query = {}; // See: https://near.github.io/near-api-js/classes/_providers_provider_.provider.html#block
+        if (typeof blockId === 'string' && finalityEnums.find((f) => f === blockId)) {
             query.finality = blockId;
         } else {
-            query.blockQuery = blockId;
+            query.blockId = blockId;
         }
         const block = await this.nearProvider.block(query);
         const fullBlock = await nearToEth.blockObj(block, shouldReturnTxObjects, this.nearProvider);
