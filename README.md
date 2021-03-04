@@ -126,7 +126,7 @@ NEAR Protocol is a sharded, proof-of-stake blockchain. Keeping that in mind, som
 
 As a sharded blockchain, the structure of NEAR blocks is also different. In Ethereum, blocks have transactions. In NEAR, blocks have chunks, and chunks have transactions.
 
-`near-web3-provider` has been adapted to follow the [Ethereum JSON RPC API](https://github.com/ethereum/wiki/wiki/json-rpc) and its [`web3` equivalents](https://web3js.readthedocs.io/en/v1.2.4/web3-eth.html#) as closely as possible. Where there are no equivalents, empty values have been passed through. Other return values have been adapted to account for the difference in block structure (for example, the root of the transaction trie comes from a chunk rather than a block).
+`near-web3-provider` has been adapted to follow the [Ethereum JSON RPC API](https://eth.wiki/json-rpc/API) and its [`web3` equivalents](https://web3js.readthedocs.io/en/v1.2.4/web3-eth.html#) as closely as possible. Where there are no equivalents, empty values have been passed through. Other return values have been adapted to account for the difference in block structure (for example, the root of the transaction trie comes from a chunk rather than a block).
 
 Mining, hashrates, `ssh,` and `db` methods are not supported.
 
@@ -139,11 +139,11 @@ Mining, hashrates, `ssh,` and `db` methods are not supported.
 * `eth_estimateGas` will always return `0x0`. Near RPC does not seem to support
   gas estimation for calls.
 
-* Some fields in Ethereum data structures do not have a direct correspondance to Near data structures, therefore these fields are unimplemented or unreliable. Always consult implementation in near_to_eth_objects.js. Examples include:
+* Some fields in Ethereum data structures do not have a direct correspondence to Near data structures, therefore these fields are unimplemented or unreliable. Always consult implementation in near_to_eth_objects.js. Examples include:
   * The tx receipts `status` field is always `0x1`, regardless of the success of the transaction.
   * `transactionIndex` is constant, and not reliable.
 
-* Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible correspondance to Near block structure.
+* Some calls, like `eth_getTransactionByBlockHashAndIndex` have no sensible correspondence to Near block structure.
 
 * Near doesn't keep track of nonces for contracts which is a required feature for the evm. Therefore both an evm nonce and near nonce exist for each account. `eth_getTransactionCount` will return a reference to the evm nonce. All other nonce fields in the web3-near-provider reference the near nonce.
     * evm nonce: nonce used for address calculation in the next EVM contract deployment from this EVM account
@@ -165,7 +165,7 @@ Near uses `base58` while Ethereum uses `Keccak`. This necessitates the need to c
   * denoted in `hex` within the context of the near-web3-provider
   * denoted in `base58` within the context of the rest of the near protocol
 
-* `transactionHash` - a transaction hash is the combination of a Near transaction hash (in `base58`) concatenanted with the accountId of the transaction's sender, and separated by `:`
+* `transactionHash` - a transaction hash is the combination of a Near transaction hash (in `base58`) concatenated with the accountId of the transaction's sender, and separated by `:`
   * `<base58TxHash>:<senderAccountId>` within the context of the near-web3-provider
   * `<senderAccountId>:<base58TxHash>` within the context of the rest of the near protocol
 
@@ -424,7 +424,7 @@ Returns a block matching the block number or block hash
 
 #### Parameters
 1. `String|Number|BN|BigNumber` - The block number or block hash. Or the string `'genesis'`, `'latest'`, `'earliest'`, or `'pending'`
-2. `Boolean` - (optional, default `false`) If specified `true`, the returned block will contain all transactions as objects. By default it is `false` so, there is no need to explictly specify false. And, if `false` it will only contain the transaction hashes.
+2. `Boolean` - (optional, default `false`) If specified `true`, the returned block will contain all transactions as objects. By default it is `false` so, there is no need to explicitly specify false. And, if `false` it will only contain the transaction hashes.
 
 #### Returns
 
@@ -495,7 +495,7 @@ Returns a transaction matching the given transaction hash.
 * `transactionIndex` - integer of the transactions index position in the block
 * `from` - EVM Address of the sender
 * `to` - EVM address of the receiver
-* `value` - Value transfered in yoctoNEAR
+* `value` - Value transferred in yoctoNEAR
 * `gasPrice` - Gas price set by the block in yoctoNEAR
 * `gas` - Gas consumed by the sender in yoctoNEAR
 * `input` - tx data, encoded contract call or deployed bytecode
@@ -598,7 +598,7 @@ Get the numbers of transactions sent from this address.
 ### web3.eth.sendTransaction
 
 ```js
-web3.eth.sendTransaction(transactionObject
+web3.eth.sendTransaction(transactionObject)
 ```
 
 Sends a transaction to the network.
