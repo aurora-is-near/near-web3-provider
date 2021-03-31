@@ -24,6 +24,7 @@
   ],
   "license": "CC0-1.0",
   "dependencies": {
+    "@aurora-is-near/engine": "github:aurora-is-near/aurora.js",
     "bn.js": "^5.1.2",
     "bs58": "^4.0.1",
     "bsert": "0.0.10",
