@@ -1,0 +1,4 @@
+dist/near-web3-provider.js linguist-generated=true -diff
+dist/near-web3-provider.min.js linguist-generated=true -diff
+package-lock.json linguist-generated=true -diff
+yarn.lock linguist-generated=true -diff
