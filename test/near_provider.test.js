@@ -23,7 +23,7 @@ const ACCOUNT = require(config.keyPath);
 const ACCOUNT_ID = ACCOUNT.account_id;
 const ACCOUNT_KEY = ACCOUNT.secret_key;
 const ACCOUNT_KEYPAIR = nearAPI.utils.KeyPair.fromString(ACCOUNT_KEY);
-const EVM_ACCOUNT = 'evm';
+const EVM_ACCOUNT = 'aurora.test.near';
 
 const testNearProvider = new nearAPI.providers.JsonRpcProvider(NODE_URL);
 

@@ -6,7 +6,7 @@ const getNetworkConfig = function getNetworkConfig(networkId) {
             return {
                 nodeUrl: 'https://rpc.mainnet.near.org',
                 networkId: 'mainnet',
-                evmAccountId: 'evm',
+                evmAccountId: 'aurora',
                 walletUrl: 'https://wallet.near.org',
                 explorerUrl: 'https://explorer.near.org',
                 version: consts.NEAR_NET_VERSION
@@ -15,7 +15,7 @@ const getNetworkConfig = function getNetworkConfig(networkId) {
             return {
                 nodeUrl: 'https://rpc.testnet.near.org',
                 networkId: 'default',
-                evmAccountId: 'evm',
+                evmAccountId: 'aurora',
                 walletUrl: 'https://wallet.testnet.near.org',
                 explorerUrl: 'https://explorer.testnet.near.org',
                 version: consts.NEAR_NET_VERSION_TEST
@@ -24,7 +24,7 @@ const getNetworkConfig = function getNetworkConfig(networkId) {
             return {
                 nodeUrl: 'https://rpc.betanet.near.org',
                 networkId: 'betanet',
-                evmAccountId: 'evm',
+                evmAccountId: 'aurora',
                 walletUrl: 'https://wallet.betanet.near.org',
                 explorerUrl: 'https://explorer.betanet.near.org',
                 version: consts.NEAR_NET_VERSION_BETANET
@@ -33,7 +33,7 @@ const getNetworkConfig = function getNetworkConfig(networkId) {
             return {
                 nodeUrl: 'http://127.0.0.1:3030',
                 networkId: 'local',
-                evmAccountId: 'evm',
+                evmAccountId: 'aurora.test.near',
                 walletUrl: 'http://127.0.0.1:4000',
                 explorerUrl: 'http://127.0.0.1:3019',
                 version: consts.NEAR_NET_VERSION_TEST
