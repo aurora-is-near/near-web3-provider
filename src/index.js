@@ -872,7 +872,7 @@ class NearProvider {
 
         const message = sigUtil.TypedDataUtils.sign(typedDataToSign);
         const sig = await this.connection.signer.signMessage(message, accountId, this.networkId);
-        return `0x${new Buffer(sig.signature).toString('hex')}`;
+        return `0x${new Buffer.from(sig.signature).toString('hex')}`;
     }
 }
 
