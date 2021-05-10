@@ -12,6 +12,7 @@ const getNetworkConfig = function getNetworkConfig(networkId) {
                 version: consts.NEAR_NET_VERSION
             };
         case 'testnet':
+        case 'default':
             return {
                 nodeUrl: 'https://rpc.testnet.near.org',
                 networkId: 'default',
