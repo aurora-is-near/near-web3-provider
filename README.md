@@ -1,4 +1,7 @@
-# *NOTE: THIS IS ALPHA SOFTWARE*
+> **⚠ WARNING: This library has been deprecated.**  
+> Most users do *not* need near-web3-provider, and instead should simply
+> change their Web3 endpoint as documented at:
+> https://doc.aurora.dev/develop/networks
 
 # near-web3-provider
 
